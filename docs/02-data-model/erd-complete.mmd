@@ -1,0 +1,1227 @@
+erDiagram
+  %% ============================================================
+  %% ERD COMPLETO — Construction ERP-Lite SaaS
+  %% Incluye: 57 tablas (51 base + 6 proveedores globales)
+  %% Schemas: public, finance, inventory, quality
+  %% ============================================================
+
+  %% -------------------------
+  %% CORE: TENANCY & SECURITY
+  %% -------------------------
+
+  Organization {
+    uuid id PK
+    string name
+    string slug UK
+    string tax_id
+    string country
+    string city
+    string address
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  OrgProfile {
+    uuid id PK
+    uuid org_id FK UK
+    string legal_name
+    string tax_id
+    string address
+    string city
+    string country
+    string phone
+    string email
+    string website
+    string base_currency FK
+    numeric default_tax_pct
+    string logo_storage_key
+    string document_footer_text
+    datetime created_at
+    datetime updated_at
+  }
+
+  User {
+    uuid id PK
+    string email UK
+    string username UK
+    string full_name
+    string password_hash
+    string avatar_url
+    boolean active
+    datetime created_at
+    datetime updated_at
+    datetime last_login_at
+  }
+
+  OrgMember {
+    uuid id PK
+    uuid org_id FK
+    uuid user_id FK
+    string role "OWNER|ADMIN|EDITOR|ACCOUNTANT|VIEWER"
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  Session {
+    uuid id PK
+    uuid user_id FK
+    string token_hash UK
+    string ip_address
+    string user_agent
+    datetime created_at
+    datetime expires_at
+    datetime revoked_at
+  }
+
+  ModuleActivation {
+    uuid id PK
+    uuid org_id FK
+    string module
+    boolean active
+    datetime activated_at
+    datetime deactivated_at
+  }
+
+  ApiKey {
+    uuid id PK
+    uuid org_id FK
+    string name
+    string key_hash UK
+    string[] scopes
+    datetime created_at
+    datetime revoked_at
+    datetime last_used_at
+  }
+
+  RefreshToken {
+    uuid id PK
+    uuid user_id FK
+    string token_hash UK
+    datetime created_at
+    datetime expires_at
+    datetime revoked_at
+  }
+
+  IdempotencyKey {
+    uuid id PK
+    uuid org_id FK
+    uuid user_id FK
+    string scope
+    string key UK
+    string request_hash
+    text response_json
+    string status
+    datetime created_at
+    datetime expires_at
+  }
+
+  AuditLog {
+    uuid id PK
+    uuid org_id FK
+    uuid actor_user_id FK
+    uuid project_id FK
+    string action
+    string entity_type
+    uuid entity_id
+    string request_id
+    string ip_address
+    string user_agent
+    jsonb before_snapshot
+    jsonb after_snapshot
+    jsonb details_json
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% EXTENSIBILITY
+  %% -------------------------
+
+  CustomFieldDefinition {
+    uuid id PK
+    uuid org_id FK
+    string entity_type
+    string field_name
+    string field_type
+    jsonb options
+    boolean required
+    boolean searchable
+    int display_order
+    text help_text
+    datetime created_at
+    datetime updated_at
+  }
+
+  CustomFieldValue {
+    uuid id PK
+    uuid org_id FK
+    uuid field_definition_id FK
+    uuid entity_id
+    string entity_type
+    jsonb value
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% -------------------------
+  %% WORKFLOW ENGINE
+  %% -------------------------
+
+  WorkflowDefinition {
+    uuid id PK
+    uuid org_id FK
+    string entity_type
+    string name
+    text description
+    jsonb steps
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  WorkflowInstance {
+    uuid id PK
+    uuid org_id FK
+    uuid workflow_definition_id FK
+    string entity_type
+    uuid entity_id
+    string status
+    jsonb current_step
+    datetime created_at
+    datetime completed_at
+  }
+
+  WorkflowApproval {
+    uuid id PK
+    uuid org_id FK
+    uuid workflow_instance_id FK
+    uuid org_member_id FK
+    int step_number
+    string action
+    text comments
+    jsonb metadata
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% PROJECTS
+  %% -------------------------
+
+  Project {
+    uuid id PK
+    uuid org_id FK
+    string project_number UK
+    string name
+    text description
+    string client_name
+    string location
+    numeric m2
+    string phase
+    string status
+    date start_date
+    date planned_end_date
+    date actual_end_date
+    jsonb custom_fields
+    boolean active
+    uuid created_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  ProjectMember {
+    uuid id PK
+    uuid project_id FK
+    uuid org_member_id FK
+    string project_role
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% -------------------------
+  %% WBS
+  %% -------------------------
+
+  WbsNode {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid parent_id FK
+    string code UK
+    string name
+    string category
+    text description
+    string unit
+    numeric quantity
+    jsonb metadata
+    int sort_order
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% -------------------------
+  %% BUDGET + CHANGE ORDERS
+  %% -------------------------
+
+  BudgetVersion {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    string version_code
+    string version_type
+    string status
+    text notes
+    uuid created_by_org_member_id FK
+    uuid approved_by_org_member_id FK
+    datetime created_at
+    datetime approved_at
+    datetime locked_at
+  }
+
+  BudgetLine {
+    uuid id PK
+    uuid org_id FK
+    uuid budget_version_id FK
+    uuid wbs_node_id FK
+    string description
+    string unit
+    numeric quantity
+    numeric direct_cost_total
+    numeric sale_price_total
+    numeric overhead_pct
+    numeric financial_pct
+    numeric profit_pct
+    numeric tax_pct
+    numeric retention_pct
+    int sort_order
+    datetime created_at
+    datetime updated_at
+  }
+
+  BudgetResource {
+    uuid id PK
+    uuid org_id FK
+    uuid budget_line_id FK
+    string resource_type
+    string description
+    string unit
+    numeric quantity
+    numeric unit_cost
+    numeric total_cost
+    jsonb attributes
+    int sort_order
+    datetime created_at
+  }
+
+  ChangeOrder {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid budget_version_id FK
+    int number UK
+    string status
+    string change_type
+    date request_date
+    date approved_date
+    date implemented_date
+    string reason
+    text justification
+    numeric cost_impact
+    int time_impact_days
+    uuid requested_by_org_member_id FK
+    uuid approved_by_org_member_id FK
+    uuid workflow_instance_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  ChangeOrderLine {
+    uuid id PK
+    uuid org_id FK
+    uuid change_order_id FK
+    uuid wbs_node_id FK
+    string change_type
+    numeric original_qty
+    numeric new_qty
+    numeric original_unit_cost
+    numeric new_unit_cost
+    numeric original_total_cost
+    numeric new_total_cost
+    numeric delta_cost
+    text justification
+    int sort_order
+  }
+
+  %% -------------------------
+  %% PARTIES (LOCAL)
+  %% -------------------------
+
+  Party {
+    uuid id PK
+    uuid org_id FK
+    string party_type
+    string name
+    string tax_id
+    string email
+    string phone
+    string address
+    string city
+    string country
+    string website
+    jsonb metadata
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  PartyContact {
+    uuid id PK
+    uuid org_id FK
+    uuid party_id FK
+    string full_name
+    string role
+    string email
+    string phone
+    boolean is_primary
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% GLOBAL SUPPLIER DIRECTORY
+  %% -------------------------
+
+  GlobalParty {
+    uuid id PK
+    string name
+    string legal_name
+    string tax_id
+    string email
+    string phone
+    string website
+    string logo_url
+    string category
+    string[] subcategories
+    boolean verified
+    datetime verified_at
+    string verified_by_staff
+    string[] countries
+    string[] regions
+    text description
+    jsonb certifications
+    jsonb specialties
+    jsonb metadata
+    numeric avg_rating
+    int review_count
+    int org_count
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  GlobalPartyContact {
+    uuid id PK
+    uuid global_party_id FK
+    string full_name
+    string role
+    string email
+    string phone
+    string region
+    string language
+    boolean is_primary
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  OrgPartyLink {
+    uuid id PK
+    uuid org_id FK
+    uuid global_party_id FK
+    string local_alias
+    string local_contact_name
+    string local_contact_email
+    string local_contact_phone
+    boolean preferred
+    string status
+    string payment_terms
+    numeric discount_pct
+    numeric credit_limit
+    text notes
+    string internal_code
+    string[] tags
+    int total_orders
+    numeric total_spent
+    datetime last_order_date
+    uuid created_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  GlobalPartyClaim {
+    uuid id PK
+    uuid global_party_id FK
+    string claimant_name
+    string claimant_email
+    string claimant_phone
+    string claimant_role
+    string company
+    string status
+    string verification_token UK
+    string[] verification_docs
+    text message
+    string reviewed_by
+    datetime reviewed_at
+    text review_notes
+    datetime created_at
+    datetime updated_at
+  }
+
+  GlobalPartyReview {
+    uuid id PK
+    uuid global_party_id FK
+    uuid org_id FK
+    uuid org_member_id FK
+    int rating
+    string title
+    text review
+    int quality_rating
+    int delivery_rating
+    int price_rating
+    int service_rating
+    boolean verified
+    string verified_by
+    string[] order_ids
+    string status
+    string flagged_reason
+    string moderated_by
+    datetime moderated_at
+    text supplier_response
+    datetime responded_at
+    datetime created_at
+    datetime updated_at
+  }
+
+  GlobalProduct {
+    uuid id PK
+    uuid global_party_id FK
+    string sku
+    string name
+    text description
+    string category
+    string subcategory
+    string unit
+    numeric reference_price_min
+    numeric reference_price_max
+    string currency
+    datetime price_updated_at
+    jsonb specifications
+    string[] certifications
+    string[] technical_docs
+    string image_url
+    string[] images
+    string datasheet_url
+    string video_url
+    string availability
+    int lead_time_days
+    numeric min_order_qty
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% -------------------------
+  %% FINANCE (MULTI-CURRENCY)
+  %% -------------------------
+
+  Currency {
+    string code PK
+    string name
+    string symbol
+    int decimal_places
+    boolean active
+  }
+
+  ExchangeRate {
+    uuid id PK
+    string from_currency FK
+    string to_currency FK
+    numeric rate
+    date effective_date
+    string source
+    datetime created_at
+  }
+
+  FinanceTransaction {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid party_id FK
+    string type
+    string status
+    string transaction_number
+    date issue_date
+    date due_date
+    date paid_date
+    string currency FK
+    numeric subtotal
+    numeric tax_total
+    numeric total
+    numeric amount_base_currency
+    jsonb exchange_rate_snapshot
+    string description
+    string reference
+    boolean deleted
+    datetime deleted_at
+    uuid deleted_by_org_member_id FK
+    uuid created_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  FinanceLine {
+    uuid id PK
+    uuid org_id FK
+    uuid transaction_id FK
+    uuid wbs_node_id FK
+    string description
+    string unit
+    numeric quantity
+    numeric unit_price
+    numeric line_total
+    int sort_order
+  }
+
+  Payment {
+    uuid id PK
+    uuid org_id FK
+    uuid transaction_id FK
+    string payment_number
+    date paid_on
+    numeric amount
+    string method
+    string reference
+    text notes
+    uuid created_by_org_member_id FK
+    datetime created_at
+  }
+
+  OverheadAllocation {
+    uuid id PK
+    uuid org_id FK
+    uuid transaction_id FK
+    uuid project_id FK
+    numeric allocation_pct
+    numeric allocation_amount
+    text notes
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% COMMITMENTS
+  %% -------------------------
+
+  Commitment {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid party_id FK
+    string commitment_type
+    string commitment_number UK
+    string status
+    date issue_date
+    date start_date
+    date end_date
+    string reference
+    text description
+    numeric total
+    string currency FK
+    numeric total_base_currency
+    boolean deleted
+    uuid created_by_org_member_id FK
+    uuid approved_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  CommitmentLine {
+    uuid id PK
+    uuid org_id FK
+    uuid commitment_id FK
+    uuid wbs_node_id FK
+    string description
+    string unit
+    numeric quantity
+    numeric unit_price
+    numeric line_total
+    int sort_order
+  }
+
+  %% -------------------------
+  %% CERTIFICATIONS
+  %% -------------------------
+
+  Certification {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid budget_version_id FK
+    int number UK
+    int period_month
+    int period_year
+    date issued_date
+    string status
+    text notes
+    string integrity_seal
+    uuid issued_by_org_member_id FK
+    uuid approved_by_org_member_id FK
+    datetime created_at
+    datetime issued_at
+    datetime approved_at
+  }
+
+  CertificationLine {
+    uuid id PK
+    uuid org_id FK
+    uuid certification_id FK
+    uuid wbs_node_id FK
+    uuid budget_line_id FK
+    numeric prev_progress_pct
+    numeric period_progress_pct
+    numeric total_progress_pct
+    numeric contractual_qty_snapshot
+    numeric unit_price_snapshot
+    numeric prev_qty
+    numeric period_qty
+    numeric total_qty
+    numeric remaining_qty
+    numeric prev_amount
+    numeric period_amount
+    numeric total_amount
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% INVENTORY
+  %% -------------------------
+
+  InventoryItem {
+    uuid id PK
+    uuid org_id FK
+    string sku UK
+    string name
+    text description
+    string category
+    string unit
+    numeric min_stock_qty
+    numeric reorder_qty
+    jsonb metadata
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  InventoryLocation {
+    uuid id PK
+    uuid org_id FK
+    string type
+    uuid project_id FK
+    string name
+    string address
+    jsonb metadata
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  InventoryMovement {
+    uuid id PK
+    uuid org_id FK
+    uuid item_id FK
+    string movement_type
+    uuid from_location_id FK
+    uuid to_location_id FK
+    uuid project_id FK
+    uuid wbs_node_id FK
+    uuid transaction_id FK
+    numeric quantity
+    numeric unit_cost
+    numeric total_cost
+    text notes
+    string idempotency_key UK
+    uuid created_by_org_member_id FK
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% QUALITY
+  %% -------------------------
+
+  RFI {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    int number UK
+    string status
+    string priority
+    uuid wbs_node_id FK
+    uuid raised_by_org_member_id FK
+    uuid assigned_to_org_member_id FK
+    string subject
+    text question
+    text answer
+    date due_date
+    date answered_date
+    date closed_date
+    datetime created_at
+    datetime updated_at
+  }
+
+  RFIComment {
+    uuid id PK
+    uuid org_id FK
+    uuid rfi_id FK
+    uuid org_member_id FK
+    text comment
+    datetime created_at
+  }
+
+  Submittal {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid wbs_node_id FK
+    int number UK
+    string submittal_type
+    string status
+    string spec_section
+    uuid submitted_by_party_id FK
+    uuid reviewed_by_org_member_id FK
+    date submitted_date
+    date due_date
+    date reviewed_date
+    text review_comments
+    int revision_number
+    datetime created_at
+    datetime updated_at
+  }
+
+  Inspection {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid wbs_node_id FK
+    int number UK
+    string inspection_type
+    string status
+    date scheduled_date
+    date completed_date
+    uuid inspector_org_member_id FK
+    text findings
+    text corrective_actions
+    datetime created_at
+    datetime updated_at
+  }
+
+  InspectionItem {
+    uuid id PK
+    uuid org_id FK
+    uuid inspection_id FK
+    string item_description
+    string status
+    text notes
+    int sort_order
+  }
+
+  %% -------------------------
+  %% DOCUMENTS
+  %% -------------------------
+
+  Document {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    string title
+    string doc_type
+    string category
+    text description
+    boolean is_public
+    boolean deleted
+    uuid created_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  DocumentVersion {
+    uuid id PK
+    uuid org_id FK
+    uuid document_id FK
+    int version_number
+    string file_name
+    string mime_type
+    int size_bytes
+    string storage_key
+    string checksum
+    text notes
+    uuid uploaded_by_org_member_id FK
+    datetime uploaded_at
+  }
+
+  DocumentLink {
+    uuid id PK
+    uuid org_id FK
+    uuid document_id FK
+    string entity_type
+    uuid entity_id
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% TEMPLATES & EXPORTS
+  %% -------------------------
+
+  Template {
+    uuid id PK
+    uuid org_id FK
+    string template_type
+    string name
+    int version
+    boolean active
+    string storage_key
+    jsonb variables
+    text notes
+    uuid created_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  ExportRun {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid requested_by_org_member_id FK
+    string export_type
+    string format
+    string status
+    string file_storage_key
+    jsonb params_json
+    string error_message
+    datetime created_at
+    datetime completed_at
+  }
+
+  %% -------------------------
+  %% REPORTING
+  %% -------------------------
+
+  SavedReport {
+    uuid id PK
+    uuid org_id FK
+    string name
+    text description
+    string entity_type
+    jsonb filters_json
+    jsonb columns_json
+    jsonb sort_json
+    jsonb aggregations_json
+    string visibility
+    uuid created_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  SavedReportRun {
+    uuid id PK
+    uuid org_id FK
+    uuid report_id FK
+    uuid requested_by_org_member_id FK
+    string format
+    string status
+    string file_storage_key
+    jsonb params_override
+    datetime created_at
+    datetime completed_at
+  }
+
+  %% -------------------------
+  %% SCHEDULING
+  %% -------------------------
+
+  ScheduleTask {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid wbs_node_id FK
+    string task_number
+    string name
+    text description
+    date start_date
+    date end_date
+    int duration_days
+    string status
+    numeric planned_progress_pct
+    numeric actual_progress_pct
+    boolean is_milestone
+    boolean is_critical_path
+    jsonb dependencies
+    int sort_order
+    datetime created_at
+    datetime updated_at
+  }
+
+  ProgressUpdate {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    uuid wbs_node_id FK
+    uuid schedule_task_id FK
+    date as_of_date
+    numeric progress_pct
+    text notes
+    uuid created_by_org_member_id FK
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% DAILY REPORTS
+  %% -------------------------
+
+  DailyReport {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    date report_date UK
+    string weather
+    numeric temperature_high
+    numeric temperature_low
+    text work_accomplished
+    text delays
+    text safety_incidents
+    text visitors
+    text deliveries
+    int labor_count_total
+    int equipment_count_total
+    uuid created_by_org_member_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  DailyReportLabor {
+    uuid id PK
+    uuid org_id FK
+    uuid daily_report_id FK
+    string trade
+    int worker_count
+    numeric hours_worked
+    text notes
+  }
+
+  DailyReportEquipment {
+    uuid id PK
+    uuid org_id FK
+    uuid daily_report_id FK
+    string equipment_type
+    int quantity
+    numeric hours_used
+    text notes
+  }
+
+  DailyReportPhoto {
+    uuid id PK
+    uuid org_id FK
+    uuid daily_report_id FK
+    uuid document_id FK
+    string caption
+    int sort_order
+  }
+
+  SiteLogEntry {
+    uuid id PK
+    uuid org_id FK
+    uuid project_id FK
+    date log_date
+    string title
+    text description
+    string weather
+    uuid created_by_org_member_id FK
+    datetime created_at
+  }
+
+  %% -------------------------
+  %% EVENTS & WEBHOOKS
+  %% -------------------------
+
+  OutboxEvent {
+    uuid id PK
+    uuid org_id FK
+    string event_type
+    jsonb payload
+    string status
+    int retry_count
+    string error_message
+    datetime created_at
+    datetime processed_at
+    datetime next_retry_at
+  }
+
+  WebhookEndpoint {
+    uuid id PK
+    uuid org_id FK
+    string url
+    string[] events
+    string secret
+    boolean active
+    datetime created_at
+    datetime updated_at
+  }
+
+  WebhookDelivery {
+    uuid id PK
+    uuid webhook_endpoint_id FK
+    uuid outbox_event_id FK
+    int attempt_number
+    int http_status
+    text response_body
+    datetime delivered_at
+  }
+
+  %% -------------------------
+  %% NOTIFICATIONS
+  %% -------------------------
+
+  Notification {
+    uuid id PK
+    uuid org_id FK
+    uuid user_id FK
+    string type
+    string category
+    string title
+    string message
+    jsonb metadata
+    boolean read
+    datetime read_at
+    datetime created_at
+  }
+
+  %% ============================================================
+  %% RELACIONES
+  %% ============================================================
+
+  %% CORE
+  Organization ||--|| OrgProfile : "has"
+  Organization ||--o{ OrgMember : "has members"
+  Organization ||--o{ Project : "owns"
+  Organization ||--o{ Party : "manages"
+  Organization ||--o{ CustomFieldDefinition : "defines"
+  Organization ||--o{ WorkflowDefinition : "defines"
+  Organization ||--o{ OrgPartyLink : "links suppliers"
+  User ||--o{ OrgMember : "member of"
+  User ||--o{ Session : "sessions"
+  OrgMember ||--o{ ProjectMember : "assigned to"
+  OrgMember ||--o{ WorkflowApproval : "approves"
+  OrgMember ||--o{ OrgPartyLink : "created"
+
+  %% EXTENSIBILITY
+  CustomFieldDefinition ||--o{ CustomFieldValue : "values"
+  WorkflowDefinition ||--o{ WorkflowInstance : "instances"
+  WorkflowInstance ||--o{ WorkflowApproval : "approvals"
+
+  %% PROJECTS
+  Project ||--o{ ProjectMember : "team"
+  Project ||--o{ WbsNode : "wbs tree"
+  WbsNode ||--o{ WbsNode : "parent_of"
+
+  %% BUDGET
+  Project ||--o{ BudgetVersion : "versions"
+  BudgetVersion ||--o{ BudgetLine : "lines"
+  WbsNode ||--o{ BudgetLine : "priced"
+  BudgetLine ||--o{ BudgetResource : "resources"
+  BudgetLine ||--o{ CertificationLine : "certified"
+
+  %% CHANGE ORDERS
+  Project ||--o{ ChangeOrder : "changes"
+  BudgetVersion ||--o{ ChangeOrder : "modifies"
+  ChangeOrder ||--o{ ChangeOrderLine : "lines"
+  WbsNode ||--o{ ChangeOrderLine : "affects"
+  ChangeOrder ||--|| WorkflowInstance : "approval"
+
+  %% PARTIES LOCAL
+  Organization ||--o{ Party : "local suppliers"
+  Party ||--o{ PartyContact : "contacts"
+  Party ||--o{ FinanceTransaction : "transactions"
+  Party ||--o{ Commitment : "commitments"
+  Party ||--o{ Submittal : "submits"
+
+  %% GLOBAL SUPPLIERS
+  GlobalParty ||--o{ GlobalPartyContact : "contacts"
+  GlobalParty ||--o{ OrgPartyLink : "linked by orgs"
+  GlobalParty ||--o{ GlobalPartyClaim : "claims"
+  GlobalParty ||--o{ GlobalPartyReview : "reviews"
+  GlobalParty ||--o{ GlobalProduct : "products"
+  Organization ||--o{ OrgPartyLink : "uses global suppliers"
+
+  %% FINANCE
+  Currency ||--o{ ExchangeRate : "rates"
+  Currency ||--|| FinanceTransaction : "currency"
+  Currency ||--|| OrgProfile : "base currency"
+  Project ||--o{ FinanceTransaction : "transactions"
+  FinanceTransaction ||--o{ FinanceLine : "lines"
+  FinanceTransaction ||--o{ Payment : "payments"
+  FinanceTransaction ||--o{ OverheadAllocation : "allocated"
+  WbsNode ||--o{ FinanceLine : "costs"
+
+  %% COMMITMENTS
+  Project ||--o{ Commitment : "commitments"
+  Commitment ||--o{ CommitmentLine : "lines"
+  WbsNode ||--o{ CommitmentLine : "allocated"
+
+  %% CERTIFICATIONS
+  Project ||--o{ Certification : "certifications"
+  BudgetVersion ||--o{ Certification : "based on"
+  Certification ||--o{ CertificationLine : "lines"
+  WbsNode ||--o{ CertificationLine : "progress"
+
+  %% INVENTORY
+  Organization ||--o{ InventoryItem : "items"
+  Organization ||--o{ InventoryLocation : "locations"
+  Project ||--o{ InventoryLocation : "site"
+  InventoryItem ||--o{ InventoryMovement : "movements"
+  InventoryLocation ||--o{ InventoryMovement : "from"
+  InventoryLocation ||--o{ InventoryMovement : "to"
+  WbsNode ||--o{ InventoryMovement : "consumes"
+
+  %% QUALITY
+  Project ||--o{ RFI : "rfis"
+  Project ||--o{ Submittal : "submittals"
+  Project ||--o{ Inspection : "inspections"
+  WbsNode ||--o{ RFI : "questions"
+  WbsNode ||--o{ Submittal : "requires"
+  RFI ||--o{ RFIComment : "comments"
+  Inspection ||--o{ InspectionItem : "items"
+
+  %% DOCUMENTS
+  Project ||--o{ Document : "documents"
+  Document ||--o{ DocumentVersion : "versions"
+  Document ||--o{ DocumentLink : "links"
+  Document ||--o{ DailyReportPhoto : "photos"
+
+  %% SCHEDULING
+  Project ||--o{ ScheduleTask : "schedule"
+  WbsNode ||--o{ ScheduleTask : "tasks"
+  ScheduleTask ||--o{ ProgressUpdate : "progress"
+  WbsNode ||--o{ ProgressUpdate : "progress"
+
+  %% DAILY REPORTS
+  Project ||--o{ DailyReport : "daily reports"
+  DailyReport ||--o{ DailyReportLabor : "labor"
+  DailyReport ||--o{ DailyReportEquipment : "equipment"
+  DailyReport ||--o{ DailyReportPhoto : "photos"
+
+  %% EVENTS
+  OutboxEvent ||--o{ WebhookDelivery : "deliveries"
+  WebhookEndpoint ||--o{ WebhookDelivery : "receives"
+
+  %% REPORTING
+  Organization ||--o{ SavedReport : "reports"
+  SavedReport ||--o{ SavedReportRun : "runs"
