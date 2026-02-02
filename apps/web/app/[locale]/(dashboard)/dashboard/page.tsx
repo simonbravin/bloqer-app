@@ -1,0 +1,64 @@
+import { getSession } from '@/lib/session'
+import { getOrgContext } from '@/lib/org-context'
+import { redirectToLogin } from '@/lib/i18n-redirect'
+import { getTranslations } from 'next-intl/server'
+import {
+  getOrgKPIs,
+  getCashflowData,
+  getAlerts,
+  getRecentActivity,
+} from '@/app/actions/dashboard'
+import { KPICards } from '@/components/dashboard/kpi-cards'
+import { CashflowChart } from '@/components/dashboard/cashflow-chart'
+import { AlertsWidget } from '@/components/dashboard/alerts-widget'
+import { RecentActivityFeed } from '@/components/dashboard/recent-activity-feed'
+
+export default async function DashboardHomePage() {
+  const session = await getSession()
+  if (!session?.user?.id) return redirectToLogin()
+  const orgContext = await getOrgContext(session.user.id)
+  if (!orgContext) return redirectToLogin()
+
+  const t = await getTranslations('dashboard')
+
+  // Fetch all dashboard data in parallel
+  const [kpis, cashflowData, alerts, recentActivity] = await Promise.all([
+    getOrgKPIs(orgContext.orgId),
+    getCashflowData(orgContext.orgId),
+    getAlerts(orgContext.orgId),
+    getRecentActivity(orgContext.orgId),
+  ])
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {t('title')}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {t('subtitle')}
+        </p>
+      </div>
+
+      {/* KPI Cards */}
+      <KPICards kpis={kpis} />
+
+      {/* Main content grid */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Cashflow chart - takes 2 columns */}
+        <div className="lg:col-span-2">
+          <CashflowChart data={cashflowData} />
+        </div>
+
+        {/* Alerts widget */}
+        <div>
+          <AlertsWidget alerts={alerts} />
+        </div>
+      </div>
+
+      {/* Recent activity */}
+      <RecentActivityFeed activities={recentActivity} />
+    </div>
+  )
+}

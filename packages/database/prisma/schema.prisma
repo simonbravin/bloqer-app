@@ -63,6 +63,7 @@ model Organization {
   webhookEndpoints    WebhookEndpoint[]
   outboxEvents        OutboxEvent[]
   orgPartyLinks       OrgPartyLink[]
+  resources           Resource[]
 
   @@index([slug])
   @@index([active])
@@ -83,6 +84,7 @@ model OrgProfile {
   website             String?
   baseCurrency        String   @default("USD") @map("base_currency")
   defaultTaxPct       Decimal  @default(0) @db.Decimal(5, 2) @map("default_tax_pct")
+  defaultIndirectCostPct Decimal @default(0) @db.Decimal(5, 2) @map("default_indirect_cost_pct")
   logoStorageKey      String?  @map("logo_storage_key")
   documentFooterText  String?  @map("document_footer_text")
   createdAt           DateTime @default(now()) @map("created_at")
@@ -163,6 +165,7 @@ model OrgMember {
   createdInventoryMovements InventoryMovement[]
   requestedChangeOrders ChangeOrder[]      @relation("ChangeOrderRequestedBy")
   approvedChangeOrders  ChangeOrder[]      @relation("ChangeOrderApprovedBy")
+  changeOrderApprovals  ChangeOrderApproval[]
   raisedRFIs         RFI[]                @relation("RFIRaisedBy")
   assignedRFIs       RFI[]                @relation("RFIAssignedTo")
   createdRFIComments RFIComment[]
@@ -457,6 +460,7 @@ model Project {
   plannedEndDate       DateTime?    @map("planned_end_date") @db.Date
   actualEndDate        DateTime?    @map("actual_end_date") @db.Date
   customFields         Json         @default("{}") @map("custom_fields")
+  totalBudget          Decimal?     @map("total_budget") @db.Decimal(15, 2)
   active               Boolean      @default(true)
   createdByOrgMemberId String       @map("created_by_org_member_id")
   createdAt            DateTime     @default(now()) @map("created_at")
@@ -592,12 +596,14 @@ model BudgetLine {
   orgId            String  @map("org_id")
   budgetVersionId  String  @map("budget_version_id")
   wbsNodeId        String  @map("wbs_node_id")
+  resourceId       String? @map("resource_id")
   description      String
   unit             String
   quantity         Decimal @db.Decimal(15, 4)
   directCostTotal  Decimal @map("direct_cost_total") @db.Decimal(15, 2)
   salePriceTotal   Decimal @map("sale_price_total") @db.Decimal(15, 2)
   overheadPct      Decimal @default(0) @map("overhead_pct") @db.Decimal(5, 2)
+  indirectCostPct  Decimal @default(0) @map("indirect_cost_pct") @db.Decimal(5, 2)
   financialPct     Decimal @default(0) @map("financial_pct") @db.Decimal(5, 2)
   profitPct        Decimal @default(0) @map("profit_pct") @db.Decimal(5, 2)
   taxPct           Decimal @default(0) @map("tax_pct") @db.Decimal(5, 2)
@@ -609,11 +615,13 @@ model BudgetLine {
   // Relations
   budgetVersion      BudgetVersion        @relation(fields: [budgetVersionId], references: [id], onDelete: Cascade)
   wbsNode            WbsNode              @relation(fields: [wbsNodeId], references: [id])
+  resource           Resource?            @relation(fields: [resourceId], references: [id])
   resources          BudgetResource[]
   certificationLines CertificationLine[]
 
   @@index([budgetVersionId])
   @@index([wbsNodeId])
+  @@index([resourceId])
   @@map("budget_lines")
   @@schema("public")
 }
@@ -646,6 +654,7 @@ model ChangeOrder {
   projectId              String   @map("project_id")
   budgetVersionId        String?  @map("budget_version_id")
   number                 Int
+  title                  String
   status                 String   @default("DRAFT")
   changeType             String   @map("change_type")
   requestDate            DateTime @default(now()) @map("request_date") @db.Date
@@ -657,6 +666,8 @@ model ChangeOrder {
   timeImpactDays         Int      @default(0) @map("time_impact_days")
   requestedByOrgMemberId String   @map("requested_by_org_member_id")
   approvedByOrgMemberId  String?  @map("approved_by_org_member_id")
+  rejectionReason        String?  @map("rejection_reason")
+  feedbackRequested      String?  @map("feedback_requested")
   workflowInstanceId     String?  @map("workflow_instance_id")
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
@@ -668,10 +679,28 @@ model ChangeOrder {
   requestedBy   OrgMember       @relation("ChangeOrderRequestedBy", fields: [requestedByOrgMemberId], references: [id])
   approvedBy    OrgMember?      @relation("ChangeOrderApprovedBy", fields: [approvedByOrgMemberId], references: [id])
   lines         ChangeOrderLine[]
+  approvals     ChangeOrderApproval[]
 
   @@unique([projectId, number])
   @@index([projectId, status])
   @@map("change_orders")
+  @@schema("public")
+}
+
+model ChangeOrderApproval {
+  id             String   @id @default(uuid())
+  changeOrderId  String   @map("change_order_id")
+  orgMemberId   String   @map("org_member_id")
+  decision      String   // APPROVED | REJECTED | CHANGES_REQUESTED
+  comment       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  changeOrder ChangeOrder @relation(fields: [changeOrderId], references: [id], onDelete: Cascade)
+  orgMember   OrgMember   @relation(fields: [orgMemberId], references: [id], onDelete: Cascade)
+
+  @@index([changeOrderId])
+  @@map("change_order_approvals")
   @@schema("public")
 }
 
@@ -727,10 +756,41 @@ model Party {
   financeTransactions FinanceTransaction[]
   commitments         Commitment[]
   submittals          Submittal[]
+  suppliedResources   Resource[]
 
   @@index([orgId, partyType])
   @@index([orgId, name])
   @@map("parties")
+  @@schema("public")
+}
+
+// ============================================================
+// RESOURCE CATALOG (org-wide)
+// ============================================================
+
+model Resource {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  code        String
+  name        String
+  category    String   // MATERIAL|LABOR|EQUIPMENT|SUBCONTRACT|OTHER
+  description String?
+  unit        String
+  unitCost    Decimal  @map("unit_cost") @db.Decimal(15, 2)
+  supplierId  String?  @map("supplier_id")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  supplier     Party?       @relation(fields: [supplierId], references: [id])
+  budgetLines  BudgetLine[]
+
+  @@unique([orgId, code])
+  @@index([orgId, category])
+  @@index([orgId, active])
+  @@map("resources")
   @@schema("public")
 }
 
@@ -1378,7 +1438,7 @@ model RFI {
   id                   String   @id @default(uuid())
   orgId                String   @map("org_id")
   projectId            String   @map("project_id")
-  number               Int
+  number                Int
   status               String   @default("OPEN")
   priority             String   @default("MEDIUM")
   wbsNodeId            String?  @map("wbs_node_id")
@@ -1464,7 +1524,7 @@ model Inspection {
   number                Int
   inspectionType        String   @map("inspection_type")
   status                String   @default("SCHEDULED")
-  scheduledDate         DateTime? @map("scheduled_date") @db.Date
+  scheduledDate          DateTime? @map("scheduled_date") @db.Date
   completedDate         DateTime? @map("completed_date") @db.Date
   inspectorOrgMemberId  String?  @map("inspector_org_member_id")
   findings              String?
@@ -1605,7 +1665,7 @@ model ExportRun {
   id                     String   @id @default(uuid())
   orgId                  String   @map("org_id")
   projectId              String?  @map("project_id")
-  requestedByOrgMemberId String   @map("requested_by_org_member_id")
+  requestedByOrgMemberId  String   @map("requested_by_org_member_id")
   exportType             String   @map("export_type")
   format                 String
   status                 String   @default("QUEUED")
@@ -1685,7 +1745,7 @@ model ScheduleTask {
   orgId               String   @map("org_id")
   projectId           String   @map("project_id")
   wbsNodeId           String?  @map("wbs_node_id")
-  taskNumber          String   @map("task_number")
+  taskNumber           String   @map("task_number")
   name                String
   description         String?
   startDate           DateTime @map("start_date") @db.Date
@@ -1934,5 +1994,100 @@ model Notification {
   @@index([userId, read])
   @@index([createdAt])
   @@map("notifications")
+  @@schema("public")
+}
+
+// ============================================================
+// PROJECT TEMPLATES & CONSTRUCTION SYSTEMS
+// ============================================================
+
+model ProjectTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  category    String // "RESIDENTIAL", "COMMERCIAL", "PUBLIC"
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  wbsTemplates WbsTemplate[]
+
+  @@map("project_templates")
+  @@schema("public")
+}
+
+model ConstructionSystem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  category    String // "STRUCTURE", "ROOF", "WALLS"
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  wbsTemplates WbsTemplate[]
+
+  @@map("construction_systems")
+  @@schema("public")
+}
+
+model WbsTemplate {
+  id                    String   @id @default(uuid())
+  projectTemplateId     String   @map("project_template_id")
+  parentId              String?  @map("parent_id")
+  code                  String
+  name                  String
+  category              String // "PHASE", "TASK", "SUBTASK", "ITEM"
+  unit                  String?
+  defaultQuantity       Decimal? @db.Decimal(15, 4) @map("default_quantity")
+
+  // Filtros
+  constructionSystemId  String?  @map("construction_system_id")
+
+  // Metadata
+  description String? @db.Text
+  notes       String? @db.Text
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projectTemplate   ProjectTemplate   @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
+  parent            WbsTemplate?      @relation("WbsTemplateHierarchy", fields: [parentId], references: [id])
+  children          WbsTemplate[]     @relation("WbsTemplateHierarchy")
+  constructionSystem ConstructionSystem? @relation(fields: [constructionSystemId], references: [id])
+  resourceTemplates BudgetResourceTemplate[]
+
+  @@index([projectTemplateId])
+  @@index([parentId])
+  @@index([constructionSystemId])
+  @@index([code])
+  @@map("wbs_templates")
+  @@schema("public")
+}
+
+model BudgetResourceTemplate {
+  id             String   @id @default(uuid())
+  wbsTemplateId  String   @map("wbs_template_id")
+  type           String   // MATERIAL, LABOR, SUBCONTRACT
+  name           String
+  description    String?  @db.Text
+  unit           String
+  quantity       Decimal  @db.Decimal(15, 4)
+  estimatedCost  Decimal  @map("estimated_cost") @db.Decimal(15, 2)
+  supplierName   String?  @map("supplier_name")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  wbsTemplate WbsTemplate @relation(fields: [wbsTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([wbsTemplateId])
+  @@map("budget_resource_templates")
   @@schema("public")
 }

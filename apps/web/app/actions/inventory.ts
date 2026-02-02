@@ -1,0 +1,361 @@
+'use server'
+
+import { redirectToLogin } from '@/lib/i18n-redirect'
+import { revalidatePath } from 'next/cache'
+import { prisma, Prisma } from '@repo/database'
+import { getSession } from '@/lib/session'
+import { getOrgContext } from '@/lib/org-context'
+import { requireRole } from '@/lib/rbac'
+import { calculateTotalStock, calculateStockBalance } from '@/lib/inventory-utils'
+
+async function getAuthContext() {
+  const session = await getSession()
+  if (!session?.user?.id) return redirectToLogin()
+  const org = await getOrgContext(session.user.id)
+  if (!org) return redirectToLogin()
+  return { org }
+}
+
+export async function createInventoryItem(data: {
+  sku: string
+  name: string
+  description?: string
+  category: string
+  unit: string
+  minStockQty?: number
+  reorderQty?: number
+}) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const existing = await prisma.inventoryItem.findUnique({
+    where: { orgId_sku: { orgId: org.orgId, sku: data.sku } },
+  })
+  if (existing) return { success: false as const, error: 'SKU ya existe' }
+
+  const item = await prisma.inventoryItem.create({
+    data: {
+      orgId: org.orgId,
+      sku: data.sku,
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      unit: data.unit,
+      minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
+      reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,
+      active: true,
+    },
+  })
+
+  revalidatePath('/inventory')
+  revalidatePath('/inventory/items')
+  return { success: true as const, itemId: item.id }
+}
+
+export async function updateInventoryItem(
+  itemId: string,
+  data: {
+    sku: string
+    name: string
+    description?: string
+    category: string
+    unit: string
+    minStockQty?: number
+    reorderQty?: number
+  }
+) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const item = await prisma.inventoryItem.findFirst({
+    where: { id: itemId, orgId: org.orgId },
+  })
+  if (!item) return { success: false as const, error: 'Item no encontrado' }
+
+  const existingSku = await prisma.inventoryItem.findUnique({
+    where: { orgId_sku: { orgId: org.orgId, sku: data.sku } },
+  })
+  if (existingSku && existingSku.id !== itemId) {
+    return { success: false as const, error: 'SKU ya existe' }
+  }
+
+  await prisma.inventoryItem.update({
+    where: { id: itemId },
+    data: {
+      sku: data.sku,
+      name: data.name,
+      description: data.description ?? null,
+      category: data.category,
+      unit: data.unit,
+      minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
+      reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,
+    },
+  })
+
+  revalidatePath('/inventory')
+  revalidatePath('/inventory/items')
+  revalidatePath(`/inventory/items/${itemId}`)
+  return { success: true as const }
+}
+
+export async function deleteInventoryItem(itemId: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const item = await prisma.inventoryItem.findFirst({
+    where: { id: itemId, orgId: org.orgId },
+    select: { id: true },
+  })
+  if (!item) return { success: false as const, error: 'Item no encontrado' }
+
+  await prisma.inventoryItem.update({
+    where: { id: itemId },
+    data: { active: false },
+  })
+
+  revalidatePath('/inventory')
+  revalidatePath('/inventory/items')
+  return { success: true as const }
+}
+
+export async function createInventoryLocation(data: {
+  type: string
+  name: string
+  projectId?: string | null
+  address?: string
+}) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  if (data.type === 'PROJECT_SITE' && !data.projectId) {
+    throw new Error('Project is required for project site locations')
+  }
+
+  const loc = await prisma.inventoryLocation.create({
+    data: {
+      orgId: org.orgId,
+      type: data.type,
+      name: data.name,
+      projectId: data.projectId || undefined,
+      address: data.address,
+      active: true,
+    },
+  })
+
+  revalidatePath('/inventory')
+  revalidatePath('/inventory/locations')
+  return { success: true, locationId: loc.id }
+}
+
+export async function createInventoryMovement(data: {
+  itemId: string
+  movementType: 'PURCHASE' | 'TRANSFER' | 'ISSUE' | 'ADJUSTMENT'
+  fromLocationId?: string | null
+  toLocationId?: string | null
+  projectId?: string | null
+  wbsNodeId?: string | null
+  quantity: number
+  unitCost: number
+  notes?: string
+  idempotencyKey: string
+}) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const existing = await prisma.inventoryMovement.findUnique({
+    where: { idempotencyKey: data.idempotencyKey },
+  })
+  if (existing) {
+    revalidatePath('/inventory/movements')
+    return { success: true, movementId: existing.id, duplicate: true }
+  }
+
+  const item = await prisma.inventoryItem.findFirst({
+    where: { id: data.itemId, orgId: org.orgId },
+  })
+  if (!item) throw new Error('Item not found')
+
+  if (data.movementType === 'PURCHASE' && !data.toLocationId) {
+    throw new Error('Destination location required for PURCHASE')
+  }
+  if (
+    data.movementType === 'TRANSFER' &&
+    (!data.fromLocationId || !data.toLocationId)
+  ) {
+    throw new Error('Both locations required for TRANSFER')
+  }
+  if (
+    data.movementType === 'ISSUE' &&
+    (!data.fromLocationId || !data.projectId || !data.wbsNodeId)
+  ) {
+    throw new Error('From location, project, and WBS required for ISSUE')
+  }
+  if (data.movementType === 'ADJUSTMENT') {
+    if (!data.fromLocationId && !data.toLocationId) {
+      throw new Error('At least one location required for ADJUSTMENT')
+    }
+  }
+
+  if (data.movementType === 'ISSUE' && data.fromLocationId) {
+    const balance = await calculateStockBalance(
+      data.itemId,
+      data.fromLocationId,
+      org.orgId
+    )
+    if (balance.lt(data.quantity)) {
+      throw new Error(
+        `Stock insuficiente. Disponible: ${balance.toString()}`
+      )
+    }
+  }
+
+  const totalCost = new Prisma.Decimal(data.quantity).mul(data.unitCost)
+
+  if (
+    data.movementType === 'ISSUE' &&
+    data.projectId &&
+    data.wbsNodeId
+  ) {
+    const movement = await prisma.$transaction(async (tx) => {
+      const mov = await tx.inventoryMovement.create({
+        data: {
+          orgId: org.orgId,
+          itemId: data.itemId,
+          movementType: data.movementType,
+          fromLocationId: data.fromLocationId ?? undefined,
+          toLocationId: data.toLocationId ?? undefined,
+          projectId: data.projectId ?? undefined,
+          wbsNodeId: data.wbsNodeId ?? undefined,
+          quantity: new Prisma.Decimal(data.quantity),
+          unitCost: new Prisma.Decimal(data.unitCost),
+          totalCost,
+          notes: data.notes,
+          idempotencyKey: data.idempotencyKey,
+          createdByOrgMemberId: org.memberId,
+        },
+      })
+
+      const year = new Date().getFullYear()
+      const yearStart = new Date(year, 0, 1)
+      const yearEnd = new Date(year + 1, 0, 1)
+      const count = await tx.financeTransaction.count({
+        where: {
+          orgId: org.orgId,
+          type: 'EXPENSE',
+          issueDate: { gte: yearStart, lt: yearEnd },
+          deleted: false,
+        },
+      })
+      const transactionNumber = `EXP-${year}-${(count + 1).toString().padStart(3, '0')}`
+
+      const totalAmount = Number(totalCost.toString())
+      const financeTx = await tx.financeTransaction.create({
+        data: {
+          orgId: org.orgId,
+          projectId: data.projectId,
+          type: 'EXPENSE',
+          status: 'POSTED',
+          transactionNumber,
+          issueDate: new Date(),
+          currency: 'USD',
+          subtotal: new Prisma.Decimal(totalAmount),
+          taxTotal: new Prisma.Decimal(0),
+          total: new Prisma.Decimal(totalAmount),
+          amountBaseCurrency: new Prisma.Decimal(totalAmount),
+          description: `Consumo inventario: ${mov.id}`,
+          reference: mov.id,
+          createdByOrgMemberId: org.memberId,
+        },
+      })
+
+      await tx.financeLine.create({
+        data: {
+          orgId: org.orgId,
+          transactionId: financeTx.id,
+          wbsNodeId: data.wbsNodeId ?? undefined,
+          description: `Consumo inventario: ${item.name}`,
+          quantity: new Prisma.Decimal(data.quantity),
+          unitPrice: new Prisma.Decimal(data.unitCost),
+          lineTotal: totalCost,
+          sortOrder: 0,
+        },
+      })
+
+      await tx.inventoryMovement.update({
+        where: { id: mov.id },
+        data: { transactionId: financeTx.id },
+      })
+
+      return mov
+    })
+
+    revalidatePath('/inventory')
+    revalidatePath('/inventory/movements')
+    revalidatePath(`/inventory/items/${data.itemId}`)
+    if (data.projectId) revalidatePath(`/projects/${data.projectId}`)
+    return { success: true, movementId: movement.id, duplicate: false }
+  }
+
+  const movement = await prisma.inventoryMovement.create({
+    data: {
+      orgId: org.orgId,
+      itemId: data.itemId,
+      movementType: data.movementType,
+      fromLocationId: data.fromLocationId || undefined,
+      toLocationId: data.toLocationId || undefined,
+      projectId: data.projectId || undefined,
+      wbsNodeId: data.wbsNodeId || undefined,
+      quantity: new Prisma.Decimal(data.quantity),
+      unitCost: new Prisma.Decimal(data.unitCost),
+      totalCost,
+      notes: data.notes,
+      idempotencyKey: data.idempotencyKey,
+      createdByOrgMemberId: org.memberId,
+    },
+  })
+
+  revalidatePath('/inventory')
+  revalidatePath('/inventory/movements')
+  revalidatePath(`/inventory/items/${data.itemId}`)
+  if (data.projectId) revalidatePath(`/projects/${data.projectId}`)
+  return { success: true, movementId: movement.id, duplicate: false }
+}
+
+export async function getItemStockByLocation(itemId: string, locationId: string) {
+  try {
+    const { org } = await getAuthContext()
+    const item = await prisma.inventoryItem.findFirst({
+      where: { id: itemId, orgId: org.orgId },
+      select: { id: true },
+    })
+    if (!item) return { success: false as const, error: 'Item no encontrado' }
+    const location = await prisma.inventoryLocation.findFirst({
+      where: { id: locationId, orgId: org.orgId },
+      select: { id: true },
+    })
+    if (!location) return { success: false as const, error: 'Ubicación no encontrada' }
+    const balance = await calculateStockBalance(itemId, locationId, org.orgId)
+    return { success: true as const, stock: Number(balance.toString()) }
+  } catch {
+    return { success: false as const, error: 'Error al obtener stock' }
+  }
+}
+
+export async function getProjectWBSNodes(projectId: string) {
+  try {
+    const { org } = await getAuthContext()
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, orgId: org.orgId },
+      select: { id: true },
+    })
+    if (!project) return { success: false as const, error: 'Proyecto no encontrado', nodes: [] }
+    const nodes = await prisma.wbsNode.findMany({
+      where: { projectId, orgId: org.orgId, active: true },
+      select: { id: true, code: true, name: true, category: true },
+      orderBy: { code: 'asc' },
+    })
+    return { success: true as const, nodes }
+  } catch {
+    return { success: false as const, error: 'Error al cargar partidas', nodes: [] }
+  }
+}

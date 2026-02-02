@@ -1,0 +1,217 @@
+import { redirectToLogin } from '@/lib/i18n-redirect'
+import { getSession } from '@/lib/session'
+import { getOrgContext } from '@/lib/org-context'
+import { prisma } from '@repo/database'
+import { PageHeader } from '@/components/layout/page-header'
+import { InventoryKPICards } from '@/components/inventory/inventory-kpi-cards'
+import { LowStockAlerts } from '@/components/inventory/low-stock-alerts'
+import { RecentMovements } from '@/components/inventory/recent-movements'
+import { Button } from '@/components/ui/button'
+import { Plus, Package } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
+
+export default async function InventoryDashboardPage() {
+  const session = await getSession()
+  if (!session?.user?.id) return redirectToLogin()
+
+  const org = await getOrgContext(session.user.id)
+  if (!org) return redirectToLogin()
+
+  const { orgId } = org
+
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+
+  const [totalItems, monthMovements, itemsWithMinStock, recentMovements] = await Promise.all([
+    prisma.inventoryItem.count({ where: { orgId, active: true } }),
+    prisma.inventoryMovement.count({
+      where: { orgId, createdAt: { gte: startOfMonth } },
+    }),
+    prisma.inventoryItem.findMany({
+      where: { orgId, active: true, minStockQty: { not: null } },
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        unit: true,
+        minStockQty: true,
+        reorderQty: true,
+      },
+    }),
+    prisma.inventoryMovement.findMany({
+      where: { orgId },
+      include: {
+        item: { select: { id: true, sku: true, name: true, unit: true } },
+        fromLocation: { select: { name: true } },
+        toLocation: { select: { name: true } },
+        createdBy: {
+          select: {
+            user: { select: { fullName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
+  ])
+
+  const { calculateTotalStock } = await import('@/lib/inventory-utils')
+
+  let criticalStock = 0
+  let totalValue = 0
+
+  const allItems = await prisma.inventoryItem.findMany({
+    where: { orgId, active: true },
+    select: { id: true, minStockQty: true },
+  })
+
+  for (const it of allItems) {
+    const total = await calculateTotalStock(it.id, orgId)
+    const totalNum = typeof total === 'number' ? total : total?.toNumber?.() ?? 0
+    const minNum =
+      it.minStockQty == null
+        ? null
+        : typeof it.minStockQty === 'number'
+          ? it.minStockQty
+          : it.minStockQty?.toNumber?.() ?? null
+    if (minNum != null && totalNum < minNum) criticalStock++
+  }
+
+  const movementsByItem = await prisma.inventoryMovement.findMany({
+    where: { orgId, movementType: 'PURCHASE' },
+    select: {
+      itemId: true,
+      quantity: true,
+      unitCost: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const lastCostByItem = new Map<string, { unitCost: number; quantity: number }>()
+  for (const m of movementsByItem) {
+    if (!lastCostByItem.has(m.itemId)) {
+      const uc = typeof m.unitCost === 'number' ? m.unitCost : m.unitCost?.toNumber?.() ?? 0
+      const q = typeof m.quantity === 'number' ? m.quantity : m.quantity?.toNumber?.() ?? 0
+      lastCostByItem.set(m.itemId, { unitCost: uc, quantity: q })
+    }
+  }
+
+  for (const it of allItems) {
+    const total = await calculateTotalStock(it.id, orgId)
+    const totalNum = typeof total === 'number' ? total : total?.toNumber?.() ?? 0
+    const last = lastCostByItem.get(it.id)
+    if (last) totalValue += totalNum * last.unitCost
+  }
+
+  const lowStockRows: Array<{
+    id: string
+    sku: string
+    name: string
+    unit: string
+    minStockQty: unknown
+    reorderQty: unknown
+    current_stock: unknown
+  }> = []
+
+  for (const item of itemsWithMinStock) {
+    const total = await calculateTotalStock(item.id, orgId)
+    const totalNum = typeof total === 'number' ? total : total?.toNumber?.() ?? 0
+    const minNum =
+      item.minStockQty == null
+        ? null
+        : typeof item.minStockQty === 'number'
+          ? item.minStockQty
+          : item.minStockQty?.toNumber?.() ?? null
+    if (minNum != null && totalNum < minNum) {
+      lowStockRows.push({
+        id: item.id,
+        sku: item.sku,
+        name: item.name,
+        unit: item.unit,
+        minStockQty: item.minStockQty,
+        reorderQty: item.reorderQty,
+        current_stock: total,
+      })
+    }
+  }
+
+  lowStockRows.sort((a, b) => {
+    const aCur = typeof a.current_stock === 'number' ? a.current_stock : (a.current_stock as { toNumber?: () => number })?.toNumber?.() ?? 0
+    const bCur = typeof b.current_stock === 'number' ? b.current_stock : (b.current_stock as { toNumber?: () => number })?.toNumber?.() ?? 0
+    const aMin = typeof a.minStockQty === 'number' ? a.minStockQty : (a.minStockQty as { toNumber?: () => number })?.toNumber?.() ?? 0
+    const bMin = typeof b.minStockQty === 'number' ? b.minStockQty : (b.minStockQty as { toNumber?: () => number })?.toNumber?.() ?? 0
+    return aCur - aMin - (bCur - bMin)
+  })
+  const lowStockItems = lowStockRows.slice(0, 10)
+
+  return (
+    <div className="h-full">
+      <PageHeader
+        title="Inventario"
+        subtitle="Gestión de materiales, stock y movimientos"
+        actions={
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/inventory/movements/new">Nuevo Movimiento</Link>
+            </Button>
+            <Button asChild variant="default">
+              <Link href="/inventory/items/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Item
+              </Link>
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="space-y-6 p-6">
+        <InventoryKPICards
+          totalItems={totalItems}
+          criticalStock={criticalStock}
+          totalValue={totalValue}
+          monthMovements={monthMovements}
+        />
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <LowStockAlerts items={lowStockItems} />
+          <RecentMovements movements={recentMovements} />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Link
+            href="/inventory/items"
+            className="flex items-center gap-4 rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/50"
+          >
+            <Package className="h-8 w-8 text-primary" />
+            <div>
+              <h3 className="font-semibold">Ver Items</h3>
+              <p className="text-sm text-muted-foreground">{totalItems} items registrados</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/inventory/locations"
+            className="flex items-center gap-4 rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/50"
+          >
+            <Package className="h-8 w-8 text-primary" />
+            <div>
+              <h3 className="font-semibold">Ubicaciones</h3>
+              <p className="text-sm text-muted-foreground">Gestionar almacenes y obras</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/inventory/movements"
+            className="flex items-center gap-4 rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/50"
+          >
+            <Package className="h-8 w-8 text-primary" />
+            <div>
+              <h3 className="font-semibold">Movimientos</h3>
+              <p className="text-sm text-muted-foreground">Historial completo</p>
+            </div>
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,60 @@
+# Construction ERP – Cursor Rules
+
+Project conventions and context for the Construction ERP system. Follow these rules for all AI-generated code to ensure consistency, security, and correctness.
+
+---
+
+## Tech Stack
+
+- **Framework:** Next.js 15 (App Router + Server Actions)
+- **Language:** TypeScript 5.3+ with strict mode
+- **Database:** PostgreSQL with Prisma 5.x
+- **Architecture:** Multi-tenant SaaS
+- **UI:** TailwindCSS 4 + shadcn/ui
+- **Auth:** next-auth v5
+- **Background jobs:** Inngest
+- **Storage:** Cloudflare R2
+
+---
+
+## Database Rules (ERD)
+
+**Source of truth:** `packages/database/prisma/schema.prisma`. All DB access MUST use model and field names from this schema. Do not invent fields or tables.
+
+1. **findUnique:** Only use fields with `@unique` (or compound `@@unique`) in `where`. For other filters (e.g. `active: true`), use `findUnique({ where: { uniqueField } })` then check in code, or use `findFirst({ where: { ... } })`.
+2. **Money and quantities:** ALWAYS use `Decimal`/`NUMERIC` (Prisma `Decimal`). Never use `Float` or `Double` for money, prices, or quantities.
+3. **Tenant isolation:** ALWAYS include `orgId` (or equivalent tenant key) in every query. Never return or filter data without tenant scope.
+4. **Multi-table operations:** ALWAYS use Prisma transactions (`$transaction`) when writing to more than one table in a single operation.
+5. **Financial/inventory records:** Use soft delete: set `deleted: true` (or equivalent field). Do not hard-delete these records.
+6. **Critical operations:** Use idempotency keys for payments, inventory adjustments, and other critical mutations to prevent duplicate processing.
+
+---
+
+## Security Rules
+
+1. **orgId in URLs:** Never expose `orgId` (or tenant ID) in URL path or query. Derive tenant context server-side from the session only.
+2. **Input validation:** Validate all user and API inputs with Zod before use in business logic or database.
+3. **Mutations:** Use Server Actions for all mutations; avoid public API routes for write operations when Server Actions are appropriate.
+4. **Org access:** Implement deny-by-default for organization access: explicitly allow access per org based on session; reject when org cannot be verified.
+
+---
+
+## File Naming Conventions
+
+| Type            | Convention        | Example              |
+|-----------------|-------------------|----------------------|
+| Components      | PascalCase        | `Button.tsx`         |
+| Utilities       | camelCase         | `formatDate.ts`      |
+| Server Actions  | camelCase.action  | `createInvoice.action.ts` |
+| API Routes      | route             | `route.ts`           |
+
+---
+
+## Reference Documentation
+
+- **Docs root:** `/docs`
+- **ERD:** `docs/02-data-model/erd-complete.mmd`
+- **Prisma schema (source of truth):** `packages/database/prisma/schema.prisma` — use this for all model/field names.
+- **Tech stack details:** `docs/01-architecture/step2-tech-stack.md`
+
+When changing data models, auth, or architecture, consult these docs first.

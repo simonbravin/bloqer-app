@@ -1,0 +1,413 @@
+'use server'
+
+import { prisma, Prisma } from '@repo/database'
+
+export type KPIs = {
+  activeProjects: number
+  totalBudget: number
+  pendingCertifications: number
+  monthExpenses: number
+}
+
+export type CashflowDataPoint = {
+  month: string
+  income: number
+  expenses: number
+  net: number
+}
+
+export type Alert = {
+  id: string
+  type: 'warning' | 'error' | 'info'
+  title: string
+  message: string
+  link?: string
+}
+
+export type ActivityItem = {
+  id: string
+  action: string
+  entityType: string
+  actorName: string
+  projectName?: string | null
+  createdAt: Date
+  details: unknown
+}
+
+/**
+ * Get organization-wide KPIs for dashboard
+ */
+export async function getOrgKPIs(orgId: string): Promise<KPIs> {
+  // Total active projects
+  const activeProjectsCount = await prisma.project.count({
+    where: { orgId, status: 'ACTIVE', active: true },
+  })
+
+  // Total budget from BASELINE versions of active projects
+  const budgetLines = await prisma.budgetLine.findMany({
+    where: {
+      orgId,
+      budgetVersion: {
+        versionType: 'BASELINE',
+        project: { status: 'ACTIVE', active: true },
+      },
+    },
+    select: { salePriceTotal: true },
+  })
+
+  const totalBudget = budgetLines.reduce(
+    (sum, line) => sum.add(line.salePriceTotal),
+    new Prisma.Decimal(0)
+  )
+
+  // Pending certifications (ISSUED status)
+  const pendingCertifications = await prisma.certification.count({
+    where: { orgId, status: 'ISSUED' },
+  })
+
+  // Current month expenses
+  const now = new Date()
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const monthExpenses = await prisma.financeTransaction.aggregate({
+    where: {
+      orgId,
+      type: { in: ['PAYMENT_MADE', 'EXPENSE'] },
+      status: { in: ['APPROVED', 'PAID'] },
+      issueDate: { gte: firstDayOfMonth },
+      deleted: false,
+    },
+    _sum: { amountBaseCurrency: true },
+  })
+
+  return {
+    activeProjects: activeProjectsCount,
+    totalBudget: Number(totalBudget),
+    pendingCertifications,
+    monthExpenses: Number(monthExpenses._sum.amountBaseCurrency || 0),
+  }
+}
+
+/**
+ * Get cashflow data for last 6 months
+ */
+export async function getCashflowData(orgId: string): Promise<CashflowDataPoint[]> {
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+  // Income from approved certifications
+  const certifications = await prisma.certification.findMany({
+    where: {
+      orgId,
+      status: 'APPROVED',
+      approvedAt: { gte: sixMonthsAgo },
+    },
+    include: {
+      lines: {
+        select: { periodAmount: true },
+      },
+    },
+    orderBy: { periodYear: 'asc' },
+  })
+
+  // Expenses from paid/approved transactions
+  const expenses = await prisma.financeTransaction.findMany({
+    where: {
+      orgId,
+      type: { in: ['PAYMENT_MADE', 'EXPENSE'] },
+      status: { in: ['APPROVED', 'PAID'] },
+      issueDate: { gte: sixMonthsAgo },
+      deleted: false,
+    },
+    select: {
+      issueDate: true,
+      amountBaseCurrency: true,
+    },
+    orderBy: { issueDate: 'asc' },
+  })
+
+  // Group by month
+  const monthlyData = new Map<string, { income: number; expenses: number }>()
+
+  // Process certifications
+  certifications.forEach((cert) => {
+    const monthKey = `${cert.periodYear}-${String(cert.periodMonth).padStart(2, '0')}`
+    const total = cert.lines.reduce(
+      (sum, line) => sum.add(line.periodAmount),
+      new Prisma.Decimal(0)
+    )
+
+    if (!monthlyData.has(monthKey)) {
+      monthlyData.set(monthKey, { income: 0, expenses: 0 })
+    }
+    monthlyData.get(monthKey)!.income += Number(total)
+  })
+
+  // Process expenses
+  expenses.forEach((expense) => {
+    const date = new Date(expense.issueDate)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+    if (!monthlyData.has(monthKey)) {
+      monthlyData.set(monthKey, { income: 0, expenses: 0 })
+    }
+    monthlyData.get(monthKey)!.expenses += Number(expense.amountBaseCurrency)
+  })
+
+  // If no data, generate empty months
+  if (monthlyData.size === 0) {
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      monthlyData.set(monthKey, { income: 0, expenses: 0 })
+    }
+  }
+
+  // Convert to sorted array
+  return Array.from(monthlyData.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, data]) => ({
+      month,
+      income: data.income,
+      expenses: data.expenses,
+      net: data.income - data.expenses,
+    }))
+}
+
+/**
+ * Get project-level cashflow data for last 6 months
+ */
+export async function getProjectCashflowData(
+  orgId: string,
+  projectId: string
+): Promise<CashflowDataPoint[]> {
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+  const [certifications, expenses] = await Promise.all([
+    prisma.certification.findMany({
+      where: {
+        orgId,
+        projectId,
+        status: 'APPROVED',
+        approvedAt: { gte: sixMonthsAgo },
+      },
+      include: {
+        lines: { select: { periodAmount: true } },
+      },
+    }),
+    prisma.financeTransaction.findMany({
+      where: {
+        orgId,
+        projectId,
+        type: { in: ['PAYMENT_MADE', 'EXPENSE'] },
+        status: { in: ['APPROVED', 'PAID'] },
+        issueDate: { gte: sixMonthsAgo },
+        deleted: false,
+      },
+      select: {
+        issueDate: true,
+        amountBaseCurrency: true,
+      },
+    }),
+  ])
+
+  const monthlyData = new Map<string, { income: number; expenses: number }>()
+
+  certifications.forEach((cert) => {
+    const monthKey = `${cert.periodYear}-${String(cert.periodMonth).padStart(2, '0')}`
+    const total = cert.lines.reduce(
+      (sum, line) => sum.add(line.periodAmount),
+      new Prisma.Decimal(0)
+    )
+    if (!monthlyData.has(monthKey)) {
+      monthlyData.set(monthKey, { income: 0, expenses: 0 })
+    }
+    monthlyData.get(monthKey)!.income += Number(total)
+  })
+
+  expenses.forEach((expense) => {
+    const date = new Date(expense.issueDate)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    if (!monthlyData.has(monthKey)) {
+      monthlyData.set(monthKey, { income: 0, expenses: 0 })
+    }
+    monthlyData.get(monthKey)!.expenses += Number(expense.amountBaseCurrency)
+  })
+
+  if (monthlyData.size === 0) {
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      monthlyData.set(monthKey, { income: 0, expenses: 0 })
+    }
+  }
+
+  return Array.from(monthlyData.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, data]) => ({
+      month,
+      income: data.income,
+      expenses: data.expenses,
+      net: data.income - data.expenses,
+    }))
+}
+
+/**
+ * Get alerts for dashboard
+ */
+export async function getAlerts(orgId: string): Promise<Alert[]> {
+  const alerts: Alert[] = []
+
+  // 1. Certifications overdue (>30 days without approval)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  const overdueCertifications = await prisma.certification.findMany({
+    where: {
+      orgId,
+      status: 'ISSUED',
+      issuedAt: { lt: thirtyDaysAgo },
+    },
+    include: { project: { select: { name: true } } },
+    take: 3,
+  })
+
+  overdueCertifications.forEach((cert) => {
+    alerts.push({
+      id: `cert-${cert.id}`,
+      type: 'error',
+      title: 'Certificación pendiente',
+      message: `Certificación ${cert.number} de ${cert.project.name} sin aprobar hace más de 30 días`,
+      link: `/projects/${cert.projectId}/certifications/${cert.id}`,
+    })
+  })
+
+  // 2. Unanswered RFIs (>7 days)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+  const unansweredRFIs = await prisma.rFI.count({
+    where: {
+      orgId,
+      status: 'OPEN',
+      createdAt: { lt: sevenDaysAgo },
+    },
+  })
+
+  if (unansweredRFIs > 0) {
+    alerts.push({
+      id: 'rfis-overdue',
+      type: 'warning',
+      title: 'RFIs sin responder',
+      message: `${unansweredRFIs} RFI(s) abiertos hace más de 7 días`,
+    })
+  }
+
+  // 3. Low stock items
+  const lowStockItems = await prisma.inventoryItem.findMany({
+    where: {
+      orgId,
+      active: true,
+      minStockQty: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      minStockQty: true,
+    },
+    take: 10,
+  })
+
+  for (const item of lowStockItems) {
+    // Calculate current stock from movements
+    const movements = await prisma.inventoryMovement.findMany({
+      where: { itemId: item.id },
+      select: {
+        movementType: true,
+        quantity: true,
+      },
+    })
+
+    let currentStock = new Prisma.Decimal(0)
+    movements.forEach((mov) => {
+      if (mov.movementType === 'PURCHASE' || mov.movementType === 'ADJUSTMENT') {
+        currentStock = currentStock.add(mov.quantity)
+      } else if (mov.movementType === 'ISSUE') {
+        currentStock = currentStock.sub(mov.quantity)
+      }
+    })
+
+    if (item.minStockQty && currentStock.lessThan(item.minStockQty)) {
+      alerts.push({
+        id: `inventory-${item.id}`,
+        type: 'warning',
+        title: 'Stock bajo',
+        message: `${item.name} está por debajo del stock mínimo`,
+        link: '/inventory',
+      })
+    }
+  }
+
+  // 4. Change orders pending approval
+  const pendingChangeOrders = await prisma.changeOrder.count({
+    where: {
+      orgId,
+      status: 'SUBMITTED',
+    },
+  })
+
+  if (pendingChangeOrders > 0) {
+    alerts.push({
+      id: 'co-pending',
+      type: 'info',
+      title: 'Órdenes de cambio pendientes',
+      message: `${pendingChangeOrders} orden(es) de cambio esperando aprobación`,
+    })
+  }
+
+  return alerts.slice(0, 5) // Max 5 alerts
+}
+
+/**
+ * Get recent activity from audit log
+ */
+export async function getRecentActivity(orgId: string): Promise<ActivityItem[]> {
+  const activities = await prisma.auditLog.findMany({
+    where: { orgId },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+  })
+
+  // Get user names for activities
+  const userIds = [...new Set(activities.map((a) => a.actorUserId))]
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, fullName: true },
+  })
+  const userMap = new Map(users.map((u) => [u.id, u.fullName]))
+
+  // Get project names for activities that have projectId
+  const projectIds = activities
+    .map((a) => a.projectId)
+    .filter((id): id is string => id !== null)
+
+  const projects = await prisma.project.findMany({
+    where: { id: { in: projectIds } },
+    select: { id: true, name: true },
+  })
+
+  const projectMap = new Map(projects.map((p) => [p.id, p.name]))
+
+  return activities.map((activity) => ({
+    id: activity.id,
+    action: activity.action,
+    entityType: activity.entityType,
+    actorName: userMap.get(activity.actorUserId) || 'Sistema',
+    projectName: activity.projectId ? projectMap.get(activity.projectId) : null,
+    createdAt: activity.createdAt,
+    details: activity.detailsJson,
+  }))
+}

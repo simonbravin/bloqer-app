@@ -1,0 +1,317 @@
+'use server'
+
+import { redirectToLogin, redirectTo } from '@/lib/i18n-redirect'
+import { revalidatePath } from 'next/cache'
+import { prisma } from '@repo/database'
+import { getSession } from '@/lib/session'
+import { getOrgContext } from '@/lib/org-context'
+import { requireRole } from '@/lib/rbac'
+import {
+  createProjectSchema,
+  updateProjectSchema,
+} from '@repo/validators'
+import type { CreateProjectInput, UpdateProjectInput } from '@repo/validators'
+import { Prisma } from '@repo/database'
+
+async function getAuthContext() {
+  const session = await getSession()
+  if (!session?.user?.id) return redirectToLogin()
+  const org = await getOrgContext(session.user.id)
+  if (!org) return redirectToLogin()
+  return { session, org }
+}
+
+function generateProjectNumber(orgId: string): Promise<string> {
+  const year = new Date().getFullYear()
+  const prefix = `PROJ-${year}-`
+  return prisma.project
+    .findMany({
+      where: { orgId, projectNumber: { startsWith: prefix } },
+      select: { projectNumber: true },
+      orderBy: { projectNumber: 'desc' },
+      take: 1,
+    })
+    .then((rows) => {
+      const nextSeq = rows[0]
+        ? parseInt(rows[0].projectNumber.replace(prefix, ''), 10) + 1
+        : 1
+      return `${prefix}${String(nextSeq).padStart(3, '0')}`
+    })
+}
+
+export type ListProjectsFilters = {
+  status?: string
+  phase?: string
+  search?: string
+}
+
+export async function listProjects(filters: ListProjectsFilters = {}) {
+  const { org } = await getAuthContext()
+  const where: Prisma.ProjectWhereInput = { orgId: org.orgId, active: true }
+  
+  if (filters.status && filters.status !== 'all') {
+    where.status = filters.status
+  }
+  
+  if (filters.phase && filters.phase !== 'all') {
+    where.phase = filters.phase as 'PRE_CONSTRUCTION' | 'CONSTRUCTION' | 'CLOSEOUT' | 'COMPLETE'
+  }
+  
+  if (filters.search?.trim()) {
+    where.OR = [
+      { name: { contains: filters.search.trim(), mode: 'insensitive' } },
+      { projectNumber: { contains: filters.search.trim(), mode: 'insensitive' } },
+      { clientName: { contains: filters.search.trim(), mode: 'insensitive' } },
+    ]
+  }
+  
+  const projects = await prisma.project.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      projectNumber: true,
+      name: true,
+      clientName: true,
+      phase: true,
+      status: true,
+      totalBudget: true,
+      location: true,
+      startDate: true,
+      createdAt: true,
+    },
+  })
+  
+  return projects
+}
+
+export async function createProject(data: CreateProjectInput) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const parsed = createProjectSchema.safeParse(data)
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors }
+  }
+
+  const projectNumber = await generateProjectNumber(org.orgId)
+  await prisma.$transaction(async (tx) => {
+    const project = await tx.project.create({
+      data: {
+        orgId: org.orgId,
+        projectNumber,
+        name: parsed.data.name,
+        clientName: parsed.data.clientName ?? null,
+        location: parsed.data.location ?? null,
+        description: parsed.data.description ?? null,
+        m2: parsed.data.m2 ?? null,
+        startDate: parsed.data.startDate ?? null,
+        createdByOrgMemberId: org.memberId,
+        phase: 'PRE_CONSTRUCTION',
+        status: 'DRAFT',
+        active: true,
+      },
+    })
+    await tx.projectMember.create({
+      data: {
+        projectId: project.id,
+        orgMemberId: org.memberId,
+        projectRole: 'MANAGER',
+        active: true,
+      },
+    })
+  })
+
+  revalidatePath('/projects')
+  return redirectTo('/projects')
+}
+
+export async function createProjectFromTemplate(data: {
+  name: string
+  clientName?: string
+  location?: string
+  description?: string
+  m2?: number | null
+  startDate?: string
+  templateId: string
+  constructionSystemIds: string[]
+}) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  try {
+    const projectNumber = await generateProjectNumber(org.orgId)
+
+    const m2Val =
+      data.m2 != null
+        ? (typeof data.m2 === 'string' ? parseFloat(data.m2) || null : data.m2)
+        : null
+
+    const project = await prisma.project.create({
+      data: {
+        orgId: org.orgId,
+        projectNumber,
+        name: data.name,
+        clientName: data.clientName || null,
+        location: data.location || null,
+        description: data.description || null,
+        m2: m2Val != null ? new Prisma.Decimal(m2Val) : null,
+        startDate: data.startDate ? new Date(data.startDate) : null,
+        phase: 'PRE_CONSTRUCTION',
+        status: 'DRAFT',
+        createdByOrgMemberId: org.memberId,
+      },
+    })
+
+    await prisma.projectMember.create({
+      data: {
+        projectId: project.id,
+        orgMemberId: org.memberId,
+        projectRole: 'MANAGER',
+        active: true,
+      },
+    })
+
+    const wbsTemplates = await prisma.wbsTemplate.findMany({
+      where: { projectTemplateId: data.templateId },
+      orderBy: { code: 'asc' },
+    })
+
+    const filteredTemplates = wbsTemplates.filter((template) => {
+      if (!template.constructionSystemId) return true
+      if (data.constructionSystemIds.includes('generic')) return true
+      if (data.constructionSystemIds.length === 0) return !template.constructionSystemId
+      return data.constructionSystemIds.includes(template.constructionSystemId)
+    })
+
+    const templateToNodeMap = new Map<string, string>()
+
+    for (const template of filteredTemplates.filter((t) => !t.parentId)) {
+      const node = await prisma.wbsNode.create({
+        data: {
+          orgId: org.orgId,
+          projectId: project.id,
+          code: template.code,
+          name: template.name,
+          category: template.category === 'ITEM' ? 'BUDGET_ITEM' : template.category === 'SUBTASK' ? 'TASK' : template.category,
+          unit: template.unit || 'un',
+          quantity: template.defaultQuantity ?? new Prisma.Decimal(0),
+          description: template.description,
+          sortOrder: template.sortOrder,
+          active: true,
+        },
+      })
+      templateToNodeMap.set(template.id, node.id)
+    }
+
+    for (const template of filteredTemplates.filter((t) => t.parentId)) {
+      const parentNodeId = templateToNodeMap.get(template.parentId!)
+      if (parentNodeId) {
+        const node = await prisma.wbsNode.create({
+          data: {
+            orgId: org.orgId,
+            projectId: project.id,
+            parentId: parentNodeId,
+            code: template.code,
+            name: template.name,
+            category: template.category === 'ITEM' ? 'BUDGET_ITEM' : template.category === 'SUBTASK' ? 'TASK' : template.category,
+            unit: template.unit || 'un',
+            quantity: template.defaultQuantity ?? new Prisma.Decimal(0),
+            description: template.description,
+            sortOrder: template.sortOrder,
+            active: true,
+          },
+        })
+        templateToNodeMap.set(template.id, node.id)
+      }
+    }
+
+    await prisma.budgetVersion.create({
+      data: {
+        orgId: org.orgId,
+        projectId: project.id,
+        versionCode: 'V1',
+        versionType: 'INITIAL',
+        status: 'DRAFT',
+        notes: 'Versión inicial creada desde template',
+        createdByOrgMemberId: org.memberId,
+      },
+    })
+
+    revalidatePath('/projects')
+    return { success: true, projectId: project.id }
+  } catch (error) {
+    console.error('Error creating project from template:', error)
+    return { success: false, error: 'Error al crear el proyecto' }
+  }
+}
+
+export async function getProject(projectId: string) {
+  const { org } = await getAuthContext()
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, orgId: org.orgId },
+    include: {
+      createdBy: { include: { user: { select: { fullName: true, email: true } } } },
+    },
+  })
+  if (!project) return null
+  return project
+}
+
+export async function updateProject(projectId: string, data: UpdateProjectInput) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const existing = await prisma.project.findFirst({
+    where: { id: projectId, orgId: org.orgId },
+  })
+  if (!existing) {
+    return { error: { _form: ['Project not found'] } }
+  }
+
+  const parsed = updateProjectSchema.safeParse(data)
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors }
+  }
+
+  const payload: Prisma.ProjectUpdateInput = {}
+  if (parsed.data.name !== undefined) payload.name = parsed.data.name
+  if (parsed.data.clientName !== undefined) payload.clientName = parsed.data.clientName
+  if (parsed.data.description !== undefined) payload.description = parsed.data.description
+  if (parsed.data.location !== undefined) payload.location = parsed.data.location
+  if (parsed.data.m2 !== undefined) payload.m2 = parsed.data.m2
+  if (parsed.data.status !== undefined) payload.status = parsed.data.status
+  if (parsed.data.startDate !== undefined) payload.startDate = parsed.data.startDate
+  if (parsed.data.plannedEndDate !== undefined) payload.plannedEndDate = parsed.data.plannedEndDate
+  if (parsed.data.active !== undefined) payload.active = parsed.data.active
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: payload,
+  })
+
+  revalidatePath('/projects')
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath(`/projects/${projectId}/edit`)
+  return redirectTo(`/projects/${projectId}`)
+}
+
+export async function deleteProject(projectId: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const existing = await prisma.project.findFirst({
+    where: { id: projectId, orgId: org.orgId },
+  })
+  if (!existing) {
+    throw new Error('Project not found')
+  }
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { active: false },
+  })
+
+  revalidatePath('/projects')
+  return redirectTo('/projects')
+}

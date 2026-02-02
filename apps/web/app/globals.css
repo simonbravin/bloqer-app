@@ -1,0 +1,370 @@
+@import 'tailwindcss';
+
+/* Class-based dark mode (toggle via .dark on html) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ========================================
+   DESIGN SYSTEM: Construction ERP
+   Single Source of Truth - HSL Format
+   ======================================== */
+
+@layer base {
+  :root {
+    /* Surface Colors */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Brand Colors - Navy */
+    --navy: 222 35% 20%;
+    --navy-light: 222 35% 28%;
+    --navy-dark: 222 35% 15%;
+
+    /* Brand Colors - Orange (Cobre) */
+    --orange: 35 60% 52%;
+    --orange-light: 35 60% 62%;
+    --orange-dark: 35 60% 42%;
+
+    /* Semantic Status Colors */
+    --status-success: 150 30% 45%;
+    --status-warning: 42 50% 55%;
+    --status-danger: 10 55% 55%;
+    --status-neutral: 215 15% 65%;
+    --status-info: 210 30% 50%;
+
+    /* UI Component Colors */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 35 60% 52%;
+
+    --primary: 222 35% 20%;
+    --primary-foreground: 210 20% 98%;
+
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    --accent: 35 60% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --destructive: 10 55% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Popover/Dropdown */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Chart/Data Visualization */
+    --chart-1: 222 35% 25%;
+    --chart-2: 150 30% 45%;
+    --chart-3: 35 60% 52%;
+    --chart-4: 10 55% 55%;
+    --chart-5: 215 25% 40%;
+  }
+
+  .dark {
+    /* Surface Colors - Dark */
+    --background: 222 24% 9%;
+    --foreground: 210 20% 98%;
+    --card: 222 24% 12%;
+    --card-foreground: 210 20% 98%;
+
+    /* Brand Colors - Navy (Light Oxford for sidebar) */
+    --navy: 210 20% 90%;
+    --navy-light: 210 20% 98%;
+    --navy-dark: 210 20% 80%;
+
+    /* Brand Colors - Orange (Cobre) */
+    --orange: 35 60% 52%;
+    --orange-light: 35 60% 62%;
+    --orange-dark: 35 60% 42%;
+
+    /* Semantic Status Colors - Adjusted for dark */
+    --status-success: 150 30% 55%;
+    --status-warning: 42 50% 60%;
+    --status-danger: 10 55% 60%;
+    --status-neutral: 215 15% 75%;
+    --status-info: 210 30% 65%;
+
+    /* UI Components - Dark */
+    --border: 217 19% 27%;
+    --input: 217 19% 27%;
+    --ring: 35 60% 52%;
+
+    --primary: 210 20% 98%;
+    --primary-foreground: 222 35% 20%;
+
+    --secondary: 217 19% 20%;
+    --secondary-foreground: 210 20% 98%;
+
+    --accent: 35 60% 52%;
+    --accent-foreground: 222 24% 9%;
+
+    --muted: 217 19% 20%;
+    --muted-foreground: 215 20% 65%;
+
+    --destructive: 10 40% 30%;
+    --destructive-foreground: 210 20% 98%;
+
+    /* Popover/Dropdown */
+    --popover: 222 24% 12%;
+    --popover-foreground: 210 20% 98%;
+  }
+}
+
+@theme {
+  /* Colors - Reference :root variables */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-navy: hsl(var(--navy));
+  --color-navy-light: hsl(var(--navy-light));
+  --color-navy-dark: hsl(var(--navy-dark));
+
+  --color-orange: hsl(var(--orange));
+  --color-orange-light: hsl(var(--orange-light));
+  --color-orange-dark: hsl(var(--orange-dark));
+
+  --color-status-success: hsl(var(--status-success));
+  --color-status-warning: hsl(var(--status-warning));
+  --color-status-danger: hsl(var(--status-danger));
+  --color-status-neutral: hsl(var(--status-neutral));
+  --color-status-info: hsl(var(--status-info));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  /* Spacing - 4px/8px scale */
+  --spacing-xxs: 0.125rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+  --spacing-indent-1: 1.25rem;
+  --spacing-indent-2: 2.5rem;
+  --spacing-indent-3: 3.75rem;
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-sidebar: 2px 0 8px 0 rgb(0 0 0 / 0.1);
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+}
+
+@layer components {
+  /* ========================================
+     REUSABLE CONTAINER CLASSES
+     ======================================== */
+
+  .erp-view-container {
+    @apply mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  .erp-card {
+    @apply rounded-lg border border-border bg-card shadow-[var(--shadow-card)];
+  }
+
+  .erp-card-header {
+    @apply border-b border-border px-6 py-4;
+  }
+
+  .erp-card-body {
+    @apply px-6 py-4;
+  }
+
+  /* ========================================
+     TABLE CLASSES
+     ======================================== */
+
+  .erp-table {
+    @apply w-full border-collapse;
+  }
+
+  .erp-table-header {
+    @apply sticky top-0 z-10 border-b border-border bg-muted;
+  }
+
+  .erp-table-row {
+    @apply border-b border-border transition-colors hover:bg-muted/50;
+  }
+
+  .erp-table-row:last-child {
+    @apply border-0;
+  }
+
+  .erp-table-cell {
+    @apply px-4 py-3 text-left text-sm;
+  }
+
+  .erp-table-cell-numeric {
+    @apply px-4 py-3 font-mono tabular-nums text-right text-sm;
+  }
+
+  /* ========================================
+     STATUS BADGES (Semantic)
+     ======================================== */
+
+  .badge-success {
+    background-color: hsl(var(--status-success) / 0.1);
+    color: hsl(var(--status-success));
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-warning {
+    background-color: hsl(var(--status-warning) / 0.1);
+    color: hsl(var(--status-warning));
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-danger {
+    background-color: hsl(var(--status-danger) / 0.1);
+    color: hsl(var(--status-danger));
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-neutral {
+    background-color: hsl(var(--status-neutral) / 0.1);
+    color: hsl(var(--status-neutral));
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-info {
+    background-color: hsl(var(--status-info) / 0.1);
+    color: hsl(var(--status-info));
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
+  }
+
+  /* ========================================
+     WBS TREE SPECIFIC
+     ======================================== */
+
+  .wbs-item {
+    @apply flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-muted/50;
+  }
+
+  .wbs-item[data-level='0'] {
+    @apply pl-3;
+  }
+
+  .wbs-item[data-level='1'] {
+    @apply pl-[calc(0.75rem+1.25rem)];
+  }
+
+  .wbs-item[data-level='2'] {
+    @apply pl-[calc(0.75rem+2.5rem)];
+  }
+
+  .wbs-item[data-level='3'] {
+    @apply pl-[calc(0.75rem+3.75rem)];
+  }
+
+  .wbs-item[data-level='4'] {
+    @apply pl-[calc(0.75rem+5rem)];
+  }
+
+  /* ========================================
+     NUMERIC DATA
+     ======================================== */
+
+  .numeric {
+    @apply font-mono tabular-nums;
+  }
+
+  .currency {
+    @apply font-mono tabular-nums;
+  }
+
+  .percentage {
+    @apply font-mono tabular-nums;
+  }
+
+  /* Font mono for financial alignment */
+  .font-mono-numeric {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Sticky table headers */
+  .table-sticky-header thead {
+    @apply sticky top-0 z-10 bg-card;
+    box-shadow: 0 1px 0 hsl(var(--border));
+  }
+
+  .table-dense th,
+  .table-dense td {
+    @apply px-3 py-2;
+  }
+
+  /* ========================================
+     FORM STYLES - Standardized widths
+     All forms use consistent min/max width for better UX
+     ======================================== */
+
+  /* Modal/dialog forms - wider (768px max) */
+  .erp-form-modal {
+    @apply w-full min-w-[400px] max-w-3xl;
+  }
+
+  /* Page-level forms - standard width (672px max) */
+  .erp-form-page {
+    @apply w-full min-w-[400px] max-w-2xl;
+  }
+
+  .erp-form-group {
+    @apply space-y-2;
+  }
+
+  .erp-form-input {
+    @apply w-full min-w-0;
+  }
+
+  .erp-form-label {
+    @apply block text-sm font-medium text-foreground;
+  }
+
+  /* Settings forms - same as page forms */
+  .erp-settings-form {
+    @apply w-full min-w-[400px] max-w-2xl;
+  }
+}
+
+@layer utilities {
+  /* Custom utilities if needed */
+}
