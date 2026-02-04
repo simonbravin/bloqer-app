@@ -51,12 +51,11 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
 
   const getActivityLabel = (action: string, entityType: string) => {
     const key = `activity_${action}_${entityType}`.toLowerCase()
-    // Try to get translation, fallback to formatted string
     try {
       const translated = t(key)
       if (translated !== key) return translated
     } catch {
-      // Ignore translation error
+      // Fall through to fallback when key is missing
     }
     
     // Fallback: format as readable text
@@ -79,6 +78,8 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
       SUBMITTAL: 'submittal',
       DOCUMENT: 'documento',
       FINANCETRANSACTION: 'transacción',
+      DAILYREPORT: 'reporte de obra',
+      SCHEDULE: 'cronograma',
     }
 
     const actionLabel = actionLabels[action.toUpperCase()] || action.toLowerCase()

@@ -16,11 +16,64 @@ async function getAuthContext() {
   return { org }
 }
 
+/** List all inventory categories (for dropdowns). */
+export async function getInventoryCategories() {
+  await getAuthContext()
+  return prisma.inventoryCategory.findMany({
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true, name: true, sortOrder: true },
+  })
+}
+
+/** List subcategories for a category (optional: pass categoryId to filter). */
+export async function getInventorySubcategories(categoryId?: string | null) {
+  await getAuthContext()
+  return prisma.inventorySubcategory.findMany({
+    where: categoryId ? { categoryId } : undefined,
+    orderBy: [{ categoryId: 'asc' }, { sortOrder: 'asc' }],
+    select: { id: true, categoryId: true, name: true, sortOrder: true },
+  })
+}
+
+/** Create a new category (for "add new" in form). */
+export async function createInventoryCategory(name: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+  const maxOrder = await prisma.inventoryCategory.findFirst({
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  })
+  const created = await prisma.inventoryCategory.create({
+    data: { name: name.trim(), sortOrder: (maxOrder?.sortOrder ?? -1) + 1 },
+  })
+  revalidatePath('/inventory/items')
+  revalidatePath('/inventory/items/new')
+  return { success: true as const, category: { id: created.id, name: created.name } }
+}
+
+/** Create a new subcategory under a category. */
+export async function createInventorySubcategory(categoryId: string, name: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+  const maxOrder = await prisma.inventorySubcategory.findFirst({
+    where: { categoryId },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  })
+  const created = await prisma.inventorySubcategory.create({
+    data: { categoryId, name: name.trim(), sortOrder: (maxOrder?.sortOrder ?? -1) + 1 },
+  })
+  revalidatePath('/inventory/items')
+  revalidatePath('/inventory/items/new')
+  return { success: true as const, subcategory: { id: created.id, name: created.name } }
+}
+
 export async function createInventoryItem(data: {
   sku: string
   name: string
   description?: string
-  category: string
+  categoryId: string
+  subcategoryId?: string | null
   unit: string
   minStockQty?: number
   reorderQty?: number
@@ -39,7 +92,8 @@ export async function createInventoryItem(data: {
       sku: data.sku,
       name: data.name,
       description: data.description,
-      category: data.category,
+      categoryId: data.categoryId,
+      subcategoryId: data.subcategoryId ?? undefined,
       unit: data.unit,
       minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
       reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,
@@ -58,7 +112,8 @@ export async function updateInventoryItem(
     sku: string
     name: string
     description?: string
-    category: string
+    categoryId: string
+    subcategoryId?: string | null
     unit: string
     minStockQty?: number
     reorderQty?: number
@@ -85,7 +140,8 @@ export async function updateInventoryItem(
       sku: data.sku,
       name: data.name,
       description: data.description ?? null,
-      category: data.category,
+      categoryId: data.categoryId,
+      subcategoryId: data.subcategoryId ?? undefined,
       unit: data.unit,
       minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
       reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,

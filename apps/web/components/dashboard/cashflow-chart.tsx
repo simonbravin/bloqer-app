@@ -71,9 +71,9 @@ export function CashflowChart({ data }: CashflowChartProps) {
         {t('cashflowSubtitle')}
       </p>
 
-      <div className="mt-6 h-80">
+      <div className="mt-6 h-80 min-h-[280px] w-full min-w-0" style={{ minHeight: 280 }}>
         {formattedData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
             <LineChart data={formattedData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis

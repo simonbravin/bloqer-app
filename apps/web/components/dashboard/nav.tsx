@@ -9,6 +9,7 @@ import {
   IconProjects,
   IconFinance,
   IconResources,
+  IconReports,
   IconSettings,
   IconChevronLeft,
   IconChevronRight,
@@ -17,8 +18,9 @@ import {
 const navItems = [
   { href: '/dashboard', labelKey: 'nav.dashboard', Icon: IconDashboard },
   { href: '/projects', labelKey: 'nav.projects', Icon: IconProjects },
-  { href: '/finance/transactions', labelKey: 'nav.finance', Icon: IconFinance },
+  { href: '/finance', labelKey: 'nav.finance', Icon: IconFinance },
   { href: '/resources', labelKey: 'nav.resources', Icon: IconResources },
+  { href: '/reports', labelKey: 'nav.reports', Icon: IconReports },
   { href: '/settings', labelKey: 'nav.settings', Icon: IconSettings },
 ]
 

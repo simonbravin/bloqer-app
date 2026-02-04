@@ -61,7 +61,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Projects list/grid */}
-      <ProjectsListClient projects={projects} canEdit={canEdit} />
+      <ProjectsListClient projects={projects} canEdit={canEdit} showExport={true} />
     </div>
   )
 }

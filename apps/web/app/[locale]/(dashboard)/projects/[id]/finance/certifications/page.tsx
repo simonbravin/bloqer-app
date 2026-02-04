@@ -1,16 +1,47 @@
-import { redirect } from '@/i18n/navigation'
-import { getLocale } from 'next-intl/server'
+import { getProjectCertifications } from '@/app/actions/certifications'
+import { getProject } from '@/app/actions/projects'
+import { CertificationsListClient } from '@/components/certifications/certifications-list-client'
+import { notFound } from 'next/navigation'
 
-type PageProps = {
-  params: Promise<{ id: string }>
+interface PageProps {
+  params: Promise<{ id: string; locale: string }>
 }
 
-/**
- * Redirects /projects/[id]/finance/certifications to /projects/[id]/certifications
- * Keeps route structure aligned with architecture doc while using existing certifications page
- */
-export default async function FinanceCertificationsRedirect({ params }: PageProps) {
+export default async function FinanceCertificationsPage({ params }: PageProps) {
   const { id: projectId } = await params
-  const locale = await getLocale()
-  redirect({ href: `/projects/${projectId}/certifications`, locale })
+
+  const [project, certifications] = await Promise.all([
+    getProject(projectId),
+    getProjectCertifications(projectId),
+  ])
+
+  if (!project) notFound()
+
+  const approvedTotal = certifications
+    .filter((c) => c.status === 'APPROVED')
+    .reduce((sum, c) => sum + c.totalAmount, 0)
+
+  return (
+    <div className="space-y-6 p-6">
+      <div className="mx-auto max-w-5xl">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Certificaciones
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Registro de avance de obra y facturación del proyecto {project.name}
+          </p>
+        </div>
+
+        <div className="mt-6">
+          <CertificationsListClient
+            projectId={projectId}
+            certifications={certifications}
+            approvedTotal={approvedTotal}
+            basePath="finance"
+          />
+        </div>
+      </div>
+    </div>
+  )
 }

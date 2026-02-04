@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
 
   serverExternalPackages: ['@prisma/client'],
 
+  // In production, inline CSS to avoid the "preloaded but not used" warning for
+  // app/layout.css. In dev, that warning is a known Next.js behavior and harmless.
+  experimental: {
+    inlineCss: true,
+  },
+
   async rewrites() {
     return [{ source: '/favicon.ico', destination: '/icon' }]
   },

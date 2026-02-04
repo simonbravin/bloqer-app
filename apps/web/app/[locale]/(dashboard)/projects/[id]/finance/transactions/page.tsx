@@ -1,53 +1,37 @@
-import { getTranslations } from 'next-intl/server'
-import { notFound, redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
-import { getLocale } from 'next-intl/server'
-import { prisma } from '@repo/database'
+import { getProjectTransactions } from '@/app/actions/finance'
+import { getProject } from '@/app/actions/projects'
+import { ProjectTransactionsListClient } from '@/components/finance/project-transactions-list-client'
+import { notFound } from 'next/navigation'
 
-export default async function ProjectFinanceTransactionsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const session = await getSession()
-  const locale = await getLocale()
-  const { id } = await params
+interface PageProps {
+  params: Promise<{ id: string; locale: string }>
+}
 
-  if (!session?.user?.id) {
-    redirect(`/${locale}/login`)
-  }
+export default async function ProjectTransactionsPage({ params }: PageProps) {
+  const { id: projectId } = await params
 
-  const orgContext = await getOrgContext(session.user.id)
-  if (!orgContext) {
-    redirect(`/${locale}/login`)
-  }
+  const [project, transactions] = await Promise.all([
+    getProject(projectId),
+    getProjectTransactions(projectId),
+  ])
 
-  const project = await prisma.project.findFirst({
-    where: { id, orgId: orgContext.orgId },
-    select: { id: true, name: true, projectNumber: true },
-  })
-  
-  if (!project) {
-    notFound()
-  }
-  
-  const t = await getTranslations()
-  
+  if (!project) notFound()
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t('nav.transactions')}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {project.name}
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          Transacciones
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Gestiona los ingresos y gastos del proyecto {project.name}
         </p>
       </div>
-      
-      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-        <p className="text-slate-500">
-          Transacciones financieras del proyecto
-        </p>
-      </div>
+
+      <ProjectTransactionsListClient
+        projectId={projectId}
+        initialTransactions={transactions}
+      />
     </div>
   )
 }

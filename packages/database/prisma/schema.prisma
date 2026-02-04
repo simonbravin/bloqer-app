@@ -55,7 +55,7 @@ model Organization {
   rfis                RFI[]
   submittals          Submittal[]
   inspections         Inspection[]
-  scheduleTasks       ScheduleTask[]
+  schedules           Schedule[]
   progressUpdates     ProgressUpdate[]
   dailyReports        DailyReport[]
   siteLogEntries      SiteLogEntry[]
@@ -182,6 +182,8 @@ model OrgMember {
   createdCommitments Commitment[]         @relation("CommitmentCreatedBy")
   approvedCommitments Commitment[]        @relation("CommitmentApprovedBy")
   createdOrgPartyLinks OrgPartyLink[]
+  schedulesCreated     Schedule[]  @relation("ScheduleCreatedBy")
+  schedulesApproved    Schedule[]  @relation("ScheduleApprovedBy")
 
   @@unique([orgId, userId])
   @@index([userId])
@@ -483,7 +485,7 @@ model Project {
   submittals         Submittal[]
   inspections        Inspection[]
   documents          Document[]
-  scheduleTasks      ScheduleTask[]
+  schedules           Schedule[]
   progressUpdates    ProgressUpdate[]
   dailyReports       DailyReport[]
   siteLogEntries     SiteLogEntry[]
@@ -591,8 +593,16 @@ model BudgetVersion {
   projectId            String   @map("project_id")
   versionCode          String   @map("version_code")
   versionType          String   @default("BASELINE") @map("version_type")
-  status               String   @default("DRAFT")
+  status               String   @default("DRAFT") // DRAFT, BASELINE, APPROVED
   notes                String?
+
+  // Modo de markups: SIMPLE (globales) o ADVANCED (por línea)
+  markupMode           String   @default("SIMPLE") @map("markup_mode") // SIMPLE, ADVANCED
+  globalOverheadPct    Decimal  @default(10) @map("global_overhead_pct") @db.Decimal(5, 2)
+  globalFinancialPct   Decimal  @default(5) @map("global_financial_pct") @db.Decimal(5, 2)
+  globalProfitPct     Decimal  @default(20) @map("global_profit_pct") @db.Decimal(5, 2)
+  globalTaxPct        Decimal  @default(21) @map("global_tax_pct") @db.Decimal(5, 2)
+
   createdByOrgMemberId String   @map("created_by_org_member_id")
   approvedByOrgMemberId String? @map("approved_by_org_member_id")
   createdAt            DateTime @default(now()) @map("created_at")
@@ -609,6 +619,7 @@ model BudgetVersion {
 
   @@unique([projectId, versionCode])
   @@index([projectId, status])
+  @@index([orgId])
   @@map("budget_versions")
   @@schema("public")
 }
@@ -1385,28 +1396,59 @@ model CertificationLine {
 // INVENTORY (Ledger-based)
 // ============================================================
 
+model InventoryCategory {
+  id        String   @id @default(uuid())
+  name      String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  subcategories InventorySubcategory[]
+  items         InventoryItem[]         @relation("ItemCategory")
+
+  @@map("inventory_categories")
+  @@schema("inventory")
+}
+
+model InventorySubcategory {
+  id         String   @id @default(uuid())
+  categoryId String   @map("category_id")
+  name       String
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  category InventoryCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  items    InventoryItem[]
+
+  @@index([categoryId])
+  @@map("inventory_subcategories")
+  @@schema("inventory")
+}
+
 model InventoryItem {
-  id            String   @id @default(uuid())
-  orgId         String   @map("org_id")
-  sku           String
-  name          String
-  description   String?
-  category      String
-  unit          String
-  minStockQty   Decimal? @map("min_stock_qty") @db.Decimal(15, 4)
-  reorderQty    Decimal? @map("reorder_qty") @db.Decimal(15, 4)
-  metadata      Json     @default("{}")
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  sku            String
+  name           String
+  description    String?
+  categoryId     String   @map("category_id")
+  subcategoryId  String?  @map("subcategory_id")
+  unit           String
+  minStockQty    Decimal? @map("min_stock_qty") @db.Decimal(15, 4)
+  reorderQty     Decimal? @map("reorder_qty") @db.Decimal(15, 4)
+  metadata       Json     @default("{}")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Relations
-  organization Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  organization Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  category     InventoryCategory     @relation("ItemCategory", fields: [categoryId], references: [id])
+  subcategory  InventorySubcategory? @relation(fields: [subcategoryId], references: [id])
   movements    InventoryMovement[]
   consumptions InventoryConsumption[]
 
   @@unique([orgId, sku])
-  @@index([orgId, category])
+  @@index([orgId, categoryId])
   @@map("inventory_items")
   @@schema("inventory")
 }
@@ -1813,40 +1855,121 @@ model CustomReport {
 }
 
 // ============================================================
-// SCHEDULING & PROGRESS
+// SCHEDULE / GANTT
 // ============================================================
 
+model Schedule {
+  id                   String    @id @default(uuid())
+  orgId                String    @map("org_id")
+  projectId            String    @map("project_id")
+
+  name                 String    // "Cronograma Inicial", "Rev 1", etc.
+  description          String?   @db.Text
+  status               String    @default("DRAFT") // DRAFT, BASELINE, APPROVED
+
+  projectStartDate     DateTime  @map("project_start_date")
+  projectEndDate       DateTime  @map("project_end_date")
+
+  workingDaysPerWeek   Int       @default(6) @map("working_days_per_week")
+  hoursPerDay          Int       @default(8) @map("hours_per_day")
+
+  isBaseline           Boolean   @default(false) @map("is_baseline")
+  baselineDate         DateTime? @map("baseline_date")
+
+  createdByOrgMemberId String    @map("created_by_org_member_id")
+  approvedByOrgMemberId String?  @map("approved_by_org_member_id")
+  approvedAt           DateTime? @map("approved_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  organization         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project              Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy            OrgMember    @relation("ScheduleCreatedBy", fields: [createdByOrgMemberId], references: [id])
+  approvedBy           OrgMember?   @relation("ScheduleApprovedBy", fields: [approvedByOrgMemberId], references: [id])
+  tasks                ScheduleTask[]
+  dependencies         TaskDependency[]
+
+  @@index([orgId])
+  @@index([projectId])
+  @@index([status])
+  @@map("schedules")
+  @@schema("public")
+}
+
 model ScheduleTask {
-  id                  String   @id @default(uuid())
-  orgId               String   @map("org_id")
-  projectId           String   @map("project_id")
-  wbsNodeId           String?  @map("wbs_node_id")
-  taskNumber           String   @map("task_number")
-  name                String
-  description         String?
-  startDate           DateTime @map("start_date") @db.Date
-  endDate             DateTime @map("end_date") @db.Date
-  durationDays        Int      @map("duration_days")
-  status              String   @default("NOT_STARTED")
-  plannedProgressPct  Decimal  @default(0) @map("planned_progress_pct") @db.Decimal(5, 2)
-  actualProgressPct   Decimal  @default(0) @map("actual_progress_pct") @db.Decimal(5, 2)
-  isMilestone         Boolean  @default(false) @map("is_milestone")
-  isCriticalPath      Boolean  @default(false) @map("is_critical_path")
-  dependencies        Json     @default("[]")
-  sortOrder           Int      @default(0) @map("sort_order")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id                 String    @id @default(uuid())
+  scheduleId         String    @map("schedule_id")
+  wbsNodeId          String    @map("wbs_node_id")
 
-  // Relations
-  organization    Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  wbsNode         WbsNode?         @relation(fields: [wbsNodeId], references: [id])
-  progressUpdates ProgressUpdate[]
+  taskType           String    @default("TASK") // TASK, MILESTONE, SUMMARY
 
-  @@index([projectId, status])
+  plannedStartDate   DateTime  @map("planned_start_date")
+  plannedEndDate     DateTime  @map("planned_end_date")
+  plannedDuration    Int       @map("planned_duration")
+
+  actualStartDate    DateTime? @map("actual_start_date")
+  actualEndDate      DateTime? @map("actual_end_date")
+  actualDuration     Int?      @map("actual_duration")
+
+  progressPercent    Decimal   @default(0) @db.Decimal(5, 2) @map("progress_percent")
+
+  earlyStart         DateTime? @map("early_start")
+  earlyFinish        DateTime? @map("early_finish")
+  lateStart          DateTime? @map("late_start")
+  lateFinish         DateTime? @map("late_finish")
+  totalFloat         Int?      @map("total_float")
+  freeFloat          Int?      @map("free_float")
+  isCritical         Boolean   @default(false) @map("is_critical")
+
+  constraintType     String?   @map("constraint_type")
+  constraintDate     DateTime? @map("constraint_date")
+
+  assignedTo         String?   @map("assigned_to")
+  notes              String?   @db.Text
+
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  schedule           Schedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  wbsNode            WbsNode    @relation(fields: [wbsNodeId], references: [id], onDelete: Cascade)
+  successors         TaskDependency[] @relation("PredecessorTask")
+  predecessors      TaskDependency[] @relation("SuccessorTask")
+  progressUpdates    ProgressUpdate[]
+
+  @@index([scheduleId])
+  @@index([wbsNodeId])
+  @@index([isCritical])
   @@map("schedule_tasks")
   @@schema("public")
 }
+
+model TaskDependency {
+  id              String   @id @default(uuid())
+  scheduleId      String   @map("schedule_id")
+  predecessorId   String   @map("predecessor_id")
+  successorId     String   @map("successor_id")
+
+  dependencyType  String   @default("FS") @map("dependency_type") // FS, SS, FF, SF
+  lagDays         Int      @default(0) @map("lag_days")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  schedule        Schedule      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  predecessor     ScheduleTask  @relation("PredecessorTask", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor       ScheduleTask  @relation("SuccessorTask", fields: [successorId], references: [id], onDelete: Cascade)
+
+  @@unique([predecessorId, successorId])
+  @@index([scheduleId])
+  @@index([predecessorId])
+  @@index([successorId])
+  @@map("task_dependencies")
+  @@schema("public")
+}
+
+// ============================================================
+// PROGRESS UPDATES
+// ============================================================
 
 model ProgressUpdate {
   id                   String   @id @default(uuid())

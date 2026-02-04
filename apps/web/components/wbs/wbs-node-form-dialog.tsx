@@ -77,7 +77,7 @@ export function WbsNodeFormDialog({
       form.reset({
         code: nodeToEdit.code,
         name: nodeToEdit.name,
-        category: nodeToEdit.category,
+        category: (nodeToEdit.category ?? defaultCategory) as 'ITEM' | 'SUBTASK' | 'TASK' | 'PHASE',
         unit: nodeToEdit.unit,
         quantity: nodeToEdit.quantity?.toString() ?? '0',
         description: nodeToEdit.description ?? '',

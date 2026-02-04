@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'accent' | 'outline' | 'ghost' | 'secondary'
+  variant?: 'default' | 'accent' | 'outline' | 'ghost' | 'secondary' | 'destructive' | 'link'
   size?: 'default' | 'sm' | 'lg' | 'icon'
   asChild?: boolean
 }
@@ -19,6 +19,10 @@ const buttonVariants = {
     'bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70',
   ghost:
     'hover:bg-muted active:bg-muted/80 dark:hover:bg-muted dark:active:bg-muted/80',
+  destructive:
+    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus-visible:ring-red-500 dark:bg-red-700 dark:hover:bg-red-800',
+  link:
+    'text-primary underline-offset-4 hover:underline',
 }
 
 const buttonSizes = {

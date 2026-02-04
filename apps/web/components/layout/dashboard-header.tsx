@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { Bell } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { UserMenuDropdown } from './user-menu-dropdown'
 
 interface DashboardHeaderProps {
@@ -16,20 +17,22 @@ export function DashboardHeader({ user, orgName }: DashboardHeaderProps) {
   const t = useTranslations('common')
   
   return (
-    <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6">
+    <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 dark:border-slate-800 dark:bg-slate-950">
       <div className="flex items-center gap-6">
-        <span className="text-sm font-semibold text-slate-900">Construction ERP</span>
-        <span className="text-slate-300">|</span>
-        <p className="text-sm text-slate-500">{orgName}</p>
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Construction ERP</span>
+        <span className="text-slate-300 dark:text-slate-600">|</span>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{orgName}</p>
       </div>
       
       <div className="flex items-center gap-4">
+        {/* Theme (light/dark) */}
+        <ThemeToggle />
         {/* Notifications */}
         <button 
-          className="relative rounded-lg p-2 transition-colors hover:bg-slate-100"
+          className="relative rounded-lg p-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
           aria-label="Notificaciones"
         >
-          <Bell className="h-5 w-5 text-slate-600" />
+          <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
         </button>
         

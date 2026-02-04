@@ -22,9 +22,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ExportDialog } from '@/components/export/export-dialog'
 import { updateMemberRole, deactivateMember, activateMember, resendInvitation } from '@/app/actions/team'
+import { exportTeamToExcel } from '@/app/actions/export'
 import { toast } from 'sonner'
-import { MoreVertical, Shield, ShieldCheck, ShieldAlert, Mail } from 'lucide-react'
+import { MoreVertical, Shield, ShieldCheck, ShieldAlert, Mail, FileDown } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -50,8 +52,25 @@ interface TeamMembersTableProps {
 
 export function TeamMembersTable({ members, currentUserId, canManage }: TeamMembersTableProps) {
   const t = useTranslations('settings')
+  const tExport = useTranslations('export')
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [showExportDialog, setShowExportDialog] = useState(false)
+
+  const exportColumns = [
+    { field: 'fullName', label: t('member'), defaultVisible: true },
+    { field: 'email', label: t('email') ?? 'Email', defaultVisible: true },
+    { field: 'role', label: t('role') ?? 'Rol', defaultVisible: true },
+    { field: 'status', label: t('status') ?? 'Estado', defaultVisible: true },
+    { field: 'lastLoginAt', label: t('lastActive'), defaultVisible: true },
+  ]
+
+  async function handleExport(format: 'excel' | 'pdf', selectedColumns: string[]) {
+    if (format !== 'excel') {
+      return { success: false, error: 'Solo exportación Excel disponible para equipo' }
+    }
+    return await exportTeamToExcel(selectedColumns)
+  }
 
   const roleColors: Record<string, string> = {
     OWNER: 'bg-purple-100 text-purple-800',
@@ -127,6 +146,15 @@ export function TeamMembersTable({ members, currentUserId, canManage }: TeamMemb
   }
 
   return (
+    <>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">{t('teamMembers') ?? 'Miembros del Equipo'}</h2>
+        <Button variant="outline" size="sm" onClick={() => setShowExportDialog(true)}>
+          <FileDown className="mr-2 h-4 w-4" />
+          {tExport('export')}
+        </Button>
+      </div>
     <div className="rounded-lg border border-slate-200 bg-white">
       <Table>
         <TableHeader>
@@ -301,5 +329,15 @@ export function TeamMembersTable({ members, currentUserId, canManage }: TeamMemb
         </TableBody>
       </Table>
     </div>
+    </div>
+
+    <ExportDialog
+      open={showExportDialog}
+      onOpenChange={setShowExportDialog}
+      title={t('teamMembers')}
+      columns={exportColumns}
+      onExport={handleExport}
+    />
+    </>
   )
 }

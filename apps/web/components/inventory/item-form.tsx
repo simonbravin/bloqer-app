@@ -6,7 +6,12 @@ import {
   createInventoryItemSchema,
   type CreateInventoryItemInput,
 } from '@repo/validators'
-import { createInventoryItem, updateInventoryItem } from '@/app/actions/inventory'
+import {
+  createInventoryItem,
+  updateInventoryItem,
+  createInventoryCategory,
+  createInventorySubcategory,
+} from '@/app/actions/inventory'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,17 +22,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { InventoryItem } from '@repo/database'
 
-interface ItemFormProps {
-  item?: InventoryItem
-}
+type CategoryOption = { id: string; name: string; sortOrder: number }
+type SubcategoryOption = { id: string; categoryId: string; name: string; sortOrder: number }
 
-const CATEGORIES = [
-  { value: 'MATERIAL', label: 'Material' },
-  { value: 'LABOR', label: 'Mano de Obra' },
-  { value: 'EQUIPMENT', label: 'Equipo' },
-  { value: 'SUBCONTRACT', label: 'Subcontrato' },
-  { value: 'OTHER', label: 'Otro' },
-] as const
+interface ItemFormProps {
+  item?: InventoryItem & { category?: { id: string; name: string }; subcategory?: { id: string; name: string } | null }
+  categories: CategoryOption[]
+  subcategories: SubcategoryOption[]
+}
 
 const UNITS = [
   { value: 'un', label: 'Unidad (un)' },
@@ -48,13 +50,19 @@ function toNum(v: unknown): number | undefined {
   return n != null ? n : undefined
 }
 
-export function ItemForm({ item }: ItemFormProps) {
+export function ItemForm({ item, categories, subcategories }: ItemFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newSubcategoryName, setNewSubcategoryName] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [addingSubcategory, setAddingSubcategory] = useState(false)
 
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateInventoryItemInput>({
     resolver: zodResolver(createInventoryItemSchema),
@@ -63,16 +71,20 @@ export function ItemForm({ item }: ItemFormProps) {
           sku: item.sku,
           name: item.name,
           description: item.description ?? '',
-          category: item.category,
+          categoryId: item.categoryId,
+          subcategoryId: item.subcategoryId ?? undefined,
           unit: item.unit,
           minStockQty: toNum(item.minStockQty),
           reorderQty: toNum(item.reorderQty),
         }
       : {
-          category: 'MATERIAL',
+          categoryId: categories[0]?.id ?? '',
           unit: 'un',
         },
   })
+
+  const selectedCategoryId = watch('categoryId')
+  const subcategoriesForCategory = subcategories.filter((s) => s.categoryId === selectedCategoryId)
 
   async function onSubmit(data: CreateInventoryItemInput) {
     setIsSubmitting(true)
@@ -95,8 +107,46 @@ export function ItemForm({ item }: ItemFormProps) {
     }
   }
 
+  async function handleAddCategory() {
+    const name = newCategoryName.trim()
+    if (!name) return
+    setAddingCategory(true)
+    try {
+      const res = await createInventoryCategory(name)
+      if (res.success) {
+        toast.success('Categoría agregada')
+        setNewCategoryName('')
+        setAddingCategory(false)
+        router.refresh()
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al agregar categoría')
+    } finally {
+      setAddingCategory(false)
+    }
+  }
+
+  async function handleAddSubcategory() {
+    const name = newSubcategoryName.trim()
+    if (!name || !selectedCategoryId) return
+    setAddingSubcategory(true)
+    try {
+      const res = await createInventorySubcategory(selectedCategoryId, name)
+      if (res.success) {
+        toast.success('Subcategoría agregada')
+        setNewSubcategoryName('')
+        setAddingSubcategory(false)
+        router.refresh()
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al agregar subcategoría')
+    } finally {
+      setAddingSubcategory(false)
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit as (data: CreateInventoryItemInput) => Promise<void>)} className="space-y-6">
       <Card className="p-6">
         <h3 className="mb-4 text-lg font-semibold">Información Básica</h3>
 
@@ -118,22 +168,69 @@ export function ItemForm({ item }: ItemFormProps) {
           </div>
 
           <div>
-            <Label htmlFor="category">Categoría *</Label>
+            <Label htmlFor="categoryId">Categoría *</Label>
             <select
-              id="category"
-              {...register('category')}
+              id="categoryId"
+              {...register('categoryId', {
+                onChange: (e) => {
+                  setValue('subcategoryId', '')
+                },
+              })}
               className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
+              <option value="">Seleccionar categoría</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
-            {errors.category && (
+            {errors.categoryId && (
               <p className="mt-1 text-xs text-destructive">
-                {errors.category.message}
+                {errors.categoryId.message}
               </p>
+            )}
+            <div className="mt-2 flex gap-2">
+              <Input
+                placeholder="Nueva categoría..."
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                className="h-9 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+              />
+              <Button type="button" variant="outline" size="sm" onClick={handleAddCategory} disabled={!newCategoryName.trim() || addingCategory}>
+                {addingCategory ? '...' : 'Agregar'}
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="subcategoryId">Subcategoría</Label>
+            <select
+              id="subcategoryId"
+              {...register('subcategoryId')}
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Ninguna</option>
+              {subcategoriesForCategory.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            {selectedCategoryId && (
+              <div className="mt-2 flex gap-2">
+                <Input
+                  placeholder="Nueva subcategoría..."
+                  value={newSubcategoryName}
+                  onChange={(e) => setNewSubcategoryName(e.target.value)}
+                  className="h-9 text-sm"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSubcategory())}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={handleAddSubcategory} disabled={!newSubcategoryName.trim() || addingSubcategory}>
+                  {addingSubcategory ? '...' : 'Agregar'}
+                </Button>
+              </div>
             )}
           </div>
 

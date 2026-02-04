@@ -652,3 +652,286 @@ export async function reorderWbsNode(nodeId: string, newSortOrder: number) {
     return { success: false, error: 'Error al reordenar el nodo' }
   }
 }
+
+// --- PROMPT 24.7: Add/delete WBS with auto code and renumbering ---
+
+/** Infer WBS category from code depth. */
+function inferCategoryFromCode(code: string): string {
+  const level = code.split('.').length - 1
+  if (level === 0) return 'PHASE'
+  if (level === 1) return 'TASK'
+  return 'BUDGET_ITEM'
+}
+
+/** Map template category to WbsNode category. */
+function mapTemplateCategory(cat: string): string {
+  if (['PHASE', 'TASK', 'ZONE', 'MILESTONE'].includes(cat)) return cat
+  if (cat === 'SUBTASK' || cat === 'ITEM') return 'BUDGET_ITEM'
+  return 'BUDGET_ITEM'
+}
+
+/** Calculate next WBS code for a new node under parentId (null = root). */
+async function calculateNextCode(
+  projectId: string,
+  parentId: string | null
+): Promise<string> {
+  if (!parentId) {
+    const lastRoot = await prisma.wbsNode.findFirst({
+      where: { projectId, parentId: null, active: true },
+      orderBy: { code: 'desc' },
+      select: { code: true },
+    })
+    if (!lastRoot) return '01'
+    const lastNum = parseInt(lastRoot.code, 10)
+    return String(Number.isNaN(lastNum) ? 1 : lastNum + 1).padStart(2, '0')
+  }
+
+  const parent = await prisma.wbsNode.findUnique({
+    where: { id: parentId },
+    select: { code: true },
+  })
+  if (!parent) throw new Error('Parent not found')
+
+  const siblings = await prisma.wbsNode.findMany({
+    where: { projectId, parentId, active: true },
+    orderBy: { code: 'desc' },
+    select: { code: true },
+    take: 1,
+  })
+  if (siblings.length === 0) return `${parent.code}.01`
+  const lastCode = siblings[0].code
+  const parts = lastCode.split('.')
+  const lastNum = parseInt(parts[parts.length - 1], 10)
+  const newNum = String(Number.isNaN(lastNum) ? 1 : lastNum + 1).padStart(2, '0')
+  parts[parts.length - 1] = newNum
+  return parts.join('.')
+}
+
+/**
+ * Add WBS node from template or custom data with auto code.
+ */
+export async function addWbsNode(data: {
+  projectId: string
+  parentId: string | null
+  templateId?: string
+  customData?: {
+    name: string
+    unit: string
+    description?: string
+  }
+}) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const project = await ensureProjectInOrg(data.projectId, org.orgId)
+  if (!project) return { success: false, error: 'Project not found' }
+
+  try {
+    const newCode = await calculateNextCode(data.projectId, data.parentId)
+    const category = inferCategoryFromCode(newCode)
+
+    if (data.templateId) {
+      const template = await prisma.wbsTemplate.findUnique({
+        where: { id: data.templateId },
+        include: { resourceTemplates: true },
+      })
+      if (!template) return { success: false, error: 'Template not found' }
+
+      const node = await prisma.wbsNode.create({
+        data: {
+          orgId: org.orgId,
+          projectId: data.projectId,
+          parentId: data.parentId,
+          code: newCode,
+          name: template.name,
+          category: mapTemplateCategory(template.category),
+          unit: template.unit ?? 'un',
+          quantity: template.defaultQuantity ?? new Prisma.Decimal(1),
+          description: template.description ?? null,
+          active: true,
+        },
+      })
+      revalidatePath(`/projects/${data.projectId}/wbs`)
+      revalidatePath(`/projects/${data.projectId}`)
+      return { success: true, nodeId: node.id }
+    }
+
+    if (data.customData) {
+      const node = await prisma.wbsNode.create({
+        data: {
+          orgId: org.orgId,
+          projectId: data.projectId,
+          parentId: data.parentId,
+          code: newCode,
+          name: data.customData.name,
+          category,
+          unit: data.customData.unit,
+          quantity: new Prisma.Decimal(1),
+          description: data.customData.description ?? null,
+          active: true,
+        },
+      })
+      revalidatePath(`/projects/${data.projectId}/wbs`)
+      revalidatePath(`/projects/${data.projectId}`)
+      return { success: true, nodeId: node.id }
+    }
+
+    return { success: false, error: 'Debe proporcionar templateId o customData' }
+  } catch (error) {
+    console.error('Error adding WBS node:', error)
+    return { success: false, error: 'Error al agregar tarea' }
+  }
+}
+
+/** Decrement last segment of a code (e.g. 01.02.03 -> 01.02.02). */
+function decrementCode(code: string): string {
+  const parts = code.split('.')
+  const lastPart = parseInt(parts[parts.length - 1], 10)
+  parts[parts.length - 1] = String(Math.max(1, lastPart - 1)).padStart(2, '0')
+  return parts.join('.')
+}
+
+/** Renumber all children of a node under new parent code. */
+async function renumberChildren(nodeId: string, newParentCode: string): Promise<void> {
+  const children = await prisma.wbsNode.findMany({
+    where: { parentId: nodeId, active: true },
+    orderBy: { code: 'asc' },
+  })
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    const childNum = String(i + 1).padStart(2, '0')
+    const newCode = `${newParentCode}.${childNum}`
+    await prisma.wbsNode.update({
+      where: { id: child.id },
+      data: { code: newCode },
+    })
+    await renumberChildren(child.id, newCode)
+  }
+}
+
+/** Get all descendant node ids. */
+async function getAllDescendants(nodeId: string): Promise<{ id: string }[]> {
+  const children = await prisma.wbsNode.findMany({
+    where: { parentId: nodeId, active: true },
+    select: { id: true },
+  })
+  let descendants = [...children]
+  for (const child of children) {
+    const childDescendants = await getAllDescendants(child.id)
+    descendants = [...descendants, ...childDescendants]
+  }
+  return descendants
+}
+
+/**
+ * Delete WBS node (no children) and renumber following siblings.
+ */
+export async function deleteWbsNodeWithRenumber(nodeId: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  try {
+    const node = await prisma.wbsNode.findFirst({
+      where: { id: nodeId, orgId: org.orgId },
+      select: {
+        id: true,
+        code: true,
+        parentId: true,
+        projectId: true,
+        _count: { select: { children: true } },
+      },
+    })
+    if (!node) return { success: false, error: 'Node not found' }
+
+    const childrenCount = node._count.children ?? 0
+    if (childrenCount > 0) {
+      return {
+        success: false,
+        error: `Esta tarea tiene ${childrenCount} subtareas. Elimínalas primero o confirma eliminación en cascada.`,
+        hasChildren: true,
+        childrenCount,
+      }
+    }
+
+    const siblings = await prisma.wbsNode.findMany({
+      where: {
+        projectId: node.projectId,
+        parentId: node.parentId,
+        active: true,
+        code: { gt: node.code },
+      },
+      orderBy: { code: 'asc' },
+    })
+
+    await prisma.budgetLine.deleteMany({ where: { wbsNodeId: nodeId } })
+    await prisma.wbsNode.delete({ where: { id: nodeId } })
+
+    for (const sibling of siblings) {
+      const newCode = decrementCode(sibling.code)
+      await prisma.wbsNode.update({
+        where: { id: sibling.id },
+        data: { code: newCode },
+      })
+      await renumberChildren(sibling.id, newCode)
+    }
+
+    revalidatePath(`/projects/${node.projectId}/wbs`)
+    revalidatePath(`/projects/${node.projectId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting WBS node:', error)
+    return { success: false, error: 'Error al eliminar tarea' }
+  }
+}
+
+/**
+ * Delete WBS node and all descendants (cascade).
+ */
+export async function deleteWbsNodeCascade(nodeId: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  try {
+    const node = await prisma.wbsNode.findFirst({
+      where: { id: nodeId, orgId: org.orgId },
+      select: { id: true, code: true, parentId: true, projectId: true },
+    })
+    if (!node) return { success: false, error: 'Node not found' }
+
+    const descendants = await getAllDescendants(nodeId)
+    const idsToDelete = [...descendants.map((d) => d.id), nodeId]
+
+    await prisma.budgetLine.deleteMany({
+      where: { wbsNodeId: { in: idsToDelete } },
+    })
+    await prisma.wbsNode.deleteMany({
+      where: { id: { in: idsToDelete } },
+    })
+
+    const siblings = await prisma.wbsNode.findMany({
+      where: {
+        projectId: node.projectId,
+        parentId: node.parentId,
+        active: true,
+        code: { gt: node.code },
+      },
+      orderBy: { code: 'asc' },
+    })
+
+    for (const sibling of siblings) {
+      const newCode = decrementCode(sibling.code)
+      await prisma.wbsNode.update({
+        where: { id: sibling.id },
+        data: { code: newCode },
+      })
+      await renumberChildren(sibling.id, newCode)
+    }
+
+    revalidatePath(`/projects/${node.projectId}/wbs`)
+    revalidatePath(`/projects/${node.projectId}`)
+    return { success: true, deletedCount: idsToDelete.length }
+  } catch (error) {
+    console.error('Error deleting WBS cascade:', error)
+    return { success: false, error: 'Error al eliminar' }
+  }
+}

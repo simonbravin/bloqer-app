@@ -37,8 +37,17 @@ export default async function CertificationsPage({ params }: PageProps) {
   })
 
   const certsWithTotals: CertRow[] = certifications.map((cert) => ({
-    ...cert,
+    id: cert.id,
+    number: cert.number,
+    periodMonth: cert.periodMonth,
+    periodYear: cert.periodYear,
+    status: cert.status,
+    issuedDate: cert.issuedDate,
+    issuedAt: cert.issuedAt,
+    issuedBy: cert.issuedBy,
+    approvedBy: cert.approvedBy,
     totalAmount: cert.lines.reduce((sum, line) => sum + Number(line.periodAmount), 0),
+    lines: cert.lines.map((l) => ({ id: l.id, periodAmount: Number(l.periodAmount) })),
   }))
 
   const approvedTotal = certifications

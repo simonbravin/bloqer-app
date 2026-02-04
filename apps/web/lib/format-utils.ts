@@ -3,20 +3,28 @@
  * Used across the Construction ERP for currency, numbers, and dates.
  */
 
+/** Símbolo por moneda: ARS = $, USD = US$, resto = código */
+export function getCurrencySymbol(currency: string): string {
+  if (currency === 'ARS') return '$'
+  if (currency === 'USD') return 'US$'
+  if (currency === 'EUR') return '€'
+  return currency
+}
+
 /**
- * Currency formatting (ARS primary)
+ * Currency formatting (ARS primary). Usa símbolo explícito: $ para ARS, US$ para USD.
  */
 export function formatCurrency(
   amount: number,
   currency: string = 'ARS',
   locale: string = 'es-AR'
 ): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
+  const symbol = getCurrencySymbol(currency)
+  const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)
+  return `${symbol} ${formatted}`.trim()
 }
 
 /**
@@ -64,7 +72,7 @@ export function formatCurrencyCompact(
       compactDisplay: 'short',
       maximumFractionDigits: 1,
     })
-    const symbol = currency === 'ARS' ? '$' : currency === 'USD' ? 'US$' : currency
+    const symbol = getCurrencySymbol(currency)
     return `${symbol}${formatter.format(amount)}`
   }
 
@@ -95,4 +103,16 @@ export function formatDateShort(date: Date | string | null, locale = 'es-AR'): s
   if (!date) return '—'
   const d = typeof date === 'string' ? new Date(date) : date
   return new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(d)
+}
+
+/**
+ * Date and time for audit / "Creado por X el DD/MM/YYYY HH:mm"
+ */
+export function formatDateTime(date: Date | string | null, locale = 'es-AR'): string {
+  if (!date) return '—'
+  const d = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(d)
 }

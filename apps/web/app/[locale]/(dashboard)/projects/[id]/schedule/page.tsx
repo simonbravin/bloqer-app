@@ -1,9 +1,12 @@
-import { getTranslations } from 'next-intl/server'
 import { notFound, redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { getLocale } from 'next-intl/server'
 import { prisma } from '@repo/database'
+import { ScheduleView } from '@/components/schedule/schedule-view'
+import { Button } from '@/components/ui/button'
+import { Plus, ArrowLeft } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 
 export default async function ProjectSchedulePage({
   params,
@@ -27,27 +30,106 @@ export default async function ProjectSchedulePage({
     where: { id, orgId: orgContext.orgId },
     select: { id: true, name: true, projectNumber: true },
   })
-  
+
   if (!project) {
     notFound()
   }
-  
-  const t = await getTranslations('nav')
-  
+
+  // Ensure Prisma client has Schedule model (run: pnpm --filter @repo/database db:generate)
+  const scheduleDelegate = prisma?.schedule
+  if (!scheduleDelegate) {
+    throw new Error(
+      'Prisma client missing Schedule model. Stop the dev server and run: pnpm --filter @repo/database db:generate'
+    )
+  }
+
+  const schedules = await scheduleDelegate.findMany({
+    where: { projectId: id, orgId: orgContext.orgId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      createdBy: {
+        select: {
+          user: { select: { fullName: true } },
+        },
+      },
+      _count: {
+        select: { tasks: true },
+      },
+    },
+  })
+
+  if (schedules.length === 0) {
+    return (
+      <div className="space-y-6 p-6">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/projects/${id}`}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver al Proyecto
+          </Link>
+        </Button>
+
+        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 p-12">
+          <h2 className="text-2xl font-semibold text-slate-900">
+            No hay cronogramas aún
+          </h2>
+          <p className="mt-2 text-center text-slate-500">
+            Crea el primer cronograma para este proyecto basado en la estructura
+            WBS
+          </p>
+
+          {['EDITOR', 'ADMIN', 'OWNER'].includes(orgContext.role) && (
+            <Button asChild className="mt-6">
+              <Link href={`/projects/${id}/schedule/new`}>
+                <Plus className="mr-2 h-4 w-4" />
+                Crear Cronograma
+              </Link>
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const activeSchedule =
+    schedules.find((s) => s.isBaseline) ?? schedules[0]
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t('schedule')}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {project.name}
-        </p>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <Button variant="ghost" size="sm" asChild className="mb-2">
+            <Link href={`/projects/${id}`}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver al Proyecto
+            </Link>
+          </Button>
+
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {project.name}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Cronograma: {activeSchedule.name}
+          </p>
+        </div>
+
+        {['EDITOR', 'ADMIN', 'OWNER'].includes(orgContext.role) && (
+          <Button asChild>
+            <Link href={`/projects/${id}/schedule/new`}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Versión
+            </Link>
+          </Button>
+        )}
       </div>
-      
-      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-        <p className="text-slate-500">
-          Módulo de cronograma en construcción
-        </p>
-      </div>
+
+      <ScheduleView
+        scheduleId={activeSchedule.id}
+        canEdit={
+          ['EDITOR', 'ADMIN', 'OWNER'].includes(orgContext.role) &&
+          activeSchedule.status === 'DRAFT'
+        }
+        canSetBaseline={['ADMIN', 'OWNER'].includes(orgContext.role)}
+      />
     </div>
   )
 }

@@ -14,7 +14,8 @@ interface ItemRow {
   sku: string
   name: string
   description?: string | null
-  category: string
+  category: { id: string; name: string }
+  subcategory?: { id: string; name: string } | null
   unit: string
   minStockQty?: unknown
   reorderQty?: unknown
@@ -25,7 +26,7 @@ interface ItemRow {
 
 interface ItemsListClientProps {
   items: ItemRow[]
-  categories: (string | null)[]
+  categories: { id: string; name: string }[]
 }
 
 export function ItemsListClient({ items, categories }: ItemsListClientProps) {
@@ -33,25 +34,23 @@ export function ItemsListClient({ items, categories }: ItemsListClientProps) {
   const searchParams = useSearchParams()
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') ?? '')
+  const [selectedCategoryId, setSelectedCategoryId] = useState(searchParams.get('category') ?? '')
   const [stockFilter, setStockFilter] = useState(searchParams.get('stock') ?? '')
 
   function handleSearch() {
     const params = new URLSearchParams()
     if (search) params.set('q', search)
-    if (selectedCategory) params.set('category', selectedCategory)
+    if (selectedCategoryId) params.set('category', selectedCategoryId)
     if (stockFilter) params.set('stock', stockFilter)
     router.push(`/inventory/items?${params.toString()}`)
   }
 
   function handleClearFilters() {
     setSearch('')
-    setSelectedCategory('')
+    setSelectedCategoryId('')
     setStockFilter('')
     router.push('/inventory/items')
   }
-
-  const categoryOptions = categories.filter((c): c is string => c != null && c !== '')
 
   return (
     <div className="space-y-6">
@@ -73,14 +72,14 @@ export function ItemsListClient({ items, categories }: ItemsListClientProps) {
         <div className="w-full md:w-48">
           <label className="mb-2 block text-sm font-medium">Categoría</label>
           <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Todas</option>
-            {categoryOptions.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
               </option>
             ))}
           </select>

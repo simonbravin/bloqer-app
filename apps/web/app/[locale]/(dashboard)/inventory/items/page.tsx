@@ -22,7 +22,12 @@ export default async function InventoryItemsListPage({
   const { orgId } = org
   const params = await searchParams
 
-  const where: { orgId: string; active: boolean; OR?: Array<{ sku?: { contains: string; mode: 'insensitive' }; name?: { contains: string; mode: 'insensitive' } }>; category?: string } = {
+  const where: {
+    orgId: string
+    active: boolean
+    OR?: Array<{ sku?: { contains: string; mode: 'insensitive' }; name?: { contains: string; mode: 'insensitive' } }>
+    categoryId?: string
+  } = {
     orgId,
     active: true,
   }
@@ -36,13 +41,14 @@ export default async function InventoryItemsListPage({
   }
 
   if (params.category?.trim()) {
-    where.category = params.category.trim()
+    where.categoryId = params.category.trim()
   }
 
   const [items, movements, categories] = await Promise.all([
     prisma.inventoryItem.findMany({
       where,
       orderBy: { name: 'asc' },
+      include: { category: { select: { id: true, name: true } }, subcategory: { select: { id: true, name: true } } },
     }),
     prisma.inventoryMovement.findMany({
       where: { orgId },
@@ -56,10 +62,9 @@ export default async function InventoryItemsListPage({
         createdAt: true,
       },
     }),
-    prisma.inventoryItem.findMany({
-      where: { orgId, active: true },
-      select: { category: true },
-      distinct: ['category'],
+    prisma.inventoryCategory.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true, name: true },
     }),
   ])
 
@@ -126,7 +131,7 @@ export default async function InventoryItemsListPage({
     })
   }
 
-  const categoryList = categories.map((c) => c.category)
+  const categoryOptions = categories.map((c) => ({ id: c.id, name: c.name }))
 
   return (
     <div className="h-full">
@@ -144,7 +149,7 @@ export default async function InventoryItemsListPage({
       />
 
       <div className="p-6">
-        <ItemsListClient items={filteredItems} categories={categoryList} />
+        <ItemsListClient items={filteredItems} categories={categoryOptions} />
       </div>
     </div>
   )

@@ -12,7 +12,8 @@ interface ItemsGridProps {
     id: string
     sku: string
     name: string
-    category: string
+    category: { id: string; name: string }
+    subcategory?: { id: string; name: string } | null
     unit: string
     minStockQty?: unknown
     reorderQty?: unknown

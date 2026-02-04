@@ -9,7 +9,8 @@ interface ItemDetailInfoProps {
   item: {
     sku: string
     name: string
-    category: string
+    category: { id: string; name: string }
+    subcategory?: { id: string; name: string } | null
     unit: string
     description?: string | null
     minStockQty?: unknown
@@ -52,7 +53,10 @@ export function ItemDetailInfo({ item }: ItemDetailInfoProps) {
                 <Tag className="mt-0.5 h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">Categoría</p>
-                  <p className="font-medium">{item.category.replace(/_/g, ' ')}</p>
+                  <p className="font-medium">
+                  {item.category.name}
+                  {item.subcategory ? ` / ${item.subcategory.name}` : ''}
+                </p>
                 </div>
               </div>
 

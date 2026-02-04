@@ -27,6 +27,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
   const item = await prisma.inventoryItem.findFirst({
     where: { id, orgId: org.orgId },
+    include: { category: { select: { id: true, name: true } }, subcategory: { select: { id: true, name: true } } },
   })
   if (!item) notFound()
 

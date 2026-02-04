@@ -72,7 +72,7 @@ export default async function EditDailyReportPage({ params }: PageProps) {
             reportDate: report.reportDate,
             summary: report.summary,
             workAccomplished: report.workAccomplished ?? undefined,
-            weather: report.weather ?? null,
+            weather: (report.weather && ['SUNNY', 'CLOUDY', 'RAINY', 'SNOWY', 'WINDY'].includes(report.weather) ? report.weather : null) as 'SUNNY' | 'CLOUDY' | 'RAINY' | 'SNOWY' | 'WINDY' | null,
             observations: report.observations ?? null,
             wbsNodeId: report.wbsNodeId ?? null,
             wbsNodeIds:

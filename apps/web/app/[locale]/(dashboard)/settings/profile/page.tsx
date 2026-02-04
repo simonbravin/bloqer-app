@@ -26,14 +26,14 @@ export default async function ProfilePage() {
   if (!user) redirect({ href: '/login', locale })
 
   const t = await getTranslations('settings')
-  const displayAvatarUrl = await resolveAvatarUrl(user.avatarUrl)
+  const displayAvatarUrl = await resolveAvatarUrl(user!.avatarUrl)
 
   const userData = {
-    id: user.id,
-    email: user.email,
-    username: user.username,
-    fullName: user.fullName,
-    avatarUrl: displayAvatarUrl ?? user.avatarUrl,
+    id: user!.id,
+    email: user!.email,
+    username: user!.username,
+    fullName: user!.fullName,
+    avatarUrl: displayAvatarUrl ?? user!.avatarUrl,
   }
 
   return (

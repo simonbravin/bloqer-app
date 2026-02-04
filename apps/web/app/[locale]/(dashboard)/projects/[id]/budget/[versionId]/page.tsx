@@ -1,215 +1,300 @@
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { getSession } from '@/lib/session'
-import { Package } from 'lucide-react'
 import { getOrgContext } from '@/lib/org-context'
-import { hasMinimumRole } from '@/lib/rbac'
-import { getProject } from '@/app/actions/projects'
-import {
-  getBudgetVersion,
-  listBudgetLines,
-  getVersionTotal,
-  listBudgetVersions,
-  getOrgDefaultIndirectPct,
-} from '@/app/actions/budget'
-import { listProjectWBS } from '@/app/actions/wbs'
-import { BudgetVersionTabs } from '@/components/budget/budget-version-tabs'
+import { redirect, notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
+import { prisma } from '@repo/database'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BudgetVersionStatusDropdown } from '@/components/budget/budget-version-status-dropdown'
+import { BudgetLinesCompactTable } from '@/components/budget/budget-lines-compact-table'
+import { BudgetSummaryTabClient } from '@/components/budget/budget-summary-tab-client'
+import { MarkupConfiguration } from '@/components/budget/markup-configuration'
+import { BudgetVersionExport } from '@/components/budget/budget-version-export'
+import { Button } from '@/components/ui/button'
+import { Package } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
+import { Prisma } from '@repo/database'
+import type { BudgetTreeNode } from '@/components/budget/budget-tree-table-admin'
 
 type PageProps = {
-  params: Promise<{ id: string; versionId: string }>
+  params: Promise<{ locale?: string; id: string; versionId: string }>
 }
 
-export default async function BudgetVersionLinesPage({ params }: PageProps) {
+export default async function BudgetVersionPage({ params }: PageProps) {
   const session = await getSession()
-  if (!session?.user?.id) return notFound()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return notFound()
+  const { id: projectId, versionId, locale } = await params
+  if (!session?.user?.id) redirect({ href: '/login', locale: locale ?? 'es' })
 
-  const { id: projectId, versionId } = await params
-  const project = await getProject(projectId)
-  if (!project) notFound()
+  const { orgId, role } = await getOrgContext(session.user.id)
+  if (!orgId) redirect({ href: '/login', locale: locale ?? 'es' })
 
-  const [version, lines, versionTotal, versions, wbsTree, defaultIndirectPct] = await Promise.all([
-    getBudgetVersion(versionId),
-    listBudgetLines(versionId),
-    getVersionTotal(versionId),
-    listBudgetVersions(projectId),
-    listProjectWBS(projectId),
-    getOrgDefaultIndirectPct(),
-  ])
+  const version = await prisma.budgetVersion.findFirst({
+    where: {
+      id: versionId,
+      projectId,
+      orgId,
+    },
+    include: {
+      project: {
+        select: {
+          id: true,
+          name: true,
+          projectNumber: true,
+        },
+      },
+      lines: {
+        include: {
+          wbsNode: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              parentId: true,
+              category: true,
+            },
+          },
+          resources: {
+            orderBy: { sortOrder: 'asc' },
+            select: {
+              id: true,
+              resourceType: true,
+              quantity: true,
+              unitCost: true,
+              sortOrder: true,
+            },
+          },
+        },
+        orderBy: [{ wbsNode: { code: 'asc' } }, { sortOrder: 'asc' }],
+      },
+      createdBy: {
+        select: {
+          user: { select: { fullName: true, email: true } },
+        },
+      },
+      approvedBy: {
+        select: {
+          user: { select: { fullName: true, email: true } },
+        },
+      },
+    },
+  })
 
-  if (!version || version.projectId !== projectId) notFound()
+  if (!version) notFound()
 
-  const canEdit = hasMinimumRole(org.role, 'EDITOR')
-  const canViewAdmin = org.role === 'ADMIN' || org.role === 'OWNER'
-
-  function flattenWbs(
-    nodes: { id: string; code: string; name: string; children: unknown[] }[],
-    out: { id: string; code: string; name: string }[] = []
-  ): { id: string; code: string; name: string }[] {
-    for (const n of nodes) {
-      out.push({ id: n.id, code: n.code, name: n.name })
-      flattenWbs((n.children as { id: string; code: string; name: string; children: unknown[] }[]) ?? [], out)
-    }
-    return out
+  const wbsGroups = new Map<
+    string,
+    Array<(typeof version.lines)[number]>
+  >()
+  for (const line of version.lines) {
+    const wbsId = line.wbsNode.id
+    if (!wbsGroups.has(wbsId)) wbsGroups.set(wbsId, [])
+    wbsGroups.get(wbsId)!.push(line)
   }
 
-  const wbsOptions = wbsTree ? flattenWbs(wbsTree as { id: string; code: string; name: string; children: unknown[] }[]) : []
-  const otherVersions = (versions ?? []).filter((v) => v.id !== versionId)
-
-  // Serialize for client (Prisma Decimal/Date are not serializable)
-  function serializeLine(line: (typeof lines)[number]) {
-    return {
-      id: line.id,
-      description: line.description,
-      unit: line.unit,
-      quantity: Number(line.quantity),
-      directCostTotal: Number(line.directCostTotal),
-      salePriceTotal: line.salePriceTotal != null ? Number(line.salePriceTotal) : undefined,
-      overheadPct: Number(line.overheadPct ?? 0),
-      financialPct: Number(line.financialPct ?? 0),
-      profitPct: Number(line.profitPct ?? 0),
-      taxPct: Number(line.taxPct ?? 0),
-      wbsNode: { id: line.wbsNode.id, code: line.wbsNode.code, name: line.wbsNode.name },
-      resources: ('resources' in line ? (line as { resources: Array<{ id: string; resourceType: string; description: string; unit: string; quantity: unknown; unitCost: unknown; totalCost: unknown; attributes: unknown }> }).resources : []).map((r) => ({
-        id: r.id,
-        resourceType: r.resourceType,
-        description: r.description,
-        unit: r.unit,
-        quantity: Number(r.quantity),
-        unitCost: Number(r.unitCost),
-        totalCost: Number(r.totalCost),
-        attributes: r.attributes,
-      })),
-    }
-  }
-  const serializedLines = (lines ?? []).map(serializeLine)
-
-  function serializeWbsNode(node: { id: string; code: string; name: string; category: string; parentId: string | null; unit: string | null; quantity: unknown; children: unknown[] }): { id: string; code: string; name: string; category: string; parentId: string | null; unit: string | null; quantity: number; children: ReturnType<typeof serializeWbsNode>[] } {
-    return {
-      id: node.id,
-      code: node.code,
-      name: node.name,
-      category: node.category,
-      parentId: node.parentId,
-      unit: node.unit,
-      quantity: typeof node.quantity === 'number' ? node.quantity : Number(node.quantity ?? 0),
-      children: (node.children ?? []).map((c) => serializeWbsNode(c as typeof node)),
-    }
-  }
-  const serializedWbsTree = (wbsTree ?? []).map((n) => serializeWbsNode(n as { id: string; code: string; name: string; category: string; parentId: string | null; unit: string | null; quantity: unknown; children: unknown[] }))
-
-  // Build tree data for BudgetVersionView: { wbsNode, lines, children } per node
-  type WbsNodeSerialized = { id: string; code: string; name: string; category: string; parentId: string | null; unit: string | null; quantity: number; children: WbsNodeSerialized[] }
-  type LineSerialized = ReturnType<typeof serializeLine>
-  const linesByWbsId = new Map<string, LineSerialized[]>()
-  for (const line of serializedLines) {
-    const id = line.wbsNode.id
-    if (!linesByWbsId.has(id)) linesByWbsId.set(id, [])
-    linesByWbsId.get(id)!.push(line)
-  }
-  function buildTreeData(nodes: WbsNodeSerialized[]): import('@/components/budget/budget-tree-table-admin').BudgetTreeNode[] {
-    return nodes.map((node) => {
-      const nodeLines = linesByWbsId.get(node.id) ?? []
-      const treeLines = nodeLines.map((l) => ({
-        id: l.id,
-        description: l.description,
-        unit: l.unit,
-        quantity: l.quantity,
-        directCostTotal: l.directCostTotal,
-        overheadPct: l.overheadPct,
-        financialPct: l.financialPct,
-        profitPct: l.profitPct,
-        taxPct: l.taxPct,
-        resources: (l.resources ?? []).map((r) => ({
+  function buildTree(
+    parentId: string | null
+  ): BudgetTreeNode[] {
+    const nodes: BudgetTreeNode[] = []
+    wbsGroups.forEach((lines, wbsId) => {
+      const firstLine = lines[0]
+      if (firstLine.wbsNode.parentId !== parentId) return
+      const treeLines = lines.map((line) => ({
+        id: line.id,
+        description: line.description,
+        unit: line.unit,
+        quantity: Number(line.quantity),
+        directCostTotal: Number(line.directCostTotal),
+        overheadPct: Number(line.overheadPct ?? 0),
+        financialPct: Number(line.financialPct ?? 0),
+        profitPct: Number(line.profitPct ?? 0),
+        taxPct: Number(line.taxPct ?? 0),
+        resources: (line.resources ?? []).map((r) => ({
           id: r.id,
           resourceType: r.resourceType,
-          quantity: r.quantity,
-          unitCost: r.unitCost,
+          quantity: Number(r.quantity),
+          unitCost: Number(r.unitCost),
         })),
       }))
-      return {
-        wbsNode: { id: node.id, code: node.code, name: node.name, category: node.category },
+      nodes.push({
+        wbsNode: {
+          id: firstLine.wbsNode.id,
+          code: firstLine.wbsNode.code,
+          name: firstLine.wbsNode.name,
+          category: firstLine.wbsNode.category ?? 'ITEM',
+        },
         lines: treeLines,
-        children: buildTreeData(node.children ?? []),
-      }
+        children: buildTree(wbsId),
+      })
     })
+    return nodes.sort((a, b) =>
+      a.wbsNode.code.localeCompare(b.wbsNode.code)
+    )
   }
-  const treeData = buildTreeData(serializedWbsTree as WbsNodeSerialized[])
 
-  const computeSheetLines = (lines ?? [])
-    .map((line) => {
-      const qty = typeof line.quantity === 'number' ? line.quantity : Number(line.quantity)
-      const total =
-        line.salePriceTotal != null
-          ? typeof line.salePriceTotal === 'number'
-            ? line.salePriceTotal
-            : Number(line.salePriceTotal)
-          : typeof line.directCostTotal === 'number'
-            ? line.directCostTotal
-            : Number(line.directCostTotal)
-      const unitPrice = qty > 0 ? total / qty : 0
-      return {
-        id: line.id,
-        wbsCode: line.wbsNode.code,
-        wbsName: line.wbsNode.name,
-        unit: line.unit,
-        quantity: qty,
-        unitPrice,
-        total,
-        hasAPU: true,
-      }
-    })
-    .sort((a, b) => a.wbsCode.localeCompare(b.wbsCode))
+  const treeData = buildTree(null)
+
+  const totalDirectCost = version.lines.reduce(
+    (sum, line) => sum.add(line.directCostTotal),
+    new Prisma.Decimal(0)
+  )
+  const totalDirectCostNum = Number(totalDirectCost)
+
+  function lineSaleTotal(line: (typeof version.lines)[number]): number {
+    const directUnit = Number(line.directCostTotal) / Number(line.quantity) || 0
+    const oh = line.overheadPct != null ? Number(line.overheadPct) : 0
+    const fin = line.financialPct != null ? Number(line.financialPct) : 0
+    const prof = line.profitPct != null ? Number(line.profitPct) : 0
+    const tax = line.taxPct != null ? Number(line.taxPct) : 0
+    let price = directUnit
+    price += price * (oh / 100)
+    price += price * (fin / 100)
+    price += price * (prof / 100)
+    price += price * (tax / 100)
+    return price * Number(line.quantity)
+  }
+
+  const projectTotalSale = version.lines.reduce(
+    (sum, line) => sum + lineSaleTotal(line),
+    0
+  )
+
+  const summaryData = version.lines.map((line) => ({
+    code: line.wbsNode.code,
+    description: line.description,
+    unit: line.unit,
+    quantity: Number(line.quantity),
+    unitPrice: Number(line.quantity)
+      ? Number(line.directCostTotal) / Number(line.quantity)
+      : 0,
+    total: Number(line.directCostTotal),
+    overheadPct: Number(line.overheadPct ?? 0),
+    financialPct: Number(line.financialPct ?? 0),
+    profitPct: Number(line.profitPct ?? 0),
+    taxPct: Number(line.taxPct ?? 0),
+  }))
+
+  const canEdit =
+    ['EDITOR', 'ADMIN', 'OWNER'].includes(role) && version.status === 'DRAFT'
+  const canChangeStatus = ['ADMIN', 'OWNER'].includes(role)
+  const canSeeAdmin = ['ADMIN', 'OWNER'].includes(role)
+
+  const t = await getTranslations('budget')
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center gap-4">
-        <Link
-          href={`/projects/${projectId}/budget`}
-          className="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-        >
-          ← Budget
-        </Link>
-      </div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {version.versionCode} — {version.versionType} ({version.status})
-        </h2>
-        <div className="flex items-center gap-3">
-          {(version.status === 'BASELINE' || version.status === 'APPROVED') && (
-            <Link
-              href={`/projects/${projectId}/budget/${versionId}/materials`}
-              className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-            >
-              <Package className="mr-1.5 h-4 w-4" />
-              Ver Materiales
-            </Link>
-          )}
-          <Link
-            href={`/projects/${projectId}/budget/${versionId}/compute`}
-            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
-          >
-            Planilla de cómputo →
+    <div className="space-y-6 p-6">
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/projects/${projectId}/budget`}>
+            ← {t('backToVersions')}
           </Link>
+        </Button>
+
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {version.project.name}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Versión: {version.versionCode} • {version.project.projectNumber}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <BudgetVersionStatusDropdown
+              versionId={version.id}
+              projectId={projectId}
+              currentStatus={version.status}
+              canEdit={canChangeStatus}
+            />
+            {(version.status === 'BASELINE' ||
+              version.status === 'APPROVED') && (
+              <Button asChild variant="outline">
+                <Link
+                  href={`/projects/${projectId}/budget/${version.id}/materials`}
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  Ver Materiales
+                </Link>
+              </Button>
+            )}
+            <BudgetVersionExport
+              versionId={version.id}
+              versionCode={version.versionCode}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-6 text-xs text-slate-500">
+          <div>
+            Creado por: <strong>{version.createdBy.user.fullName}</strong> el{' '}
+            {new Date(version.createdAt).toLocaleDateString('es-AR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </div>
+          {version.approvedBy && version.approvedAt && (
+            <div className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1">
+              <span className="text-green-800">
+                Aprobado por:{' '}
+                <strong>{version.approvedBy.user.fullName}</strong> el{' '}
+                {new Date(version.approvedAt).toLocaleDateString('es-AR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+          )}
         </div>
       </div>
-      <BudgetVersionTabs
-        projectId={projectId}
-        versionId={versionId}
-        version={version}
-        lines={serializedLines}
-        wbsTree={serializedWbsTree}
-        treeData={treeData}
-        computeSheetLines={computeSheetLines}
-        versionTotal={versionTotal}
-        wbsOptions={wbsOptions}
-        otherVersions={otherVersions.map((v) => ({ id: v.id, versionCode: v.versionCode }))}
-        canEdit={canEdit}
-        canViewAdmin={canViewAdmin}
-        userRole={org.role}
-        defaultIndirectPct={defaultIndirectPct}
-      />
+
+      <Tabs defaultValue="lines" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="lines">{t('linesTab')}</TabsTrigger>
+          <TabsTrigger value="summary">{t('summaryTab')}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="lines" className="space-y-6">
+          <MarkupConfiguration
+            versionId={version.id}
+            currentMode={version.markupMode}
+            currentMarkups={{
+              overheadPct: Number(version.globalOverheadPct),
+              financialPct: Number(version.globalFinancialPct),
+              profitPct: Number(version.globalProfitPct),
+              taxPct: Number(version.globalTaxPct),
+            }}
+            directCostTotal={totalDirectCostNum}
+            canEdit={canEdit}
+          />
+          <BudgetLinesCompactTable
+            data={treeData}
+            versionId={version.id}
+            projectId={projectId}
+            canEdit={canEdit}
+            markupMode={version.markupMode}
+          />
+        </TabsContent>
+
+        <TabsContent value="summary" className="space-y-6">
+          <BudgetSummaryTabClient
+            summaryData={summaryData}
+            treeData={treeData}
+            projectTotalSale={projectTotalSale}
+            markups={{
+              overheadPct: Number(version.globalOverheadPct),
+              financialPct: Number(version.globalFinancialPct),
+              profitPct: Number(version.globalProfitPct),
+              taxPct: Number(version.globalTaxPct),
+            }}
+            canSeeAdmin={canSeeAdmin}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

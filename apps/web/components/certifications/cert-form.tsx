@@ -10,6 +10,7 @@ import {
   createCertification,
   addCertificationLine,
   getBudgetLinesForCert,
+  getPrevProgressForBudgetLines,
 } from '@/app/actions/certifications'
 
 type BudgetVersion = {
@@ -28,24 +29,32 @@ type BudgetLineForCert = {
   id: string
   wbsNodeId: string
   description: string
-  quantity: { toString: () => string }
-  salePriceTotal: { toString: () => string }
-  wbsNode: { id: string; code: string; name: string }
+  quantity: number
+  salePriceTotal: number
+  wbsNode: { id: string; code: string; name: string } | null
 }
 
 type CertFormProps = {
   project: Project
+  /** When set (e.g. finance tab), redirect to this base + /{certId} after create */
+  successRedirectBasePath?: string
+  /** When set, use for Cancel link; else /projects/{id}/certifications */
+  cancelHref?: string
 }
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
 const currentYear = new Date().getFullYear()
 const YEARS = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i)
 
-export function CertForm({ project }: CertFormProps) {
+export function CertForm({
+  project,
+  successRedirectBasePath,
+  cancelHref,
+}: CertFormProps) {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +62,7 @@ export function CertForm({ project }: CertFormProps) {
 
   const [periodMonth, setPeriodMonth] = useState(new Date().getMonth() + 1)
   const [periodYear, setPeriodYear] = useState(currentYear)
+  const [issuedDate, setIssuedDate] = useState<string>('')
   const [budgetVersionId, setBudgetVersionId] = useState(project.budgetVersions[0]?.id ?? '')
   const [notes, setNotes] = useState('')
 
@@ -60,6 +70,7 @@ export function CertForm({ project }: CertFormProps) {
   const [budgetLines, setBudgetLines] = useState<BudgetLineForCert[]>([])
   const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set())
   const [progressByLine, setProgressByLine] = useState<Record<string, number>>({})
+  const [prevProgressByLine, setPrevProgressByLine] = useState<Record<string, number>>({})
 
   const handleStep1 = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,6 +82,7 @@ export function CertForm({ project }: CertFormProps) {
         periodYear,
         budgetVersionId,
         notes: notes || undefined,
+        issuedDate: issuedDate || undefined,
       })
       if ('certId' in result) {
         setCertId(result.certId)
@@ -78,6 +90,7 @@ export function CertForm({ project }: CertFormProps) {
         setBudgetLines(lines as BudgetLineForCert[])
         setSelectedLines(new Set())
         setProgressByLine({})
+        setPrevProgressByLine({})
         setStep(2)
       }
     } catch (err) {
@@ -97,16 +110,29 @@ export function CertForm({ project }: CertFormProps) {
   }
 
   const setProgress = (lineId: string, value: number) => {
-    setProgressByLine((prev) => ({ ...prev, [lineId]: value }))
+    const prev = prevProgressByLine[lineId] ?? 0
+    const maxPeriod = Math.max(0, 100 - prev)
+    const clamped = Math.min(maxPeriod, Math.max(0, value))
+    setProgressByLine((p) => ({ ...p, [lineId]: clamped }))
   }
 
-  const handleStep2 = () => {
+  const handleStep2 = async () => {
     if (selectedLines.size === 0) {
-      setError('Select at least one budget line')
+      setError('Seleccioná al menos una partida')
       return
     }
     setError(null)
-    setStep(3)
+    setSubmitting(true)
+    try {
+      const lineIds = Array.from(selectedLines)
+      const prevMap = await getPrevProgressForBudgetLines(budgetVersionId, periodMonth, periodYear, lineIds)
+      setPrevProgressByLine(prevMap)
+      setStep(3)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar avance previo')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleStep3 = async (e: React.FormEvent) => {
@@ -125,7 +151,7 @@ export function CertForm({ project }: CertFormProps) {
           periodProgressPct: pct,
         })
       }
-      router.push(`/projects/${project.id}/certifications/${certId}`)
+      router.push(successRedirectBasePath ? `${successRedirectBasePath}/${certId}` : `/projects/${project.id}/certifications/${certId}`)
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add lines')
@@ -138,23 +164,23 @@ export function CertForm({ project }: CertFormProps) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
         <p className="text-sm text-amber-800 dark:text-amber-300">
-          No budget versions available. Create a baseline or approved budget version first.
+          No hay versiones de presupuesto. Creá una versión baseline o aprobada primero.
         </p>
         <Link href={`/projects/${project.id}/budget`} className="mt-2 inline-block text-sm font-medium underline">
-          Go to Budget
+          Ir a Presupuesto
         </Link>
       </div>
     )
   }
 
   return (
-    <div className="erp-form-page space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex gap-2 text-sm">
-        <span className={step >= 1 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'}>1. Period</span>
+        <span className={step >= 1 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'}>1. Período</span>
         <span className="text-gray-400">→</span>
-        <span className={step >= 2 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'}>2. Select lines</span>
+        <span className={step >= 2 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'}>2. Seleccionar partidas</span>
         <span className="text-gray-400">→</span>
-        <span className={step >= 3 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'}>3. Progress %</span>
+        <span className={step >= 3 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500'}>3. % Avance</span>
       </div>
 
       {error && (
@@ -167,7 +193,7 @@ export function CertForm({ project }: CertFormProps) {
         <form onSubmit={handleStep1} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="periodMonth">Month</Label>
+              <Label htmlFor="periodMonth">Mes</Label>
               <select
                 id="periodMonth"
                 value={periodMonth}
@@ -180,7 +206,7 @@ export function CertForm({ project }: CertFormProps) {
               </select>
             </div>
             <div>
-              <Label htmlFor="periodYear">Year</Label>
+              <Label htmlFor="periodYear">Año</Label>
               <select
                 id="periodYear"
                 value={periodYear}
@@ -194,7 +220,17 @@ export function CertForm({ project }: CertFormProps) {
             </div>
           </div>
           <div>
-            <Label htmlFor="budgetVersionId">Budget version</Label>
+            <Label htmlFor="issuedDate">Fecha de emisión (opcional)</Label>
+            <Input
+              id="issuedDate"
+              type="date"
+              value={issuedDate}
+              onChange={(e) => setIssuedDate(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="budgetVersionId">Versión de presupuesto</Label>
             <select
               id="budgetVersionId"
               value={budgetVersionId}
@@ -209,7 +245,7 @@ export function CertForm({ project }: CertFormProps) {
             </select>
           </div>
           <div>
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">Notas (opcional)</Label>
             <textarea
               id="notes"
               value={notes}
@@ -220,10 +256,10 @@ export function CertForm({ project }: CertFormProps) {
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create & continue'}
+              {submitting ? 'Creando…' : 'Crear y continuar'}
             </Button>
-            <Link href={`/projects/${project.id}/certifications`}>
-              <Button type="button" variant="outline">Cancel</Button>
+            <Link href={cancelHref ?? `/projects/${project.id}/certifications`}>
+              <Button type="button" variant="outline">Cancelar</Button>
             </Link>
           </div>
         </form>
@@ -262,13 +298,11 @@ export function CertForm({ project }: CertFormProps) {
                       />
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 font-mono text-gray-600 dark:text-gray-400">
-                      {line.wbsNode.code}
+                      {line.wbsNode?.code ?? '—'}
                     </td>
                     <td className="px-3 py-2 text-gray-900 dark:text-white">{line.description}</td>
                     <td className="text-right tabular-nums px-3 py-2 text-gray-600 dark:text-gray-400">
-                      {typeof line.quantity === 'object' && 'toString' in line.quantity
-                        ? line.quantity.toString()
-                        : String(line.quantity)}
+                      {Number(line.quantity).toLocaleString('es-AR')}
                     </td>
                   </tr>
                 ))}
@@ -276,11 +310,11 @@ export function CertForm({ project }: CertFormProps) {
             </table>
           </div>
           <div className="flex gap-2">
-            <Button type="button" onClick={handleStep2} disabled={selectedLines.size === 0}>
-              Continue
+            <Button type="button" onClick={handleStep2} disabled={selectedLines.size === 0 || submitting}>
+              {submitting ? 'Cargando…' : 'Continuar'}
             </Button>
             <Button type="button" variant="outline" onClick={() => setStep(1)}>
-              Back
+              Atrás
             </Button>
           </div>
         </div>
@@ -289,48 +323,60 @@ export function CertForm({ project }: CertFormProps) {
       {step === 3 && (
         <form onSubmit={handleStep3} className="space-y-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Enter period progress % for each selected line. Total progress (previous + this period) cannot exceed 100%.
+            Ingresá el % de avance del período por partida. El total (previo + período) no puede superar 100%.
           </p>
           <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800/50">
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="px-3 py-2 text-left font-medium">WBS</th>
-                  <th className="px-3 py-2 text-left font-medium">Description</th>
-                  <th className="px-3 py-2 text-right font-medium">Period %</th>
+                  <th className="px-3 py-2 text-left font-medium">Descripción</th>
+                  <th className="px-3 py-2 text-right font-medium">% Prev.</th>
+                  <th className="px-3 py-2 text-right font-medium">% Período (máx. 100 − prev)</th>
                 </tr>
               </thead>
               <tbody>
                 {budgetLines
                   .filter((l) => selectedLines.has(l.id))
-                  .map((line) => (
+                  .map((line) => {
+                    const prev = prevProgressByLine[line.id] ?? 0
+                    const maxPeriod = Math.max(0, 100 - prev)
+                    const value = progressByLine[line.id] ?? ''
+                    return (
                     <tr key={line.id} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="whitespace-nowrap px-3 py-2 font-mono text-gray-600 dark:text-gray-400">
-                        {line.wbsNode.code}
+                        {line.wbsNode?.code ?? '—'}
                       </td>
                       <td className="px-3 py-2 text-gray-900 dark:text-white">{line.description}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-gray-600 dark:text-gray-400">
+                        {prev.toFixed(2)}%
+                      </td>
                       <td className="px-3 py-2">
                         <Input
                           type="number"
                           min={0}
-                          max={100}
+                          max={maxPeriod}
                           step={0.01}
-                          value={progressByLine[line.id] ?? ''}
-                          onChange={(e) => setProgress(line.id, parseFloat(e.target.value) || 0)}
+                          placeholder={`0-${maxPeriod.toFixed(0)}`}
+                          value={value === '' ? '' : value}
+                          onChange={(e) => {
+                            const raw = parseFloat(e.target.value) || 0
+                            setProgress(line.id, raw)
+                          }}
                           className="w-24 text-right"
                         />
                       </td>
                     </tr>
-                  ))}
+                  )})}
               </tbody>
             </table>
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Adding lines…' : 'Add lines & finish'}
+              {submitting ? 'Agregando partidas…' : 'Agregar partidas y finalizar'}
             </Button>
             <Button type="button" variant="outline" onClick={() => setStep(2)}>
-              Back
+              Atrás
             </Button>
           </div>
         </form>

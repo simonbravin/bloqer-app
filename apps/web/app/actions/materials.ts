@@ -19,8 +19,9 @@ export async function getConsolidatedMaterials(budgetVersionId: string): Promise
   const session = await getSession()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
-  const { orgId } = await getOrgContext(session.user.id)
-  if (!orgId) throw new Error('Unauthorized')
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) throw new Error('Unauthorized')
+  const orgId = org.orgId
 
   const version = await prisma.budgetVersion.findFirst({
     where: { id: budgetVersionId, orgId },
@@ -111,8 +112,9 @@ export async function getMaterialsBySupplier(budgetVersionId: string): Promise<M
   const session = await getSession()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
-  const { orgId } = await getOrgContext(session.user.id)
-  if (!orgId) throw new Error('Unauthorized')
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) throw new Error('Unauthorized')
+  const orgId = org.orgId
 
   const resources = await prisma.budgetResource.findMany({
     where: {
@@ -176,8 +178,9 @@ export async function generatePurchaseOrder(
   const session = await getSession()
   if (!session?.user?.id) return { success: false, error: 'Unauthorized' }
 
-  const { orgId } = await getOrgContext(session.user.id)
-  if (!orgId) return { success: false, error: 'Unauthorized' }
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) return { success: false, error: 'Unauthorized' }
+  const orgId = org.orgId
 
   try {
     const version = await prisma.budgetVersion.findFirst({

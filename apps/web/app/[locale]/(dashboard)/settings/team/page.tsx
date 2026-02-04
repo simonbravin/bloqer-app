@@ -14,11 +14,11 @@ export default async function TeamSettingsPage() {
   const locale = await getLocale()
   if (!session?.user?.id) redirect({ href: '/login', locale })
 
-  const orgContext = await getOrgContext(session.user.id)
+  const orgContext = await getOrgContext(session!.user!.id)
   if (!orgContext) redirect({ href: '/login', locale })
 
-  const orgId = orgContext.orgId
-  const role = orgContext.role
+  const orgId = orgContext!.orgId
+  const role = orgContext!.role
 
   if (!['ADMIN', 'OWNER'].includes(role)) {
     redirect({ href: '/settings/profile', locale })
@@ -66,7 +66,7 @@ export default async function TeamSettingsPage() {
 
       <TeamMembersTable
         members={members}
-        currentUserId={session.user!.id}
+        currentUserId={session!.user!.id}
         canManage={role === 'OWNER'}
       />
     </div>

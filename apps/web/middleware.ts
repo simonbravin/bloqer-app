@@ -1,6 +1,6 @@
 import createMiddleware from 'next-intl/middleware'
-import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getToken } from 'next-auth/jwt'
+import { NextRequest, NextResponse } from 'next/server'
 import { routing } from '@/i18n/routing'
 
 const intlMiddleware = createMiddleware(routing)
@@ -29,7 +29,9 @@ function getLocaleFromPath(pathname: string): string {
   return match?.[1] ?? routing.defaultLocale
 }
 
-export default auth((req) => {
+// Run next-intl first; then protect routes using getToken (Edge-safe). Do not import
+// @/lib/auth here—it pulls in bcrypt and Prisma, which break in the Edge runtime.
+export default async function middleware(req: NextRequest) {
   const response = intlMiddleware(req)
 
   if (response.headers.get('x-middleware-rewrite') || response.status === 307 || response.status === 308) {
@@ -37,16 +39,25 @@ export default auth((req) => {
   }
 
   const pathname = req.nextUrl.pathname
-
-  if (isProtectedPath(pathname) && !req.auth) {
-    const locale = getLocaleFromPath(pathname)
-    const url = new URL(`/${locale}/login`, req.url)
-    url.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(url)
+  if (isProtectedPath(pathname)) {
+    try {
+      const token = await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+      })
+      if (!token) {
+        const locale = getLocaleFromPath(pathname)
+        const url = new URL(`/${locale}/login`, req.url)
+        url.searchParams.set('callbackUrl', pathname)
+        return NextResponse.redirect(url)
+      }
+    } catch {
+      // getToken can throw if NEXTAUTH_SECRET missing or invalid; let request through so layout can redirect
+    }
   }
 
   return response
-})
+}
 
 export const config = {
   matcher: [

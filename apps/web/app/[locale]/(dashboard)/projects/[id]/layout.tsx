@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { getProject } from '@/app/actions/projects'
+import { ProjectTabs } from '@/components/projects/project-tabs'
 
 type ProjectLayoutProps = {
   children: React.ReactNode
@@ -25,10 +26,15 @@ export default async function ProjectLayout({
   if (!org) return notFound()
 
   const { id } = await params
-  
+
   // Validate project exists and belongs to org
   const project = await getProject(id)
   if (!project) return notFound()
 
-  return <>{children}</>
+  return (
+    <>
+      <ProjectTabs projectId={id} />
+      {children}
+    </>
+  )
 }

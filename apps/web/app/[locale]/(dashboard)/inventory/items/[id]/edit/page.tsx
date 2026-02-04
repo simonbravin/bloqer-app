@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@repo/database'
 import { PageHeader } from '@/components/layout/page-header'
 import { ItemForm } from '@/components/inventory/item-form'
+import { getInventoryCategories, getInventorySubcategories } from '@/app/actions/inventory'
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -19,9 +20,14 @@ export default async function EditItemPage({ params }: PageProps) {
 
   const { id } = await params
 
-  const item = await prisma.inventoryItem.findFirst({
-    where: { id, orgId: org.orgId },
-  })
+  const [item, categories, subcategories] = await Promise.all([
+    prisma.inventoryItem.findFirst({
+      where: { id, orgId: org.orgId },
+      include: { category: true, subcategory: true },
+    }),
+    getInventoryCategories(),
+    getInventorySubcategories(),
+  ])
 
   if (!item) notFound()
 
@@ -39,8 +45,8 @@ export default async function EditItemPage({ params }: PageProps) {
       />
 
       <div className="p-6">
-        <div className="mx-auto max-w-3xl">
-          <ItemForm item={item} />
+        <div className="mx-auto max-w-5xl">
+          <ItemForm item={item} categories={categories} subcategories={subcategories} />
         </div>
       </div>
     </div>

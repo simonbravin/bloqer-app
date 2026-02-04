@@ -12,12 +12,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
+import { updateProject } from '@/app/actions/projects'
 
 type ProjectFormProps = {
   mode: 'create' | 'edit'
   defaultValues?: Partial<UpdateProjectInput>
   projectId?: string
-  onSubmit: (
+  /** Optional: when not passed, edit mode uses updateProject server action */
+  onSubmit?: (
     dataOrProjectId: CreateProjectInput | UpdateProjectInput | string,
     data?: UpdateProjectInput
   ) => Promise<{ error?: Record<string, string[]> } | void>
@@ -28,7 +30,7 @@ export function ProjectForm({
   mode,
   defaultValues,
   projectId,
-  onSubmit,
+  onSubmit: onSubmitProp,
   onCancelHref,
 }: ProjectFormProps) {
   const isCreate = mode === 'create'
@@ -44,16 +46,28 @@ export function ProjectForm({
       name: '',
       clientName: '',
       description: '',
+      location: '',
       m2: undefined,
       startDate: undefined,
     },
   })
 
   async function handleFormSubmit(data: CreateProjectInput | UpdateProjectInput) {
+    const submit =
+      onSubmitProp ??
+      (projectId != null
+        ? (id: string, d: UpdateProjectInput) => updateProject(id, d)
+        : null)
+
+    if (!submit) {
+      setError('root', { message: 'Missing submit handler' })
+      return
+    }
+
     const result =
       projectId != null
-        ? await onSubmit(projectId, data as UpdateProjectInput)
-        : await onSubmit(data)
+        ? await submit(projectId, data as UpdateProjectInput)
+        : await submit(data)
     if (result?.error) {
       if (result.error._form) {
         setError('root', { message: result.error._form[0] })
@@ -74,11 +88,11 @@ export function ProjectForm({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Project name *</Label>
+          <Label htmlFor="name">Nombre del proyecto *</Label>
           <Input
             id="name"
             {...register('name')}
-            placeholder="e.g. Office Tower A"
+            placeholder="ej. Torre Oficinas A"
           />
           {errors.name && (
             <p className="text-sm text-red-600 dark:text-red-400">
@@ -87,11 +101,11 @@ export function ProjectForm({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="clientName">Client name</Label>
+          <Label htmlFor="clientName">Cliente</Label>
           <Input
             id="clientName"
             {...register('clientName')}
-            placeholder="Client or company name"
+            placeholder="Nombre del cliente o empresa"
           />
           {errors.clientName && (
             <p className="text-sm text-red-600 dark:text-red-400">
@@ -100,7 +114,20 @@ export function ProjectForm({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="location">Ubicación</Label>
+          <Input
+            id="location"
+            {...register('location')}
+            placeholder="Dirección o ubicación del proyecto"
+          />
+          {errors.location && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {errors.location.message}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Descripción</Label>
           <textarea
             id="description"
             {...register('description')}
@@ -116,7 +143,7 @@ export function ProjectForm({
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="m2">Area (m²)</Label>
+            <Label htmlFor="m2">Superficie (m²)</Label>
             <Input
               id="m2"
               type="number"
@@ -132,7 +159,7 @@ export function ProjectForm({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="startDate">Start date</Label>
+            <Label htmlFor="startDate">Fecha de inicio</Label>
             <Input
               id="startDate"
               type="date"
@@ -147,16 +174,16 @@ export function ProjectForm({
         </div>
         {!isCreate && defaultValues && 'status' in defaultValues && (
           <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">Estado</Label>
             <select
               id="status"
               {...register('status')}
               className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
             >
-              <option value="DRAFT">Draft</option>
-              <option value="ACTIVE">Active</option>
-              <option value="ON_HOLD">On Hold</option>
-              <option value="COMPLETE">Complete</option>
+              <option value="DRAFT">Borrador</option>
+              <option value="ACTIVE">Activo</option>
+              <option value="ON_HOLD">En pausa</option>
+              <option value="COMPLETE">Completado</option>
             </select>
           </div>
         )}
@@ -170,17 +197,17 @@ export function ProjectForm({
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting
             ? isCreate
-              ? 'Creating…'
-              : 'Saving…'
+              ? 'Creando…'
+              : 'Guardando…'
             : isCreate
-              ? 'Create project'
-              : 'Save changes'}
+              ? 'Crear proyecto'
+              : 'Guardar cambios'}
         </Button>
         <Link
           href={onCancelHref}
           className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-transparent px-4 py-2 text-sm font-medium hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
         >
-          Cancel
+          Cancelar
         </Link>
       </div>
     </form>

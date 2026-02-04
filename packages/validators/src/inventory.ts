@@ -21,9 +21,14 @@ export const createInventoryItemSchema = z.object({
     .string()
     .max(1000, 'Descripción debe tener máximo 1000 caracteres')
     .optional(),
-  category: z.enum(['MATERIAL', 'LABOR', 'EQUIPMENT', 'SUBCONTRACT', 'OTHER'], {
-    errorMap: () => ({ message: 'Categoría inválida' }),
-  }),
+  categoryId: z.string().uuid('Categoría inválida'),
+  subcategoryId: z
+    .string()
+    .uuid('Subcategoría inválida')
+    .optional()
+    .nullable()
+    .or(z.literal(''))
+    .transform((v) => (v === '' ? undefined : v)),
   unit: z
     .string()
     .min(1, 'Unidad es requerida')

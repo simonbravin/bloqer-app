@@ -66,6 +66,7 @@ export async function createCertification(
     periodYear: number
     budgetVersionId: string
     notes?: string
+    issuedDate?: string
   }
 ) {
   const { org } = await getAuthContext()
@@ -76,18 +77,8 @@ export async function createCertification(
   })
   if (!project) throw new Error('Project not found')
 
-  const existing = await prisma.certification.findFirst({
-    where: {
-      projectId,
-      periodMonth: data.periodMonth,
-      periodYear: data.periodYear,
-    },
-  })
-  if (existing) {
-    throw new Error('Certification for this period already exists')
-  }
-
   const number = await generateCertNumber(projectId)
+  const issuedDateValue = data.issuedDate ? new Date(data.issuedDate) : undefined
 
   const cert = await prisma.certification.create({
     data: {
@@ -99,10 +90,12 @@ export async function createCertification(
       periodYear: data.periodYear,
       status: 'DRAFT',
       notes: data.notes,
+      issuedDate: issuedDateValue,
     },
   })
 
   revalidatePath(`/projects/${projectId}/certifications`)
+  revalidatePath(`/projects/${projectId}/finance/certifications`)
   return { success: true, certId: cert.id }
 }
 
@@ -176,6 +169,8 @@ export async function addCertificationLine(
 
   revalidatePath(`/projects/${cert.projectId}/certifications`)
   revalidatePath(`/projects/${cert.projectId}/certifications/${certId}`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications/${certId}`)
   return { success: true }
 }
 
@@ -199,7 +194,75 @@ export async function deleteCertificationLine(lineId: string) {
 
   revalidatePath(`/projects/${line.certification.projectId}/certifications`)
   revalidatePath(`/projects/${line.certification.projectId}/certifications/${line.certificationId}`)
+  revalidatePath(`/projects/${line.certification.projectId}/finance/certifications`)
+  revalidatePath(`/projects/${line.certification.projectId}/finance/certifications/${line.certificationId}`)
   return { success: true }
+}
+
+export async function deleteCertification(certId: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'ADMIN')
+
+  const cert = await prisma.certification.findFirst({
+    where: { id: certId, orgId: org.orgId },
+    select: { id: true, projectId: true, status: true },
+  })
+  if (!cert) throw new Error('Certificación no encontrada')
+  if (cert.status === 'APPROVED') {
+    throw new Error('No se puede eliminar una certificación aprobada')
+  }
+
+  await prisma.certificationLine.deleteMany({ where: { certificationId: certId } })
+  await prisma.certification.delete({ where: { id: certId } })
+
+  revalidatePath(`/projects/${cert.projectId}/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications`)
+  return { success: true }
+}
+
+export async function updateCertification(
+  certId: string,
+  data: { notes?: string; periodMonth?: number; periodYear?: number; issuedDate?: string | null }
+) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const cert = await prisma.certification.findFirst({
+    where: { id: certId, orgId: org.orgId, status: 'DRAFT' },
+    select: { id: true, projectId: true },
+  })
+  if (!cert) throw new Error('Certificación no encontrada o no está en borrador')
+
+  const updateData: {
+    notes?: string
+    periodMonth?: number
+    periodYear?: number
+    issuedDate?: Date | null
+  } = {}
+  if (data.notes !== undefined) updateData.notes = data.notes
+  if (data.periodMonth !== undefined) updateData.periodMonth = data.periodMonth
+  if (data.periodYear !== undefined) updateData.periodYear = data.periodYear
+  if (data.issuedDate !== undefined) updateData.issuedDate = data.issuedDate ? new Date(data.issuedDate) : null
+
+  await prisma.certification.update({
+    where: { id: certId },
+    data: updateData,
+  })
+
+  revalidatePath(`/projects/${cert.projectId}/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications/${certId}`)
+  return { success: true }
+}
+
+async function getNextCertTransactionNumber(orgId: string): Promise<string> {
+  const last = await prisma.financeTransaction.findFirst({
+    where: { orgId, transactionNumber: { startsWith: 'TXN-' } },
+    orderBy: { transactionNumber: 'desc' },
+    select: { transactionNumber: true },
+  })
+  const lastNum = last?.transactionNumber?.match(/\d+$/)?.[0] ?? '0'
+  return `TXN-${String(Number(lastNum) + 1).padStart(6, '0')}`
 }
 
 export async function issueCertification(certId: string) {
@@ -208,7 +271,7 @@ export async function issueCertification(certId: string) {
 
   const cert = await prisma.certification.findFirst({
     where: { id: certId, orgId: org.orgId, status: 'DRAFT' },
-    include: { lines: true },
+    include: { lines: true, project: { select: { name: true } } },
   })
 
   if (!cert) throw new Error('Certification not found')
@@ -228,19 +291,45 @@ export async function issueCertification(certId: string) {
   })
   const integritySeal = crypto.createHash('sha256').update(data).digest('hex')
 
+  const issuedDate = new Date()
   await prisma.certification.update({
     where: { id: certId },
     data: {
       status: 'ISSUED',
       integritySeal,
       issuedByOrgMemberId: org.memberId,
-      issuedAt: new Date(),
-      issuedDate: new Date(),
+      issuedAt: issuedDate,
+      issuedDate,
+    },
+  })
+
+  const totalAmount = cert.lines.reduce((sum, l) => sum.add(l.periodAmount), new Prisma.Decimal(0))
+  const transactionNumber = await getNextCertTransactionNumber(org.orgId)
+  await prisma.financeTransaction.create({
+    data: {
+      orgId: org.orgId,
+      projectId: cert.projectId,
+      type: 'INCOME',
+      status: 'SUBMITTED',
+      transactionNumber,
+      issueDate: issuedDate,
+      currency: 'USD',
+      subtotal: totalAmount,
+      taxTotal: new Prisma.Decimal(0),
+      total: totalAmount,
+      amountBaseCurrency: totalAmount,
+      exchangeRateSnapshot: { rate: 1, baseCurrency: 'USD' } as object,
+      description: `Certificación #${cert.number} - ${cert.project.name}`,
+      reference: `CERT-${cert.number}`,
+      createdByOrgMemberId: org.memberId,
     },
   })
 
   revalidatePath(`/projects/${cert.projectId}/certifications`)
   revalidatePath(`/projects/${cert.projectId}/certifications/${certId}`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications/${certId}`)
+  revalidatePath(`/projects/${cert.projectId}/finance/transactions`)
   return { success: true }
 }
 
@@ -249,13 +338,16 @@ export async function getCertification(certId: string) {
   const cert = await prisma.certification.findFirst({
     where: { id: certId, orgId: org.orgId },
     include: {
+      project: { select: { id: true, name: true, projectNumber: true } },
+      budgetVersion: { select: { id: true, versionCode: true } },
       issuedBy: { select: { user: { select: { fullName: true } } } },
       approvedBy: { select: { user: { select: { fullName: true } } } },
       lines: {
         include: {
           wbsNode: { select: { code: true, name: true } },
-          budgetLine: { select: { description: true } },
+          budgetLine: { select: { description: true, unit: true } },
         },
+        orderBy: [{ wbsNode: { code: 'asc' } }],
       },
     },
   })
@@ -274,7 +366,30 @@ export async function getBudgetLinesForCert(budgetVersionId: string) {
     },
     orderBy: [{ wbsNode: { code: 'asc' } }, { sortOrder: 'asc' }],
   })
-  return lines
+  return lines.map((bl) => ({
+    id: bl.id,
+    wbsNodeId: bl.wbsNodeId,
+    description: bl.description,
+    quantity: Number(bl.quantity),
+    salePriceTotal: Number(bl.salePriceTotal),
+    wbsNode: bl.wbsNode ? { id: bl.wbsNode.id, code: bl.wbsNode.code, name: bl.wbsNode.name } : null,
+  }))
+}
+
+/** Prev progress % by budgetLineId (from approved certs before current period). For UI validation: period % + prev <= 100. */
+export async function getPrevProgressForBudgetLines(
+  budgetVersionId: string,
+  periodMonth: number,
+  periodYear: number,
+  budgetLineIds: string[]
+): Promise<Record<string, number>> {
+  await getAuthContext()
+  const result: Record<string, number> = {}
+  for (const budgetLineId of budgetLineIds) {
+    const { prevPct } = await calculatePrevProgress(budgetLineId, { month: periodMonth, year: periodYear })
+    result[budgetLineId] = Number(prevPct)
+  }
+  return result
 }
 
 export async function approveCertification(certId: string) {
@@ -283,6 +398,7 @@ export async function approveCertification(certId: string) {
 
   const cert = await prisma.certification.findFirst({
     where: { id: certId, orgId: org.orgId, status: 'ISSUED' },
+    select: { id: true, projectId: true, number: true },
   })
 
   if (!cert) throw new Error('Certification not found or not issued')
@@ -296,7 +412,76 @@ export async function approveCertification(certId: string) {
     },
   })
 
+  await prisma.financeTransaction.updateMany({
+    where: {
+      projectId: cert.projectId,
+      orgId: org.orgId,
+      reference: `CERT-${cert.number}`,
+      type: 'INCOME',
+    },
+    data: { status: 'PAID', paidDate: new Date() },
+  })
+
   revalidatePath(`/projects/${cert.projectId}/certifications`)
   revalidatePath(`/projects/${cert.projectId}/certifications/${certId}`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications/${certId}`)
+  revalidatePath(`/projects/${cert.projectId}/finance/transactions`)
   return { success: true }
+}
+
+export async function rejectCertification(certId: string, notes?: string) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'ADMIN')
+
+  const cert = await prisma.certification.findFirst({
+    where: { id: certId, orgId: org.orgId, status: 'ISSUED' },
+    select: { id: true, projectId: true, notes: true },
+  })
+
+  if (!cert) throw new Error('Certification not found or not issued')
+
+  await prisma.certification.update({
+    where: { id: certId },
+    data: {
+      status: 'REJECTED',
+      approvedByOrgMemberId: org.memberId,
+      approvedAt: new Date(),
+      notes: notes ?? cert.notes ?? undefined,
+    },
+  })
+
+  revalidatePath(`/projects/${cert.projectId}/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/certifications/${certId}`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications`)
+  revalidatePath(`/projects/${cert.projectId}/finance/certifications/${certId}`)
+  return { success: true }
+}
+
+export async function getProjectCertifications(projectId: string) {
+  const { org } = await getAuthContext()
+  const certifications = await prisma.certification.findMany({
+    where: { projectId, orgId: org.orgId },
+    orderBy: { number: 'desc' },
+    include: {
+      budgetVersion: { select: { versionCode: true } },
+      issuedBy: { select: { user: { select: { fullName: true } } } },
+      approvedBy: { select: { user: { select: { fullName: true } } } },
+      lines: { select: { periodAmount: true } },
+    },
+  })
+  return certifications.map((cert) => ({
+    id: cert.id,
+    number: cert.number,
+    periodMonth: cert.periodMonth,
+    periodYear: cert.periodYear,
+    status: cert.status,
+    totalAmount: cert.lines.reduce((sum, line) => sum + Number(line.periodAmount), 0),
+    issuedDate: cert.issuedDate,
+    issuedAt: cert.issuedAt,
+    approvedAt: cert.approvedAt,
+    issuedBy: cert.issuedBy,
+    approvedBy: cert.approvedBy,
+    budgetVersion: cert.budgetVersion,
+  }))
 }

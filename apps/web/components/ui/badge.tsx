@@ -4,7 +4,7 @@ import { BADGE_CLASSES, type StatusColor } from '@/lib/design-tokens'
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** Semantic status (preferred) or legacy variance names */
-  variant?: StatusColor | 'default' | 'under' | 'track' | 'over' | 'outline'
+  variant?: StatusColor | 'default' | 'under' | 'track' | 'over' | 'outline' | 'secondary'
 }
 
 const SEMANTIC_MAP: Record<string, StatusColor> = {
@@ -20,7 +20,7 @@ const SEMANTIC_MAP: Record<string, StatusColor> = {
 
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant = 'default', ...props }, ref) => {
-    const semanticVariant = SEMANTIC_MAP[variant]
+    const semanticVariant = variant && variant !== 'secondary' && variant !== 'outline' ? SEMANTIC_MAP[variant] : undefined
     const useSemantic = semanticVariant && BADGE_CLASSES[semanticVariant]
 
     return (
@@ -32,7 +32,9 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
             ? BADGE_CLASSES[semanticVariant]
             : variant === 'outline'
               ? 'border border-border bg-transparent text-foreground'
-              : 'border-transparent bg-muted text-muted-foreground',
+              : variant === 'secondary'
+                ? 'border-transparent bg-secondary text-secondary-foreground'
+                : 'border-transparent bg-muted text-muted-foreground',
           'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors',
           className
         )}

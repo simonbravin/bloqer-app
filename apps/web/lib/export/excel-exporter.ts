@@ -134,14 +134,15 @@ export class ExcelExporter {
   }
 
   private groupData(data: unknown[], field: string): Record<string, unknown[]> {
-    return (data as Record<string, unknown>[]).reduce(
+    const rows = data as Record<string, unknown>[]
+    return rows.reduce<Record<string, unknown[]>>(
       (acc, item) => {
         const key = String(item[field] ?? 'Sin agrupar')
         if (!acc[key]) acc[key] = []
         acc[key].push(item)
         return acc
       },
-      {} as Record<string, unknown[]>
+      {}
     )
   }
 
@@ -153,7 +154,8 @@ export class ExcelExporter {
       if (idx === 0) return 'TOTAL'
       if (col.type === 'currency' || col.type === 'number') {
         const sum = data.reduce((acc, item) => {
-          const value = parseFloat(String(item[col.field])) || 0
+          const raw = item[col.field]
+          const value = typeof raw === 'number' ? raw : parseFloat(String(raw)) || 0
           return acc + value
         }, 0)
         return sum

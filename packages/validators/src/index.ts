@@ -108,15 +108,21 @@ export {
   updateFinanceTransactionSchema,
   createFinanceLineSchema,
   updateFinanceLineSchema,
+  projectTransactionCreateSchema,
+  projectTransactionUpdateSchema,
   TRANSACTION_TYPE,
   TRANSACTION_STATUS,
+  PROJECT_TRANSACTION_TYPE,
   getTransactionTypePrefix,
   type TransactionType,
   type TransactionStatus,
+  type ProjectTransactionType,
   type CreateFinanceTransactionInput,
   type UpdateFinanceTransactionInput,
   type CreateFinanceLineInput,
   type UpdateFinanceLineInput,
+  type ProjectTransactionCreateInput,
+  type ProjectTransactionUpdateInput,
 } from './finance'
 
 export {

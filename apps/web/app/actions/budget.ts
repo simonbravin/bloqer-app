@@ -20,6 +20,7 @@ import type {
 } from '@repo/validators'
 import { calculateLineTotal, calculateBudgetLineTotal } from '@/lib/budget-utils'
 import { calculateBudgetLine } from '@/lib/budget-calculations'
+import { createAuditLog } from '@/lib/audit-log'
 async function getAuthContext() {
   const session = await getSession()
   if (!session?.user?.id) return redirectToLogin()
@@ -282,6 +283,294 @@ export async function approveBudgetVersion(versionId: string) {
   revalidatePath(`/projects/${version.projectId}/budget`)
   revalidatePath(`/projects/${version.projectId}/budget/${versionId}`)
   return { success: true }
+}
+
+/**
+ * Cambiar estado de versión de presupuesto (DRAFT | BASELINE | APPROVED)
+ */
+export async function updateBudgetVersionStatus(
+  versionId: string,
+  newStatus: 'DRAFT' | 'BASELINE' | 'APPROVED'
+) {
+  const session = await getSession()
+  if (!session?.user?.id) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
+  const org = await getOrgContext(session.user.id)
+  if (!org) return { success: false, error: 'Unauthorized' }
+  requireRole(org.role, 'ADMIN')
+
+  try {
+    const version = await prisma.budgetVersion.findFirst({
+      where: { id: versionId, orgId: org.orgId },
+      include: { project: { select: { id: true, name: true } } },
+    })
+
+    if (!version) {
+      return { success: false, error: 'Version not found' }
+    }
+
+    if (version.status === 'APPROVED') {
+      return { success: false, error: 'No se puede modificar una versión aprobada' }
+    }
+
+    if (newStatus === 'BASELINE') {
+      const existingBaseline = await prisma.budgetVersion.findFirst({
+        where: {
+          projectId: version.projectId,
+          status: 'BASELINE',
+          id: { not: versionId },
+        },
+      })
+      if (existingBaseline) {
+        return {
+          success: false,
+          error: 'Ya existe una versión BASELINE. Debes quitarle ese estado primero.',
+        }
+      }
+    }
+
+    const oldStatus = version.status
+    const updates: Record<string, unknown> = { status: newStatus }
+    if (newStatus === 'APPROVED') {
+      updates.approvedAt = new Date()
+      updates.approvedByOrgMemberId = org.memberId
+    }
+
+    await prisma.budgetVersion.update({
+      where: { id: versionId },
+      data: updates,
+    })
+
+    await createAuditLog({
+      orgId: org.orgId,
+      userId: session.user.id,
+      action: 'UPDATE',
+      entity: 'BudgetVersion',
+      entityId: versionId,
+      projectId: version.projectId,
+      oldValues: { status: oldStatus },
+      newValues: { status: newStatus },
+      description: `Estado de presupuesto cambiado de ${oldStatus} a ${newStatus} en proyecto "${version.project.name}"`,
+    })
+
+    revalidatePath(`/projects/${version.project.id}/budget`)
+    revalidatePath(`/projects/${version.project.id}/budget/${versionId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating budget version status:', error)
+    return { success: false, error: 'Error al actualizar estado' }
+  }
+}
+
+/**
+ * Cambiar modo de markups (SIMPLE | ADVANCED)
+ */
+export async function updateMarkupMode(
+  versionId: string,
+  mode: 'SIMPLE' | 'ADVANCED',
+  applyGlobalsToAll?: boolean
+) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  try {
+    const version = await prisma.budgetVersion.findFirst({
+      where: { id: versionId, orgId: org.orgId },
+      select: {
+        id: true,
+        status: true,
+        markupMode: true,
+        projectId: true,
+        project: { select: { id: true } },
+        globalOverheadPct: true,
+        globalFinancialPct: true,
+        globalProfitPct: true,
+        globalTaxPct: true,
+      },
+    })
+
+    if (!version) {
+      return { success: false, error: 'Version not found' }
+    }
+
+    if (version.status !== 'DRAFT') {
+      return { success: false, error: 'Solo se puede editar en modo DRAFT' }
+    }
+
+    await prisma.budgetVersion.update({
+      where: { id: versionId },
+      data: { markupMode: mode },
+    })
+
+    if (mode === 'SIMPLE' && applyGlobalsToAll) {
+      await prisma.budgetLine.updateMany({
+        where: { budgetVersionId: versionId },
+        data: {
+          overheadPct: version.globalOverheadPct,
+          financialPct: version.globalFinancialPct,
+          profitPct: version.globalProfitPct,
+          taxPct: version.globalTaxPct,
+        },
+      })
+    }
+
+    revalidatePath(`/projects/${version.project.id}/budget/${versionId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating markup mode:', error)
+    return { success: false, error: 'Error al cambiar modo' }
+  }
+}
+
+/**
+ * Actualizar markups globales de la versión
+ */
+export async function updateGlobalMarkups(
+  versionId: string,
+  markups: {
+    overheadPct: number
+    financialPct: number
+    profitPct: number
+    taxPct: number
+  },
+  applyToAllLines?: boolean
+) {
+  const { session, org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  try {
+    const version = await prisma.budgetVersion.findFirst({
+      where: { id: versionId, orgId: org.orgId },
+      select: {
+        id: true,
+        status: true,
+        markupMode: true,
+        projectId: true,
+        versionCode: true,
+        globalOverheadPct: true,
+        globalFinancialPct: true,
+        globalProfitPct: true,
+        globalTaxPct: true,
+        project: { select: { id: true, name: true } },
+      },
+    })
+
+    if (!version) {
+      return { success: false, error: 'Version not found' }
+    }
+
+    if (version.status !== 'DRAFT') {
+      return { success: false, error: 'Solo se puede editar en modo DRAFT' }
+    }
+
+    const oldValues = {
+      overheadPct: Number(version.globalOverheadPct),
+      financialPct: Number(version.globalFinancialPct),
+      profitPct: Number(version.globalProfitPct),
+      taxPct: Number(version.globalTaxPct),
+    }
+
+    await prisma.budgetVersion.update({
+      where: { id: versionId },
+      data: {
+        globalOverheadPct: new Prisma.Decimal(markups.overheadPct),
+        globalFinancialPct: new Prisma.Decimal(markups.financialPct),
+        globalProfitPct: new Prisma.Decimal(markups.profitPct),
+        globalTaxPct: new Prisma.Decimal(markups.taxPct),
+      },
+    })
+
+    const shouldApplyToLines = version.markupMode === 'SIMPLE' || applyToAllLines
+    if (shouldApplyToLines) {
+      await prisma.budgetLine.updateMany({
+        where: { budgetVersionId: versionId },
+        data: {
+          overheadPct: new Prisma.Decimal(markups.overheadPct),
+          financialPct: new Prisma.Decimal(markups.financialPct),
+          profitPct: new Prisma.Decimal(markups.profitPct),
+          taxPct: new Prisma.Decimal(markups.taxPct),
+        },
+      })
+    }
+
+    await createAuditLog({
+      orgId: org.orgId,
+      userId: session.user.id,
+      action: 'UPDATE',
+      entity: 'BudgetVersion',
+      entityId: versionId,
+      projectId: version.projectId,
+      oldValues,
+      newValues: markups,
+      description: `Márgenes actualizados en proyecto "${version.project.name}" - Versión ${version.versionCode}`,
+    })
+
+    revalidatePath(`/projects/${version.project.id}/budget/${versionId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating global markups:', error)
+    return { success: false, error: 'Error al actualizar márgenes' }
+  }
+}
+
+/**
+ * Actualizar markup de una línea (solo modo ADVANCED)
+ */
+export async function updateLineMarkup(
+  lineId: string,
+  field: 'overheadPct' | 'financialPct' | 'profitPct' | 'taxPct',
+  value: number
+) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  try {
+    const line = await prisma.budgetLine.findFirst({
+      where: { id: lineId, orgId: org.orgId },
+      include: {
+        budgetVersion: {
+          select: {
+            status: true,
+            markupMode: true,
+            projectId: true,
+          },
+        },
+      },
+    })
+
+    if (!line) {
+      return { success: false, error: 'Line not found' }
+    }
+
+    if (line.budgetVersion.status !== 'DRAFT') {
+      return { success: false, error: 'Solo editable en DRAFT' }
+    }
+
+    if (line.budgetVersion.markupMode !== 'ADVANCED') {
+      return {
+        success: false,
+        error: 'Solo editable en modo AVANZADO',
+      }
+    }
+
+    if (value < 0 || value > 100) {
+      return { success: false, error: 'El porcentaje debe estar entre 0 y 100' }
+    }
+
+    await prisma.budgetLine.update({
+      where: { id: lineId },
+      data: { [field]: new Prisma.Decimal(value) },
+    })
+
+    revalidatePath(`/projects/${line.budgetVersion.projectId}/budget`)
+    revalidatePath(`/projects/${line.budgetVersion.projectId}/budget/${line.budgetVersionId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating line markup:', error)
+    return { success: false, error: 'Error al actualizar margen' }
+  }
 }
 
 export async function createBudgetLine(versionId: string, data: CreateBudgetLineInput) {

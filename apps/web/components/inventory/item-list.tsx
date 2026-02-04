@@ -7,7 +7,8 @@ type ItemRow = {
   id: string
   sku: string
   name: string
-  category: string
+  category: { id: string; name: string }
+  subcategory?: { id: string; name: string } | null
   unit: string
   minStockQty: { toNumber?: () => number } | number | null
   reorderQty: { toNumber?: () => number } | number | null
@@ -74,7 +75,8 @@ export function ItemList({ items }: ItemListProps) {
                 <td className="erp-table-cell font-mono text-foreground">{item.sku}</td>
                 <td className="erp-table-cell font-medium text-foreground">{item.name}</td>
                 <td className="erp-table-cell text-muted-foreground">
-                  {item.category.replace(/_/g, ' ')}
+                  {item.category.name}
+                  {item.subcategory ? ` / ${item.subcategory.name}` : ''}
                 </td>
                 <td className="erp-table-cell text-muted-foreground">{item.unit}</td>
                 <td className="erp-table-cell-numeric text-foreground">

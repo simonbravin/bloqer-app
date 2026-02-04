@@ -1,11 +1,12 @@
 import { Badge } from '@/components/ui/badge'
 
 /** Maps certification status to semantic Badge variant */
-const STATUS_VARIANT: Record<string, 'default' | 'info' | 'success'> = {
+const STATUS_VARIANT: Record<string, 'default' | 'info' | 'success' | 'danger'> = {
   DRAFT: 'default',
   BASELINE: 'info',
   ISSUED: 'info',
   APPROVED: 'success',
+  REJECTED: 'danger',
 }
 
 interface CertStatusBadgeProps {
@@ -22,7 +23,9 @@ export function CertStatusBadge({ status, label }: CertStatusBadgeProps) {
           ? 'info'
           : variant === 'success'
             ? 'success'
-            : 'default'
+            : variant === 'danger'
+              ? 'danger'
+              : 'default'
       }
     >
       {label ?? status}

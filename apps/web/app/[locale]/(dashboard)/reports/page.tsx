@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { prisma } from '@repo/database'
 import { CustomReportsList } from '@/components/reports/custom-reports-list'
+import { QueryBuilder } from '@/components/reports/query-builder'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
@@ -33,18 +34,32 @@ export default async function ReportsPage() {
 
   const predefinedReports = [
     {
-      id: 'materials-by-project',
-      name: 'Materiales por Proyecto',
-      description: 'Consolidado de materiales agrupados por proyecto',
+      id: 'expenses-by-supplier',
+      name: 'Gastos por Proveedor',
+      description: 'Análisis de compras consolidado por proveedor',
+      category: 'FINANCE',
+      icon: '💰',
+    },
+    {
+      id: 'budget-vs-actual',
+      name: 'Presupuesto vs Real',
+      description: 'Control de costos por proyecto',
+      category: 'BUDGET',
+      icon: '📊',
+    },
+    {
+      id: 'top-materials',
+      name: 'Top 10 Materiales más Caros',
+      description: 'Análisis de materiales por costo total en presupuestos',
       category: 'MATERIALS',
       icon: '📦',
     },
     {
-      id: 'expenses-by-supplier',
-      name: 'Gastos por Proveedor',
-      description: 'Total de gastos agrupados por proveedor',
+      id: 'certifications',
+      name: 'Evolución de Certificaciones',
+      description: 'Ingresos cobrados por proyecto (por estado)',
       category: 'FINANCE',
-      icon: '💰',
+      icon: '📋',
     },
     {
       id: 'purchases-multi-project',
@@ -54,11 +69,11 @@ export default async function ReportsPage() {
       icon: '🛒',
     },
     {
-      id: 'budget-variance',
-      name: 'Variación de Presupuesto',
-      description: 'Comparación presupuestado vs real por proyecto',
-      category: 'BUDGET',
-      icon: '📊',
+      id: 'materials-by-project',
+      name: 'Materiales por Proyecto',
+      description: 'Consolidado de materiales agrupados por proyecto',
+      category: 'MATERIALS',
+      icon: '📦',
     },
   ]
 
@@ -103,6 +118,16 @@ export default async function ReportsPage() {
             </Link>
           ))}
         </div>
+      </div>
+
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+          Query Builder
+        </h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Construí consultas sin SQL: elegí tabla, campos y filtros para previsualizar datos.
+        </p>
+        <QueryBuilder />
       </div>
 
       <div>

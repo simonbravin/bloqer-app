@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard,
+  BarChart3,
   DollarSign,
   Calendar,
   Receipt,
@@ -53,10 +54,15 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
   // Architecture: Dashboard Proyecto, Presupuesto, Cronograma, Finanzas, Certificaciones, Calidad (RFI), Libro de Obra, Documentos
   const navigation: NavItem[] = [
     {
-      name: t('projectDashboard'),
+      name: t('overview'),
       href: `/projects/${projectId}`,
       icon: LayoutDashboard,
       exact: true,
+    },
+    {
+      name: t('projectDashboard'),
+      href: `/projects/${projectId}/dashboard`,
+      icon: BarChart3,
     },
     {
       name: t('budget'),
@@ -87,6 +93,11 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
       name: t('certifications'),
       href: `/projects/${projectId}/certifications`,
       icon: FileCheck,
+    },
+    {
+      name: t('reports'),
+      href: `/projects/${projectId}/reports`,
+      icon: BarChart3,
     },
     {
       name: t('quality'),

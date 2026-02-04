@@ -72,7 +72,7 @@ export async function getOrgKPIs(orgId: string): Promise<KPIs> {
   const monthExpenses = await prisma.financeTransaction.aggregate({
     where: {
       orgId,
-      type: { in: ['PAYMENT_MADE', 'EXPENSE'] },
+      type: { in: ['EXPENSE', 'PURCHASE'] },
       status: { in: ['APPROVED', 'PAID'] },
       issueDate: { gte: firstDayOfMonth },
       deleted: false,
@@ -114,7 +114,7 @@ export async function getCashflowData(orgId: string): Promise<CashflowDataPoint[
   const expenses = await prisma.financeTransaction.findMany({
     where: {
       orgId,
-      type: { in: ['PAYMENT_MADE', 'EXPENSE'] },
+      type: { in: ['EXPENSE', 'PURCHASE'] },
       status: { in: ['APPROVED', 'PAID'] },
       issueDate: { gte: sixMonthsAgo },
       deleted: false,
@@ -201,7 +201,7 @@ export async function getProjectCashflowData(
       where: {
         orgId,
         projectId,
-        type: { in: ['PAYMENT_MADE', 'EXPENSE'] },
+        type: { in: ['EXPENSE', 'PURCHASE'] },
         status: { in: ['APPROVED', 'PAID'] },
         issueDate: { gte: sixMonthsAgo },
         deleted: false,

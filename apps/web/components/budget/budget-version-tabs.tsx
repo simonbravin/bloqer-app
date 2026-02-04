@@ -33,7 +33,7 @@ type WbsTreeNode = {
   category: string
   parentId: string | null
   unit: string | null
-  quantity: unknown
+  quantity: number
   children: WbsTreeNode[]
 }
 

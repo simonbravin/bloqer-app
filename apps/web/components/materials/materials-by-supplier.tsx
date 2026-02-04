@@ -12,9 +12,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { ExportDialog } from '@/components/export/export-dialog'
 import { toast } from 'sonner'
 import { generatePurchaseOrder } from '@/app/actions/materials'
-import { ChevronDown, ChevronRight, FileText, Loader2 } from 'lucide-react'
+import { exportMaterialsBySupplierToExcel } from '@/app/actions/export'
+import { ChevronDown, ChevronRight, FileDown, FileText, Loader2 } from 'lucide-react'
 import type { MaterialsBySupplier } from '@/lib/types/materials'
 
 interface MaterialsBySupplierProps {
@@ -30,6 +32,30 @@ export function MaterialsBySupplierView({
 
   const [expandedSuppliers, setExpandedSuppliers] = useState<Set<string>>(new Set())
   const [generatingPO, setGeneratingPO] = useState<string | null>(null)
+  const [exportingSupplier, setExportingSupplier] = useState<string | null>(null)
+
+  const exportColumns = [
+    { field: 'name', label: t('material'), defaultVisible: true },
+    { field: 'unit', label: t('unit'), defaultVisible: true },
+    { field: 'quantity', label: t('quantity'), defaultVisible: true },
+    { field: 'unitCost', label: t('unitCost'), defaultVisible: true },
+    { field: 'totalCost', label: t('totalCost'), defaultVisible: true },
+  ]
+
+  async function handleExportSupplier(
+    format: 'excel' | 'pdf',
+    selectedColumns: string[]
+  ) {
+    if (!exportingSupplier) return { success: false, error: 'No supplier selected' }
+    if (format !== 'excel') {
+      return { success: false, error: 'Solo exportación Excel disponible por proveedor' }
+    }
+    return await exportMaterialsBySupplierToExcel(
+      budgetVersionId,
+      exportingSupplier,
+      selectedColumns
+    )
+  }
 
   function toggleSupplier(supplierName: string) {
     setExpandedSuppliers((prev) => {
@@ -118,18 +144,28 @@ export function MaterialsBySupplierView({
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        onClick={() => handleGeneratePO(supplier.supplierName)}
-                        disabled={isGenerating}
-                      >
-                        {isGenerating ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <FileText className="mr-2 h-4 w-4" />
-                        )}
-                        {t('generatePO')}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setExportingSupplier(supplier.supplierName)}
+                        >
+                          <FileDown className="mr-1 h-3 w-3" />
+                          {t('export')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleGeneratePO(supplier.supplierName)}
+                          disabled={isGenerating}
+                        >
+                          {isGenerating ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileText className="mr-2 h-4 w-4" />
+                          )}
+                          {t('generatePO')}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
@@ -178,6 +214,16 @@ export function MaterialsBySupplierView({
           </TableBody>
         </Table>
       </div>
+
+      {exportingSupplier && (
+        <ExportDialog
+          open={!!exportingSupplier}
+          onOpenChange={(open) => !open && setExportingSupplier(null)}
+          title={`${t('material')} - ${exportingSupplier}`}
+          columns={exportColumns}
+          onExport={handleExportSupplier}
+        />
+      )}
     </div>
   )
 }

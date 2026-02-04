@@ -3,6 +3,9 @@
 import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { ExportDialog } from '@/components/export/export-dialog'
+import { exportProjectsToExcel } from '@/app/actions/export'
+import { FileDown } from 'lucide-react'
 import {
   flexRender,
   getCoreRowModel,
@@ -52,12 +55,13 @@ interface Project {
 interface ProjectsListClientProps {
   projects: Project[]
   canEdit: boolean
+  showExport?: boolean
 }
 
 /**
  * Projects list with TanStack Table, filtering, sorting, and view toggle
  */
-export function ProjectsListClient({ projects, canEdit }: ProjectsListClientProps) {
+export function ProjectsListClient({ projects, canEdit, showExport = false }: ProjectsListClientProps) {
   const t = useTranslations('projects')
   const tCommon = useTranslations('common')
   const router = useRouter()
@@ -66,6 +70,24 @@ export function ProjectsListClient({ projects, canEdit }: ProjectsListClientProp
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
+  const [showExportDialog, setShowExportDialog] = useState(false)
+
+  const exportColumns = [
+    { field: 'projectNumber', label: t('projectNumber'), defaultVisible: true },
+    { field: 'name', label: t('name'), defaultVisible: true },
+    { field: 'clientName', label: t('client'), defaultVisible: true },
+    { field: 'location', label: t('location'), defaultVisible: true },
+    { field: 'phase', label: t('phase'), defaultVisible: true },
+    { field: 'status', label: t('status'), defaultVisible: true },
+    { field: 'createdAt', label: t('createdAt'), defaultVisible: false },
+  ]
+
+  async function handleExport(format: 'excel' | 'pdf', selectedColumns: string[]) {
+    if (format !== 'excel') {
+      return { success: false, error: 'Solo exportación Excel disponible para proyectos' }
+    }
+    return await exportProjectsToExcel(selectedColumns)
+  }
 
   // Search and filter states
   const [search, setSearch] = useState(searchParams.get('search') || '')
@@ -250,7 +272,16 @@ export function ProjectsListClient({ projects, canEdit }: ProjectsListClientProp
   })
 
   return (
+    <>
     <div className="space-y-4">
+      {showExport && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setShowExportDialog(true)}>
+            <FileDown className="mr-2 h-4 w-4" />
+            {tCommon('export')} Lista
+          </Button>
+        </div>
+      )}
       {/* Filters and view toggle */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search */}
@@ -412,5 +443,14 @@ export function ProjectsListClient({ projects, canEdit }: ProjectsListClientProp
         </div>
       )}
     </div>
+
+    <ExportDialog
+      open={showExportDialog}
+      onOpenChange={setShowExportDialog}
+      title={t('exportListTitle')}
+      columns={exportColumns}
+      onExport={handleExport}
+    />
+    </>
   )
 }

@@ -11,6 +11,8 @@ import {
   Building2,
   FileText,
   Settings,
+  DollarSign,
+  BarChart3,
 } from 'lucide-react'
 
 interface GlobalSidebarProps {
@@ -38,9 +40,19 @@ export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: Glob
       icon: FolderKanban,
     },
     {
+      name: t('reports'),
+      href: '/reports',
+      icon: BarChart3,
+    },
+    {
       name: t('team'),
       href: '/team',
       icon: Users,
+    },
+    {
+      name: t('finance'),
+      href: '/finance',
+      icon: DollarSign,
     },
     {
       name: t('inventory'),

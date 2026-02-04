@@ -10,10 +10,10 @@ export default async function InviteMemberPage() {
   const locale = await getLocale()
   if (!session?.user?.id) redirect({ href: '/login', locale })
 
-  const orgContext = await getOrgContext(session.user.id)
+  const orgContext = await getOrgContext(session!.user!.id)
   if (!orgContext) redirect({ href: '/login', locale })
 
-  if (orgContext.role !== 'OWNER') {
+  if (orgContext!.role !== 'OWNER') {
     redirect({ href: '/settings/team', locale })
   }
 

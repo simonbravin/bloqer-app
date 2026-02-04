@@ -3,6 +3,7 @@ import { getOrgContext } from '@/lib/org-context'
 import { redirectToLogin } from '@/lib/i18n-redirect'
 import { PageHeader } from '@/components/layout/page-header'
 import { ItemForm } from '@/components/inventory/item-form'
+import { getInventoryCategories, getInventorySubcategories } from '@/app/actions/inventory'
 
 export default async function NewItemPage() {
   const session = await getSession()
@@ -10,6 +11,11 @@ export default async function NewItemPage() {
 
   const org = await getOrgContext(session.user.id)
   if (!org) return redirectToLogin()
+
+  const [categories, subcategories] = await Promise.all([
+    getInventoryCategories(),
+    getInventorySubcategories(),
+  ])
 
   return (
     <div className="h-full">
@@ -24,8 +30,8 @@ export default async function NewItemPage() {
       />
 
       <div className="p-6">
-        <div className="mx-auto max-w-3xl">
-          <ItemForm />
+        <div className="mx-auto max-w-5xl">
+          <ItemForm categories={categories} subcategories={subcategories} />
         </div>
       </div>
     </div>

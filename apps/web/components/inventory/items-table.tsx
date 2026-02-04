@@ -18,9 +18,10 @@ interface ItemsTableProps {
     sku: string
     name: string
     description?: string | null
-    category: string
+    category: { id: string; name: string }
+    subcategory?: { id: string; name: string } | null
     unit: string
-    minStockQty: unknown
+    minStockQty?: unknown
     reorderQty?: unknown
     current_stock: unknown
     last_purchase_cost?: unknown
@@ -76,7 +77,10 @@ export function ItemsTable({ items }: ItemsTableProps) {
                     </p>
                   )}
                 </td>
-                <td className="px-4 py-3 text-sm">{item.category}</td>
+                <td className="px-4 py-3 text-sm">
+                  {item.category.name}
+                  {item.subcategory ? ` / ${item.subcategory.name}` : ''}
+                </td>
                 <td className="px-4 py-3 text-right font-mono text-sm tabular-nums">
                   {currentStock.toFixed(2)} {item.unit}
                 </td>

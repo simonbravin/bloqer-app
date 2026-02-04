@@ -42,7 +42,7 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
     resolver: zodResolver(updateUserProfileSchema),
     defaultValues: {
       fullName: user.fullName || '',
-      email: user.email,
+      username: user.username ?? '',
     },
   })
 
@@ -85,7 +85,7 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full min-w-0 space-y-8">
+    <form onSubmit={handleSubmit(onSubmit as (data: UpdateUserProfileInput) => Promise<void>)} className="w-full min-w-0 space-y-8">
       <div className="flex items-center gap-6">
         <Avatar className="h-24 w-24">
           <AvatarImage src={user.avatarUrl || undefined} />

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { hasMinimumRole } from '@/lib/rbac'
-import { getProject, updateProject } from '@/app/actions/projects'
+import { getProject } from '@/app/actions/projects'
 import { ProjectForm } from '@/components/projects/project-form'
 import type { UpdateProjectInput } from '@repo/validators'
 
@@ -46,24 +46,21 @@ export default async function ProjectEditPage({ params }: PageProps) {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-        Edit project
-      </h1>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        {project.projectNumber}
-      </p>
-      <div className="mt-6">
-        <ProjectForm
-          mode="edit"
-          projectId={id}
-          defaultValues={defaultValues}
-          onSubmit={(projectIdOrData, data) =>
-            typeof projectIdOrData === 'string' && data
-              ? updateProject(projectIdOrData, data)
-              : Promise.resolve()
-          }
-          onCancelHref={`/projects/${id}`}
-        />
+      <div className="mx-auto max-w-4xl">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          Editar proyecto
+        </h1>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          {project.projectNumber}
+        </p>
+        <div className="mt-6">
+          <ProjectForm
+            mode="edit"
+            projectId={id}
+            defaultValues={defaultValues}
+            onCancelHref={`/projects/${id}`}
+          />
+        </div>
       </div>
     </div>
   )

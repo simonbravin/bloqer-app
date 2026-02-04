@@ -95,3 +95,50 @@ export const updateFinanceLineSchema = z.object({
   quantity: z.coerce.number().nonnegative().optional(),
 })
 export type UpdateFinanceLineInput = z.infer<typeof updateFinanceLineSchema>
+
+// Project-scoped transaction (simplified create/update for project finance tab)
+export const PROJECT_TRANSACTION_TYPE = ['EXPENSE', 'INCOME', 'PURCHASE', 'SALE', 'OVERHEAD'] as const
+export type ProjectTransactionType = (typeof PROJECT_TRANSACTION_TYPE)[number]
+
+export const projectTransactionCreateSchema = z.object({
+  type: z.enum(PROJECT_TRANSACTION_TYPE),
+  partyId: z.string().uuid().optional().nullable(),
+  description: z.string().min(3, 'Mínimo 3 caracteres'),
+  issueDate: z.coerce.date(),
+  dueDate: z.coerce.date().optional().nullable(),
+  currency: z.string().length(3).default('ARS'),
+  exchangeRate: z.number().positive().optional(), // 1 unidad de currency = X ARS (solo si currency !== ARS)
+  subtotal: z.number().nonnegative(),
+  taxTotal: z.number().nonnegative().default(0),
+  total: z.number().nonnegative(),
+  reference: z.string().max(200).optional().nullable(),
+  lines: z
+    .array(
+      z.object({
+        description: z.string().min(1),
+        unit: z.string().max(50).optional().nullable(),
+        quantity: z.number().positive(),
+        unitPrice: z.number(),
+        lineTotal: z.number(),
+        wbsNodeId: z.string().uuid().optional().nullable(),
+      })
+    )
+    .optional(),
+})
+export type ProjectTransactionCreateInput = z.infer<typeof projectTransactionCreateSchema>
+
+export const projectTransactionUpdateSchema = z.object({
+  description: z.string().min(3).optional(),
+  status: z.enum(TRANSACTION_STATUS).optional(),
+  partyId: z.string().uuid().optional().nullable(),
+  currency: z.string().length(3).optional(),
+  exchangeRate: z.number().positive().optional(),
+  issueDate: z.coerce.date().optional(),
+  dueDate: z.coerce.date().optional().nullable(),
+  paidDate: z.coerce.date().optional().nullable(),
+  reference: z.string().max(200).optional().nullable(),
+  subtotal: z.number().nonnegative().optional(),
+  taxTotal: z.number().nonnegative().optional(),
+  total: z.number().nonnegative().optional(),
+})
+export type ProjectTransactionUpdateInput = z.infer<typeof projectTransactionUpdateSchema>

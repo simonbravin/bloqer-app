@@ -2,7 +2,7 @@
 
 import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
-import { prisma } from '@repo/database'
+import { prisma, Prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole, hasMinimumRole } from '@/lib/rbac'
@@ -46,7 +46,7 @@ async function auditDailyReport(params: {
       action: params.action,
       entityType: 'DailyReport',
       entityId: params.entityId,
-      detailsJson: params.detailsJson,
+      detailsJson: params.detailsJson as Prisma.InputJsonValue,
     },
   })
 }
@@ -180,11 +180,11 @@ export async function listDailyReports(
   const total = await prisma.dailyReport.count({ where })
 
   const list: DailyReportListItem[] = items.map((r) => {
+    const extended = r as BaseRow & { wbsNodes?: { wbsNode: { code: string; name: string } }[] }
+    const wbsNodes = extended.wbsNodes
     const wbsParts =
-      (r as BaseRow & { wbsNodes?: { wbsNode: { code: string; name: string } }[] }).wbsNodes?.length > 0
-        ? (r as BaseRow & { wbsNodes: { wbsNode: { code: string; name: string } }[] }).wbsNodes.map(
-            (n) => `${n.wbsNode.code} — ${n.wbsNode.name}`
-          )
+      wbsNodes && wbsNodes.length > 0
+        ? wbsNodes.map((n) => `${n.wbsNode.code} — ${n.wbsNode.name}`)
         : r.wbsNode
           ? [`${r.wbsNode.code} — ${r.wbsNode.name}`]
           : []
@@ -194,10 +194,10 @@ export async function listDailyReports(
       summary: r.summary ?? r.workAccomplished?.slice(0, 200) ?? '',
       status: r.status ?? 'DRAFT',
       createdByOrgMemberId: r.createdByOrgMemberId,
-      authorName: r.createdBy.user.fullName,
+      authorName: r.createdBy?.user?.fullName ?? '',
       approvedByName: r.approvedBy?.user?.fullName ?? null,
       wbsSummary: wbsParts.length > 0 ? wbsParts.join(' · ') : null,
-      photoCount: r._count.photos,
+      photoCount: r._count?.photos ?? 0,
     }
   })
 

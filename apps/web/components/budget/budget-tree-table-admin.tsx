@@ -61,7 +61,7 @@ interface BudgetTreeTableAdminProps {
 function toNum(v: unknown): number {
   if (v == null) return 0
   if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'object' && v !== null && 'toNumber' in typeof (v as { toNumber?: () => number }).toNumber === 'function') {
+  if (typeof v === 'object' && v !== null && 'toNumber' in v && typeof (v as { toNumber: () => number }).toNumber === 'function') {
     return (v as { toNumber: () => number }).toNumber()
   }
   return Number(v) || 0
