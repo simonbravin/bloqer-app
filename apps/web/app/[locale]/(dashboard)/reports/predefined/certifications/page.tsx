@@ -19,7 +19,7 @@ export default async function CertificationsPage({ params }: PageProps) {
   const data = await getCertificationsByProjectReport()
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
           Evolución de Certificaciones

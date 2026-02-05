@@ -19,7 +19,7 @@ export default async function PurchasesMultiProjectPage({ params }: PageProps) {
   const t = await getTranslations('reports')
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
           {t('purchasesMultiProject')}

@@ -6,6 +6,7 @@ import { prisma, Prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { requirePermission } from '@/lib/auth-helpers'
 import crypto from 'crypto'
 
 async function getAuthContext() {
@@ -69,6 +70,7 @@ export async function createCertification(
     issuedDate?: string
   }
 ) {
+  await requirePermission('CERTIFICATIONS', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
@@ -200,6 +202,7 @@ export async function deleteCertificationLine(lineId: string) {
 }
 
 export async function deleteCertification(certId: string) {
+  await requirePermission('CERTIFICATIONS', 'delete')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ADMIN')
 
@@ -393,6 +396,7 @@ export async function getPrevProgressForBudgetLines(
 }
 
 export async function approveCertification(certId: string) {
+  await requirePermission('CERTIFICATIONS', 'approve')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ADMIN')
 

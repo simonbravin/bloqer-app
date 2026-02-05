@@ -30,19 +30,86 @@ async function findUniqueSlug(baseSlug: string): Promise<string> {
   }
 }
 
+const SUPER_ADMIN_USERNAME = 'superadmin'
+const SUPER_ADMIN_PLACEHOLDER_EMAIL = 'superadmin@system.internal'
+
 /** Resolve "Usuario o Email" to email for sign-in (matches Prisma User.email / User.username) */
 async function resolveEmailFromLogin(value: string): Promise<string | null> {
   const trimmed = value.trim()
   if (!trimmed) return null
   if (trimmed.includes('@')) return trimmed
-  const user = await prisma.user.findFirst({
+  // Por username (coincidencia exacta)
+  let user = await prisma.user.findFirst({
     where: { username: trimmed, active: true },
     select: { email: true },
   })
-  return user?.email ?? null
+  if (user?.email) return user.email
+  // Fallback: si escribió "superadmin", buscar por email interno (por si el usuario en DB no tiene username aún)
+  if (trimmed.toLowerCase() === SUPER_ADMIN_USERNAME) {
+    user = await prisma.user.findFirst({
+      where: {
+        email: SUPER_ADMIN_PLACEHOLDER_EMAIL,
+        active: true,
+      },
+      select: { email: true },
+    })
+    if (user?.email) return user.email
+  }
+  return null
 }
 
 const CREDENTIALS_ERROR = { _form: ['Usuario o contraseña incorrectos'] as const }
+
+/** Login exclusivo para Super Admin: usuario y contraseña obligatorios, sin sugerencias. */
+export async function superAdminLogin(username: string, password: string) {
+  const trimmedUser = username?.trim()
+  const trimmedPassword = password?.trim()
+  if (!trimmedUser) {
+    return { error: { _form: ['Ingresá el usuario'] as const } }
+  }
+  if (!trimmedPassword) {
+    return { error: { _form: ['Ingresá la contraseña'] as const } }
+  }
+  if (trimmedUser.toLowerCase() !== SUPER_ADMIN_USERNAME) {
+    return { error: CREDENTIALS_ERROR }
+  }
+  try {
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: SUPER_ADMIN_USERNAME, active: true },
+          { email: SUPER_ADMIN_PLACEHOLDER_EMAIL, active: true },
+        ],
+      },
+      select: { id: true, email: true, passwordHash: true, isSuperAdmin: true },
+    })
+    if (!user?.passwordHash) {
+      return { error: CREDENTIALS_ERROR }
+    }
+    const valid = await bcrypt.compare(trimmedPassword, user.passwordHash)
+    if (!valid) {
+      return { error: CREDENTIALS_ERROR }
+    }
+    if (!user.isSuperAdmin) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isSuperAdmin: true },
+      })
+    }
+    const result = await signIn('credentials', {
+      email: user.email,
+      password: trimmedPassword,
+      redirect: false,
+    })
+    if (result?.error || !result?.ok) {
+      return { error: CREDENTIALS_ERROR }
+    }
+    return redirectTo('/super-admin')
+  } catch (err) {
+    console.error('[auth] superAdminLogin error:', err)
+    return { error: CREDENTIALS_ERROR }
+  }
+}
 
 export async function login(credentials: LoginFormInput) {
   const parsed = loginFormSchema.safeParse(credentials)
@@ -58,7 +125,7 @@ export async function login(credentials: LoginFormInput) {
     // Validar contra la DB aquí; si falla, no llamar a signIn (evita bugs de Auth.js con server actions)
     const user = await prisma.user.findFirst({
       where: { email, active: true },
-      select: { id: true, passwordHash: true },
+      select: { id: true, passwordHash: true, isSuperAdmin: true },
     })
     if (!user?.passwordHash) {
       return { error: CREDENTIALS_ERROR }
@@ -71,6 +138,9 @@ export async function login(credentials: LoginFormInput) {
     const result = await signIn('credentials', { email, password, redirect: false })
     if (result?.error || !result?.ok) {
       return { error: CREDENTIALS_ERROR }
+    }
+    if (user.isSuperAdmin) {
+      return redirectTo('/super-admin')
     }
     return redirectTo('/dashboard')
   } catch (err) {
@@ -151,6 +221,7 @@ export async function register(data: RegisterInput) {
         phone: phone?.trim() || undefined,
       },
     })
+    // Primer usuario de la empresa siempre es OWNER (crítico para RBAC)
     await tx.orgMember.create({
       data: {
         orgId: org.id,

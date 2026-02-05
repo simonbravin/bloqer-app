@@ -17,7 +17,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { updateTaskDates, updateTaskProgress } from '@/app/actions/schedule'
-import { Loader2, Calendar, Clock } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Loader2, Calendar, Clock, GitBranch } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { addWorkingDays, countWorkingDays } from '@/lib/schedule/working-days'
@@ -46,6 +47,8 @@ export function TaskEditDialog({
   task,
   workingDaysPerWeek,
   canEdit,
+  dependencies = [],
+  onOpenDependencies,
 }: TaskEditDialogProps) {
   const t = useTranslations('schedule')
   const router = useRouter()
@@ -135,13 +138,19 @@ export function TaskEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>{t('editTask')}</DialogTitle>
           <DialogDescription>
             {task.code} - {task.name}
           </DialogDescription>
         </DialogHeader>
+
+        {!canEdit && (
+          <Alert variant="default" className="border-amber-200 bg-amber-50 text-amber-900">
+            <AlertDescription>{t('cannotEditTask')}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="space-y-4">
           {isSummary && (
@@ -272,6 +281,45 @@ export function TaskEditDialog({
                 </p>
               </div>
             </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <GitBranch className="h-4 w-4" />
+                {t('dependencies')}
+              </Label>
+              {onOpenDependencies && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onOpenDependencies()
+                    onOpenChange(false)
+                  }}
+                  disabled={!canEdit}
+                >
+                  {t('manageDependencies')}
+                </Button>
+              )}
+            </div>
+            {dependencies.length > 0 ? (
+              <ul className="max-h-32 space-y-1 overflow-y-auto rounded border border-slate-200 p-2 text-sm">
+                {dependencies.map((dep) => (
+                  <li key={dep.id} className="flex items-center gap-2 text-slate-700">
+                    <span className="truncate">{dep.predecessorName}</span>
+                    <span className="text-slate-400">→</span>
+                    <span className="truncate">{dep.successorName}</span>
+                    <span className="rounded bg-slate-100 px-1 text-xs">{dep.type}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rounded border border-dashed border-slate-200 p-2 text-xs text-slate-500">
+                {t('noDependenciesYet')}
+              </p>
+            )}
           </div>
         </div>
 

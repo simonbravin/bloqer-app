@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/hooks/use-permissions'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -15,6 +16,16 @@ import {
   BarChart3,
 } from 'lucide-react'
 
+type NavModuleKey =
+  | 'DASHBOARD'
+  | 'PROJECTS'
+  | 'REPORTS'
+  | 'TEAM'
+  | 'FINANCE'
+  | 'INVENTORY'
+  | 'DOCUMENTS'
+  | 'SETTINGS'
+
 interface GlobalSidebarProps {
   orgName?: string
   orgLogoUrl?: string | null
@@ -23,59 +34,30 @@ interface GlobalSidebarProps {
 /**
  * Global sidebar for organization-wide navigation
  * Shows logo/org name, then: Dashboard, Projects, Team, Inventory, Suppliers, Documents, Settings
+ * Items are filtered by RBAC (canView).
  */
 export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: GlobalSidebarProps) {
   const t = useTranslations('nav')
   const pathname = usePathname()
-  
-  const navigation = [
-    {
-      name: t('dashboard'),
-      href: '/dashboard',
-      icon: LayoutDashboard,
-    },
-    {
-      name: t('projects'),
-      href: '/projects',
-      icon: FolderKanban,
-    },
-    {
-      name: t('reports'),
-      href: '/reports',
-      icon: BarChart3,
-    },
-    {
-      name: t('team'),
-      href: '/team',
-      icon: Users,
-    },
-    {
-      name: t('finance'),
-      href: '/finance',
-      icon: DollarSign,
-    },
-    {
-      name: t('inventory'),
-      href: '/inventory',
-      icon: Package,
-    },
-    {
-      name: t('suppliers'),
-      href: '/suppliers',
-      icon: Building2,
-    },
-    {
-      name: t('documents'),
-      href: '/documents',
-      icon: FileText,
-    },
-    {
-      name: t('settings'),
-      href: '/settings',
-      icon: Settings,
-    },
+  const { canView, status, loading } = usePermissions()
+
+  const allNav = [
+    { name: t('dashboard'), href: '/dashboard', icon: LayoutDashboard, module: 'DASHBOARD' as NavModuleKey },
+    { name: t('projects'), href: '/projects', icon: FolderKanban, module: 'PROJECTS' as NavModuleKey },
+    { name: t('reports'), href: '/reports', icon: BarChart3, module: 'REPORTS' as NavModuleKey },
+    { name: t('team'), href: '/team', icon: Users, module: 'TEAM' as NavModuleKey },
+    { name: t('finance'), href: '/finance', icon: DollarSign, module: 'FINANCE' as NavModuleKey },
+    { name: t('inventory'), href: '/inventory', icon: Package, module: 'INVENTORY' as NavModuleKey },
+    { name: t('suppliers'), href: '/suppliers', icon: Building2, module: 'PROJECTS' as NavModuleKey },
+    { name: t('documents'), href: '/documents', icon: FileText, module: 'DOCUMENTS' as NavModuleKey },
+    { name: t('settings'), href: '/settings', icon: Settings, module: 'SETTINGS' as NavModuleKey },
   ]
-  
+
+  const navigation =
+    status === 'loading' || loading
+      ? allNav
+      : allNav.filter((item) => canView(item.module))
+
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r bg-slate-900">
       {/* Logo or org name */}

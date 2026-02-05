@@ -112,6 +112,7 @@
     "submittals": "Submittals",
     "dailyReports": "Daily Reports",
     "backToProjects": "Back to Projects",
+    "projectTeam": "Project Team",
     "logout": "Logout"
   },
   "schedule": {
@@ -165,6 +166,7 @@
     "lagDays": "Lag days",
     "lagHint": "positive = delay, negative = lead",
     "addDependency": "Add dependency",
+    "clickToEdit": "Click to edit",
     "adding": "Adding...",
     "dependencyAddedDesc": "Dependency added",
     "dependencyRemovedDesc": "Dependency removed",
@@ -216,6 +218,7 @@
     "calculatedEnd": "Calculated end",
     "saveChanges": "Save changes",
     "visibleRange": "Visible range",
+    "visibility": "Visibility",
     "resetToProject": "Reset to project",
     "daysToShow": "Days to show",
     "viewFrom": "View from",
@@ -591,7 +594,14 @@
     "lastRun": "Last run:",
     "run": "Run",
     "copy": "Copy",
-    "delete": "Delete"
+    "delete": "Delete",
+    "createReport": "Create report",
+    "runReport": "Run report",
+    "exportExcel": "Export to Excel",
+    "exportCsv": "Export to CSV",
+    "preview": "Preview",
+    "refreshPreview": "Refresh preview",
+    "noReportsYet": "No reports yet. Create one to get started."
   },
   "wbs": {
     "title": "WBS",
@@ -1090,17 +1100,6 @@
     "versions": "Versions",
     "download": "Download",
     "delete": "Delete"
-  },
-  "reports": {
-    "title": "Reports",
-    "noReportsYet": "No reports yet. Create one to get started.",
-    "createReport": "Create report",
-    "runReport": "Run report",
-    "export": "Export",
-    "exportExcel": "Export to Excel",
-    "exportCsv": "Export to CSV",
-    "preview": "Preview",
-    "refreshPreview": "Refresh preview"
   },
   "validation": {
     "required": "This field is required",

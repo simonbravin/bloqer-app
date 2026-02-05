@@ -2,6 +2,18 @@
 
 import { cn } from '@/lib/utils'
 
+const DATE_COLUMNS = ['startDate', 'plannedEndDate', 'issueDate', 'actualEndDate']
+
+function formatShortDate(val: unknown): string {
+  if (val == null) return ''
+  const d = typeof val === 'string' ? new Date(val) : val instanceof Date ? val : null
+  if (!d || Number.isNaN(d.getTime())) return String(val)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
 type ReportPreviewProps = {
   data: Record<string, unknown>[]
   columns: { key: string; label: string }[]
@@ -43,14 +55,34 @@ export function ReportPreview({ data, columns, className }: ReportPreviewProps) 
               key={i}
               className="border-b border-gray-100 dark:border-gray-800"
             >
-              {columns.map((col) => (
-                <td
-                  key={col.key}
-                  className="px-3 py-2 text-gray-600 dark:text-gray-400"
-                >
-                  {String(row[col.key] ?? '')}
-                </td>
-              ))}
+              {columns.map((col) => {
+                const val = row[col.key]
+                const isAmount =
+                  col.key === 'totalBudget' ||
+                  col.key === 'gastadoHastaElMomento' ||
+                  col.key === 'montoAvance' ||
+                  col.key === 'diferencia'
+                const isPct = col.key === 'avanceObraPct'
+                const isDate = DATE_COLUMNS.includes(col.key)
+                let display = ''
+                if (val == null) display = ''
+                else if (isDate) display = formatShortDate(val)
+                else if (isPct && typeof val === 'number') display = `${val.toFixed(2)} %`
+                else if (isAmount && typeof val === 'number')
+                  display = new Intl.NumberFormat('es', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(val)
+                else display = String(val)
+                return (
+                  <td
+                    key={col.key}
+                    className="px-3 py-2 text-gray-600 dark:text-gray-400"
+                  >
+                    {display}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>

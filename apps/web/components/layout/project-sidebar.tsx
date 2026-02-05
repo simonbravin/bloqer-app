@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  Users,
 } from 'lucide-react'
 
 interface ProjectSidebarProps {
@@ -98,6 +99,11 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
       name: t('reports'),
       href: `/projects/${projectId}/reports`,
       icon: BarChart3,
+    },
+    {
+      name: t('projectTeam', { defaultValue: 'Equipo del Proyecto' }),
+      href: `/projects/${projectId}/team`,
+      icon: Users,
     },
     {
       name: t('quality'),

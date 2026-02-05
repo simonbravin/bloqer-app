@@ -10,42 +10,46 @@ import { ReportPreview } from './report-preview'
 import { createSavedReport, getReportPreview } from '@/app/actions/reports'
 
 const ENTITY_TYPES = [
-  { value: 'PROJECT', label: 'Projects' },
-  { value: 'FINANCE_TRANSACTION', label: 'Finance Transactions' },
-  { value: 'BUDGET_LINE', label: 'Budget Lines' },
+  { value: 'PROJECT', label: 'Proyectos' },
+  { value: 'FINANCE_TRANSACTION', label: 'Transacciones Financieras' },
+  { value: 'BUDGET_LINE', label: 'Líneas de Presupuesto' },
 ]
 
 const ENTITY_COLUMNS: Record<string, { key: string; label: string }[]> = {
   PROJECT: [
-    { key: 'projectNumber', label: 'Number' },
-    { key: 'name', label: 'Name' },
-    { key: 'clientName', label: 'Client' },
-    { key: 'status', label: 'Status' },
-    { key: 'phase', label: 'Phase' },
-    { key: 'startDate', label: 'Start Date' },
-    { key: 'plannedEndDate', label: 'Planned End' },
-    { key: 'totalBudget', label: 'Total Budget' },
-    { key: 'location', label: 'Location' },
+    { key: 'projectNumber', label: 'Número' },
+    { key: 'name', label: 'Nombre' },
+    { key: 'clientName', label: 'Cliente' },
+    { key: 'status', label: 'Estado' },
+    { key: 'phase', label: 'Fase' },
+    { key: 'startDate', label: 'Fecha Inicio' },
+    { key: 'plannedEndDate', label: 'Fecha Fin Planificada' },
+    { key: 'totalBudget', label: 'Presupuesto Total' },
+    { key: 'location', label: 'Ubicación' },
+    { key: 'gastadoHastaElMomento', label: 'Gastado hasta el momento' },
+    { key: 'avanceObraPct', label: 'Avance de obra %' },
+    { key: 'montoAvance', label: 'Monto de avance' },
+    { key: 'diferencia', label: 'Diferencia' },
   ],
   FINANCE_TRANSACTION: [
-    { key: 'transactionNumber', label: 'Transaction #' },
-    { key: 'type', label: 'Type' },
-    { key: 'status', label: 'Status' },
-    { key: 'issueDate', label: 'Issue Date' },
-    { key: 'description', label: 'Description' },
+    { key: 'transactionNumber', label: 'Nº Transacción' },
+    { key: 'type', label: 'Tipo' },
+    { key: 'status', label: 'Estado' },
+    { key: 'issueDate', label: 'Fecha Emisión' },
+    { key: 'description', label: 'Descripción' },
     { key: 'total', label: 'Total' },
-    { key: 'currency', label: 'Currency' },
-    { key: 'projectName', label: 'Project' },
+    { key: 'currency', label: 'Moneda' },
+    { key: 'projectName', label: 'Proyecto' },
   ],
   BUDGET_LINE: [
-    { key: 'wbsCode', label: 'WBS Code' },
-    { key: 'wbsName', label: 'WBS Name' },
-    { key: 'description', label: 'Description' },
-    { key: 'unit', label: 'Unit' },
-    { key: 'quantity', label: 'Quantity' },
-    { key: 'directCostTotal', label: 'Direct Cost' },
-    { key: 'salePriceTotal', label: 'Sale Price' },
-    { key: 'projectName', label: 'Project' },
+    { key: 'wbsCode', label: 'Código WBS' },
+    { key: 'wbsName', label: 'Nombre WBS' },
+    { key: 'description', label: 'Descripción' },
+    { key: 'unit', label: 'Unidad' },
+    { key: 'quantity', label: 'Cantidad' },
+    { key: 'directCostTotal', label: 'Costo Directo' },
+    { key: 'salePriceTotal', label: 'Precio Venta' },
+    { key: 'projectName', label: 'Proyecto' },
   ],
 }
 
@@ -116,7 +120,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="erp-form-page space-y-6">
+    <form onSubmit={handleSubmit} className="erp-form-page max-w-6xl space-y-6">
       <div>
         <Label htmlFor="name">Report name</Label>
         <Input

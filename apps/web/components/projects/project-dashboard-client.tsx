@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import {
   AreaChart,
   Area,
@@ -46,6 +46,45 @@ interface Props {
 }
 
 export function ProjectDashboardClient({ project, data }: Props) {
+  const [isExporting, setIsExporting] = useState(false)
+  const { captureChart } = useChartExport()
+
+  const handleExportPDF = useCallback(async () => {
+    setIsExporting(true)
+    try {
+      const [wbs, cashflow, certifications] = await Promise.all([
+        captureChart('chart-wbs'),
+        captureChart('chart-cashflow'),
+        captureChart('chart-certifications'),
+      ])
+      if (!wbs || !cashflow || !certifications) {
+        toast.error('No se pudieron capturar los gráficos')
+        return
+      }
+      const result = await exportProjectDashboardToPDF(project.id, {
+        wbs,
+        cashflow,
+        certifications,
+      })
+      if (result?.success && result.data && result.filename) {
+        const link = document.createElement('a')
+        link.href = `data:application/pdf;base64,${result.data}`
+        link.download = result.filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('PDF descargado')
+      } else {
+        toast.error('Error al generar el PDF')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Error al exportar el dashboard')
+    } finally {
+      setIsExporting(false)
+    }
+  }, [project.id, captureChart])
+
   const budgetUsagePct =
     data.budget.total === 0 ? 0 : (data.budget.spent / data.budget.total) * 100
   const isOverBudget = budgetUsagePct > 100

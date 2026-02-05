@@ -13,9 +13,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  ZoomIn,
-  ZoomOut,
-  Calendar,
   TrendingUp,
   GitBranch,
   Download,
@@ -24,8 +21,6 @@ import {
 } from 'lucide-react'
 
 interface GanttControlPanelProps {
-  zoom: 'day' | 'week' | 'month'
-  onZoomChange: (zoom: 'day' | 'week' | 'month') => void
   showCriticalPath: boolean
   onShowCriticalPathChange: (show: boolean) => void
   showBaseline: boolean
@@ -40,8 +35,6 @@ interface GanttControlPanelProps {
 }
 
 export function GanttControlPanel({
-  zoom,
-  onZoomChange,
   showCriticalPath,
   onShowCriticalPathChange,
   showBaseline,
@@ -58,68 +51,8 @@ export function GanttControlPanel({
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">{t('zoom')}</Label>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (zoom === 'month') onZoomChange('week')
-                  if (zoom === 'week') onZoomChange('day')
-                }}
-                disabled={zoom === 'day'}
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-
-              <Select
-                value={zoom}
-                onValueChange={(v) =>
-                  onZoomChange(v as 'day' | 'week' | 'month')
-                }
-              >
-                <SelectTrigger className="h-8 w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      {t('daily')}
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="week">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      {t('weekly')}
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="month">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      {t('monthly')}
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (zoom === 'day') onZoomChange('week')
-                  if (zoom === 'week') onZoomChange('month')
-                }}
-                disabled={zoom === 'month'}
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
+      <CardContent className="p-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="space-y-3">
             <Label className="text-sm font-medium">{t('display')}</Label>
             <div className="flex items-center justify-between">

@@ -112,6 +112,7 @@
     "submittals": "Submittals",
     "dailyReports": "Libro de Obra",
     "backToProjects": "Volver a Proyectos",
+    "projectTeam": "Equipo del Proyecto",
     "logout": "Cerrar Sesión"
   },
   "schedule": {
@@ -165,6 +166,7 @@
     "lagDays": "Días de lag",
     "lagHint": "positivo = retraso, negativo = adelanto",
     "addDependency": "Añadir dependencia",
+    "clickToEdit": "Clic para editar",
     "adding": "Añadiendo...",
     "dependencyAddedDesc": "Dependencia añadida",
     "dependencyRemovedDesc": "Dependencia eliminada",
@@ -216,6 +218,7 @@
     "calculatedEnd": "Fin calculado",
     "saveChanges": "Guardar cambios",
     "visibleRange": "Rango visible",
+    "visibility": "Visibilidad",
     "resetToProject": "Restablecer al proyecto",
     "daysToShow": "Días a mostrar",
     "viewFrom": "Ver desde",
@@ -601,7 +604,14 @@
     "lastRun": "Última ejecución:",
     "run": "Ejecutar",
     "copy": "Copiar",
-    "delete": "Eliminar"
+    "delete": "Eliminar",
+    "createReport": "Crear reporte",
+    "runReport": "Ejecutar reporte",
+    "exportExcel": "Exportar a Excel",
+    "exportCsv": "Exportar a CSV",
+    "preview": "Vista previa",
+    "refreshPreview": "Actualizar vista previa",
+    "noReportsYet": "Aún no hay reportes. Crea uno para comenzar."
   },
   "wbs": {
     "title": "EDT",
@@ -1102,17 +1112,6 @@
     "download": "Descargar",
     "delete": "Eliminar",
     "noDocumentsYet": "Aún no hay documentos. Sube uno para comenzar."
-  },
-  "reports": {
-    "title": "Reportes",
-    "createReport": "Crear reporte",
-    "runReport": "Ejecutar reporte",
-    "export": "Exportar",
-    "exportExcel": "Exportar a Excel",
-    "exportCsv": "Exportar a CSV",
-    "preview": "Vista previa",
-    "refreshPreview": "Actualizar vista previa",
-    "noReportsYet": "Aún no hay reportes. Crea uno para comenzar."
   },
   "validation": {
     "required": "Este campo es obligatorio",

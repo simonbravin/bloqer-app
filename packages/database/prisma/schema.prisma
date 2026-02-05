@@ -31,10 +31,25 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Super Admin: subscription & blocking
+  subscriptionStatus   String    @default("TRIAL") @map("subscription_status") // TRIAL, ACTIVE, SUSPENDED, CANCELLED
+  subscriptionPlan     String?   @map("subscription_plan") // FREE, BASIC, PRO, ENTERPRISE
+  subscriptionStartDate DateTime? @map("subscription_start_date")
+  subscriptionEndDate   DateTime? @map("subscription_end_date")
+  maxProjects          Int       @default(3) @map("max_projects")
+  maxUsers             Int       @default(5) @map("max_users")
+  maxStorageGB         Int       @default(1) @map("max_storage_gb")
+  isBlocked            Boolean   @default(false) @map("is_blocked")
+  blockedReason        String?   @map("blocked_reason")
+  blockedAt            DateTime? @map("blocked_at")
+  blockedBy            String?   @map("blocked_by")
+  enabledModules       Json?     @map("enabled_modules") // ["PROJECTS", "BUDGET", "SCHEDULE", ...]
+
   // Relations
   profile             OrgProfile?
   members             OrgMember[]
   projects            Project[]
+  usageMetrics        OrgUsageMetrics[]
   parties             Party[]
   moduleActivations   ModuleActivation[]
   apiKeys             ApiKey[]
@@ -65,9 +80,12 @@ model Organization {
   orgPartyLinks       OrgPartyLink[]
   resources           Resource[]
   customReports       CustomReport[]
+  invitations         Invitation[]
 
   @@index([slug])
   @@index([active])
+  @@index([subscriptionStatus])
+  @@index([isBlocked])
   @@map("organizations")
   @@schema("public")
 }
@@ -107,6 +125,7 @@ model User {
   passwordHash       String?   @map("password_hash")
   avatarUrl          String?   @map("avatar_url")
   active             Boolean   @default(true)
+  isSuperAdmin       Boolean   @default(false) @map("is_super_admin")
   resetToken         String?   @map("reset_token")
   resetTokenExpires  DateTime? @map("reset_token_expires")
   createdAt          DateTime  @default(now()) @map("created_at")
@@ -114,17 +133,53 @@ model User {
   lastLoginAt        DateTime? @map("last_login_at")
 
   // Relations
-  memberships      OrgMember[]
-  sessions         Session[]
-  refreshTokens    RefreshToken[]
-  idempotencyKeys  IdempotencyKey[]
-  auditLogs        AuditLog[]
-  notifications    Notification[]
-  customReports    CustomReport[]
+  memberships       OrgMember[]
+  sessions          Session[]
+  refreshTokens      RefreshToken[]
+  idempotencyKeys   IdempotencyKey[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  customReports     CustomReport[]
+  invitationsSent   Invitation[]
+  orgPreference     UserOrgPreference?
 
   @@index([email])
   @@index([active])
+  @@index([isSuperAdmin])
   @@map("users")
+  @@schema("public")
+}
+
+model UserOrgPreference {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  activeOrgId     String   @map("active_org_id")
+  lastSwitchedAt DateTime @default(now()) @map("last_switched_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_org_preferences")
+  @@schema("public")
+}
+
+model Invitation {
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  email            String
+  role             OrgRole
+  token            String   @unique
+  expiresAt        DateTime @map("expires_at")
+  status           String   @default("PENDING") // PENDING|ACCEPTED|EXPIRED|REVOKED
+  invitedByUserId  String   @map("invited_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation(fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, email])
+  @@index([orgId, status])
+  @@index([token])
+  @@map("invitations")
   @@schema("public")
 }
 
@@ -139,13 +194,14 @@ enum OrgRole {
 }
 
 model OrgMember {
-  id        String   @id @default(uuid())
-  orgId     String   @map("org_id")
-  userId    String   @map("user_id")
-  role      OrgRole
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(uuid())
+  orgId              String   @map("org_id")
+  userId             String   @map("user_id")
+  role               OrgRole
+  active             Boolean  @default(true)
+  customPermissions  Json?    @map("custom_permissions") // { "finance": ["view","create"], "projects": ["view"] } - override del rol base
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   // Relations
   organization       Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -308,6 +364,49 @@ model AuditLog {
   @@index([createdAt])
   @@index([actorUserId])
   @@map("audit_logs")
+  @@schema("public")
+}
+
+// ============================================================
+// SUPER ADMIN & USAGE METRICS
+// ============================================================
+
+model SuperAdminLog {
+  id              String   @id @default(uuid())
+  superAdminId    String   @map("super_admin_id")
+  superAdminEmail String   @map("super_admin_email")
+  action          String   // BLOCK_ORG, UNBLOCK_ORG, CHANGE_PLAN, IMPERSONATE, etc.
+  targetType      String   @map("target_type") // ORGANIZATION, USER, SUBSCRIPTION
+  targetId        String   @map("target_id")
+  details         Json?
+  ipAddress       String?  @map("ip_address")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([superAdminId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("super_admin_logs")
+  @@schema("public")
+}
+
+model OrgUsageMetrics {
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  month            Int
+  year             Int
+  activeUsers      Int      @default(0) @map("active_users")
+  projectsCreated  Int      @default(0) @map("projects_created")
+  storageUsedMB    Int       @default(0) @map("storage_used_mb")
+  apiCalls         Int       @default(0) @map("api_calls")
+  moduleUsage      Json?     @map("module_usage")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, month, year])
+  @@index([orgId])
+  @@map("org_usage_metrics")
   @@schema("public")
 }
 

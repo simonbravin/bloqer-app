@@ -19,7 +19,7 @@ export default async function NewReportPage() {
   })
 
   return (
-    <div className="p-6">
+    <div className="mx-auto w-full max-w-[90rem] p-6">
       <div className="mb-6">
         <Link
           href="/reports"

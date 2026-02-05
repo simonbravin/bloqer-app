@@ -66,6 +66,11 @@ export interface QueryConfig {
   select: string[]
   groupBy?: string[]
   orderBy?: QueryOrder[]
+  /** Filtrar por uno o más proyectos (vacío = todos) */
+  projectIds?: string[]
+  /** Rango de fechas (campo date de la tabla, ej. issueDate) */
+  dateFrom?: string
+  dateTo?: string
 }
 
 export interface ChartConfig {

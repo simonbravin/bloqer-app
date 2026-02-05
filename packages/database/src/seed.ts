@@ -17,6 +17,45 @@ async function seedCurrencies() {
   })
 }
 
+/** Super Admin: login with username "superadmin", password Livestrong=15. No real email assigned (placeholder for DB only). */
+async function seedSuperAdmin() {
+  const username = 'superadmin'
+  const placeholderEmail = 'superadmin@system.internal'
+  const defaultPassword = 'Livestrong=15'
+  const password = process.env.SUPER_ADMIN_PASSWORD ?? defaultPassword
+  const existing = await prisma.user.findFirst({
+    where: { OR: [{ username }, { email: placeholderEmail }] },
+    select: { id: true, isSuperAdmin: true, email: true, username: true },
+  })
+  const passwordHash = await bcrypt.hash(password, 10)
+  if (existing) {
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        username,
+        email: placeholderEmail,
+        fullName: 'Super Administrator',
+        passwordHash,
+        isSuperAdmin: true,
+        active: true,
+      },
+    })
+    console.log('Seed: Super Admin updated (login: superadmin / Livestrong=15)')
+    return
+  }
+  await prisma.user.create({
+    data: {
+      username,
+      email: placeholderEmail,
+      fullName: 'Super Administrator',
+      passwordHash,
+      isSuperAdmin: true,
+      active: true,
+    },
+  })
+  console.log('Seed: Super Admin created (login: superadmin / Livestrong=15)')
+}
+
 /** Dev user: username Simon, password Livestrong=15; creates org "Dev Org" and adds user as OWNER */
 async function seedDevUser() {
   const email = 'simon@dev.local'
@@ -150,10 +189,11 @@ async function seedDailyReports() {
 
 async function main() {
   await seedCurrencies()
+  await seedSuperAdmin()
   await seedDevUser()
   await seedDailyReports()
   await seedInventoryCategories()
-  console.log('Seed completed: currencies, dev user, daily reports, inventory categories')
+  console.log('Seed completed: currencies, super admin, dev user, daily reports, inventory categories')
 }
 
 main()

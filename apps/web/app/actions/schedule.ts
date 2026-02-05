@@ -94,24 +94,22 @@ export async function createScheduleFromWBS(
       },
     })
 
-    let currentDate = new Date(data.projectStartDate)
+    const projectStart = new Date(data.projectStartDate)
     const createdTasks = new Map<string, string>()
 
     for (const node of wbsNodes) {
       const hasChildren = wbsNodes.some((n) => n.parentId === node.id)
       const taskType = hasChildren ? 'SUMMARY' : 'TASK'
-      const duration = taskType === 'TASK' ? 1 : 0
-      const endDate =
-        taskType === 'TASK'
-          ? addDays(currentDate, duration)
-          : new Date(currentDate)
+      const duration = taskType === 'TASK' ? 0 : 0
+      const startDate = projectStart
+      const endDate = projectStart
 
       const task = await prisma.scheduleTask.create({
         data: {
           scheduleId: schedule.id,
           wbsNodeId: node.id,
           taskType,
-          plannedStartDate: currentDate,
+          plannedStartDate: startDate,
           plannedEndDate: endDate,
           plannedDuration: duration,
           progressPercent: new Decimal(0),
@@ -119,10 +117,6 @@ export async function createScheduleFromWBS(
       })
 
       createdTasks.set(node.id, task.id)
-
-      if (taskType === 'TASK') {
-        currentDate = addDays(currentDate, 1)
-      }
     }
 
     // ROLLUP: Recalcular fechas de tareas SUMMARY basado en hijos (más profundo primero)
@@ -178,15 +172,17 @@ export async function createScheduleFromWBS(
       }
     }
 
-    // Actualizar fecha de fin del proyecto
     const allTasksForEnd = await prisma.scheduleTask.findMany({
       where: { scheduleId: schedule.id },
       select: { plannedEndDate: true },
     })
-    const projectEndDate = allTasksForEnd.reduce(
+    const maxTaskEnd = allTasksForEnd.reduce(
       (max, t) => (t.plannedEndDate > max ? t.plannedEndDate : max),
-      new Date(data.projectStartDate)
+      projectStart
     )
+    const projectEndDate = maxTaskEnd.getTime() > projectStart.getTime()
+      ? maxTaskEnd
+      : addDays(projectStart, 30)
     await prisma.schedule.update({
       where: { id: schedule.id },
       data: { projectEndDate },

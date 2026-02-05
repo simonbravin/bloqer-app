@@ -93,6 +93,24 @@ export default async function ProjectSchedulePage({
   const activeSchedule =
     schedules.find((s) => s.isBaseline) ?? schedules[0]
 
+  const projectMember = await prisma.projectMember.findUnique({
+    where: {
+      projectId_orgMemberId: {
+        projectId: id,
+        orgMemberId: orgContext.memberId,
+      },
+    },
+    select: { projectRole: true },
+  })
+
+  const canEditByOrg = ['EDITOR', 'ADMIN', 'OWNER'].includes(orgContext.role)
+  const canEditByProjectRole =
+    projectMember?.projectRole &&
+    ['MANAGER', 'SUPERINTENDENT'].includes(projectMember.projectRole)
+  const canEdit =
+    (canEditByOrg || !!canEditByProjectRole) &&
+    activeSchedule.status === 'DRAFT'
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -124,10 +142,7 @@ export default async function ProjectSchedulePage({
 
       <ScheduleView
         scheduleId={activeSchedule.id}
-        canEdit={
-          ['EDITOR', 'ADMIN', 'OWNER'].includes(orgContext.role) &&
-          activeSchedule.status === 'DRAFT'
-        }
+        canEdit={canEdit}
         canSetBaseline={['ADMIN', 'OWNER'].includes(orgContext.role)}
       />
     </div>

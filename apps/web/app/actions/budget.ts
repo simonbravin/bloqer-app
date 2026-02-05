@@ -6,6 +6,7 @@ import { prisma, Prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { requirePermission } from '@/lib/auth-helpers'
 import {
   createBudgetVersionSchema,
   updateBudgetVersionSchema,
@@ -126,6 +127,7 @@ export async function getVersionTotal(versionId: string): Promise<number> {
 }
 
 export async function createBudgetVersion(projectId: string, data: CreateBudgetVersionInput) {
+  await requirePermission('BUDGET', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
@@ -262,6 +264,7 @@ export async function setBudgetBaseline(versionId: string) {
 
 /** Mark version as APPROVED (read-only). */
 export async function approveBudgetVersion(versionId: string) {
+  await requirePermission('BUDGET', 'approve')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
@@ -681,6 +684,7 @@ export async function updateBudgetLine(lineId: string, data: UpdateBudgetLineInp
 }
 
 export async function deleteBudgetLine(lineId: string) {
+  await requirePermission('BUDGET', 'delete')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 

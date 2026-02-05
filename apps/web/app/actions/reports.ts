@@ -2,6 +2,7 @@
 
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
+import { requirePermission } from '@/lib/auth-helpers'
 import { prisma } from '@repo/database'
 import { revalidatePath } from 'next/cache'
 import type {
@@ -29,6 +30,20 @@ async function getAuthForReports() {
   const org = await getOrgContext(session.user.id)
   if (!org?.orgId) throw new Error('No autorizado')
   return { session, org }
+}
+
+// ==================== Proyectos para Query Builder ====================
+
+export async function getProjectsForQueryBuilder(): Promise<
+  { id: string; name: string; projectNumber: string }[]
+> {
+  const { org } = await getAuthForReports()
+  const projects = await prisma.project.findMany({
+    where: { orgId: org.orgId },
+    select: { id: true, name: true, projectNumber: true },
+    orderBy: { name: 'asc' },
+  })
+  return projects
 }
 
 // ==================== Metadatos de tablas ====================
@@ -62,9 +77,17 @@ export async function getAvailableTables(): Promise<TableMetadata[]> {
         { field: 'id', label: 'ID', type: 'text', table: 'projects' },
         { field: 'projectNumber', label: 'Número', type: 'text', table: 'projects' },
         { field: 'name', label: 'Nombre', type: 'text', table: 'projects' },
+        { field: 'clientName', label: 'Cliente', type: 'text', table: 'projects' },
         { field: 'status', label: 'Estado', type: 'text', table: 'projects' },
+        { field: 'phase', label: 'Fase', type: 'text', table: 'projects' },
         { field: 'startDate', label: 'Fecha Inicio', type: 'date', table: 'projects' },
-        { field: 'targetEndDate', label: 'Fecha Fin', type: 'date', table: 'projects' },
+        { field: 'plannedEndDate', label: 'Fecha Fin Planificada', type: 'date', table: 'projects' },
+        { field: 'location', label: 'Ubicación', type: 'text', table: 'projects' },
+        { field: 'totalBudget', label: 'Presupuesto Total', type: 'number', table: 'projects' },
+        { field: 'gastadoHastaElMomento', label: 'Gastado hasta el momento', type: 'number', table: 'projects' },
+        { field: 'avanceObraPct', label: 'Avance de obra %', type: 'number', table: 'projects' },
+        { field: 'montoAvance', label: 'Monto de avance', type: 'number', table: 'projects' },
+        { field: 'diferencia', label: 'Diferencia', type: 'number', table: 'projects' },
       ],
       relations: [
         { table: 'finance_transactions', type: 'hasMany', foreignKey: 'projectId' },
@@ -154,6 +177,9 @@ export async function executeCustomQuery(config: QueryConfig): Promise<ReportRes
   if (config.table === 'finance_transactions') {
     const { getCompanyTransactions } = await import('./finance')
     const filters = buildCompanyTransactionsFilters(config.where ?? [])
+    if (config.projectIds?.length) filters.projectIds = config.projectIds
+    if (config.dateFrom) filters.dateFrom = config.dateFrom
+    if (config.dateTo) filters.dateTo = config.dateTo
     const list = await getCompanyTransactions(filters)
     const rows = list.map((t: Record<string, unknown>) => {
       const row = {
@@ -192,30 +218,95 @@ export async function executeCustomQuery(config: QueryConfig): Promise<ReportRes
   }
 
   if (config.table === 'projects') {
+    const projectIdsFilter = config.projectIds?.length ? { id: { in: config.projectIds } } : {}
     const projects = await prisma.project.findMany({
-      where: { orgId: org.orgId },
+      where: { orgId: org.orgId, ...projectIdsFilter },
       select: {
         id: true,
         projectNumber: true,
         name: true,
+        clientName: true,
         status: true,
+        phase: true,
         startDate: true,
-        targetEndDate: true,
+        plannedEndDate: true,
+        location: true,
+        totalBudget: true,
       },
       orderBy: config.orderBy?.[0]
         ? { [config.orderBy[0].field]: config.orderBy[0].direction }
         : { name: 'asc' },
       take: 500,
     })
-    const rows = projects.map((p) => ({
-      id: p.id,
-      projectNumber: p.projectNumber,
-      name: p.name,
-      status: p.status,
-      startDate: p.startDate,
-      targetEndDate: p.targetEndDate,
-    }))
-    const data = selectSet.size > 0 ? rows.map((r) => pick(r)) : rows
+    const projectIds = projects.map((p) => p.id)
+    if (projectIds.length === 0) {
+      return { data: [], totalRows: 0, executionTime: Date.now() - startTime }
+    }
+
+    const spentByProject = await prisma.financeTransaction.groupBy({
+      by: ['projectId'],
+      where: {
+        orgId: org.orgId,
+        projectId: { in: projectIds },
+        deleted: false,
+      },
+      _sum: { total: true },
+    })
+    const spentMap = new Map<string, number>()
+    for (const row of spentByProject) {
+      if (row.projectId) spentMap.set(row.projectId, Number(row._sum.total ?? 0))
+    }
+
+    const certifications = await prisma.certification.findMany({
+      where: { projectId: { in: projectIds }, orgId: org.orgId },
+      include: { lines: { select: { totalAmount: true } } },
+      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
+    })
+    const certTotalByProject = new Map<string, number>()
+    for (const cert of certifications) {
+      if (certTotalByProject.has(cert.projectId)) continue
+      const total = cert.lines.reduce((s, l) => s + Number(l.totalAmount), 0)
+      certTotalByProject.set(cert.projectId, total)
+    }
+
+    const rows = projects.map((p) => {
+      const totalBudget = p.totalBudget != null ? Number(p.totalBudget) : 0
+      const gastadoHastaElMomento = spentMap.get(p.id) ?? 0
+      const montoAvance = certTotalByProject.get(p.id) ?? 0
+      const avanceObraPct = totalBudget > 0 ? (montoAvance / totalBudget) * 100 : 0
+      const diferencia = montoAvance - gastadoHastaElMomento
+      return {
+        id: p.id,
+        projectNumber: p.projectNumber,
+        name: p.name,
+        clientName: p.clientName,
+        status: p.status,
+        phase: p.phase,
+        startDate: p.startDate,
+        plannedEndDate: p.plannedEndDate,
+        location: p.location,
+        totalBudget: totalBudget || null,
+        gastadoHastaElMomento,
+        avanceObraPct: Math.round(avanceObraPct * 100) / 100,
+        montoAvance,
+        diferencia,
+      }
+    })
+
+    const ordered =
+      config.orderBy?.length && config.orderBy[0]
+        ? [...rows].sort((a, b) => {
+            const key = config.orderBy![0].field
+            const dir = config.orderBy![0].direction === 'desc' ? -1 : 1
+            const va = a[key as keyof typeof a]
+            const vb = b[key as keyof typeof b]
+            if (va == null && vb == null) return 0
+            if (va == null) return dir
+            if (vb == null) return -dir
+            return va < vb ? -dir : va > vb ? dir : 0
+          })
+        : rows
+    const data = selectSet.size > 0 ? ordered.map((r) => pick(r)) : ordered
     return {
       data,
       totalRows: data.length,
@@ -241,6 +332,7 @@ export async function saveCustomReport(reportData: {
   config: ReportConfig
   isPublic?: boolean
 }) {
+  await requirePermission('REPORTS', 'create')
   const { session, org } = await getAuthForReports()
   const report = await prisma.customReport.create({
     data: {
@@ -300,25 +392,76 @@ export async function getReportPreview(
 ): Promise<Record<string, unknown>[]> {
   const { org } = await getAuthForReports()
   if (entityType === 'PROJECT') {
+    const projectIdsFilter = filters.projectId ? { id: filters.projectId } : {}
     const projects = await prisma.project.findMany({
-      where: { orgId: org.orgId, ...(filters.projectId ? { id: filters.projectId } : {}) },
+      where: { orgId: org.orgId, ...projectIdsFilter },
       select: {
+        id: true,
         projectNumber: true,
         name: true,
         clientName: true,
         status: true,
         phase: true,
         startDate: true,
-        targetEndDate: true,
+        plannedEndDate: true,
         location: true,
+        totalBudget: true,
       },
       take: 100,
     })
+    const projectIds = projects.map((p) => p.id)
+    if (projectIds.length === 0) {
+      return []
+    }
+
+    // Gastado hasta el momento: suma de transacciones financieras no eliminadas por proyecto
+    const spentByProject = await prisma.financeTransaction.groupBy({
+      by: ['projectId'],
+      where: {
+        orgId: org.orgId,
+        projectId: { in: projectIds },
+        deleted: false,
+      },
+      _sum: { total: true },
+    })
+    const spentMap = new Map<string, number>()
+    for (const row of spentByProject) {
+      if (row.projectId)
+        spentMap.set(row.projectId, Number(row._sum.total ?? 0))
+    }
+
+    // Monto de avance: suma de totalAmount de la última certificación por proyecto
+    const certifications = await prisma.certification.findMany({
+      where: { projectId: { in: projectIds }, orgId: org.orgId },
+      include: { lines: { select: { totalAmount: true } } },
+      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
+    })
+    const certTotalByProject = new Map<string, number>()
+    for (const cert of certifications) {
+      if (certTotalByProject.has(cert.projectId)) continue
+      const total = cert.lines.reduce((s, l) => s + Number(l.totalAmount), 0)
+      certTotalByProject.set(cert.projectId, total)
+    }
+
     const keys = selectedColumns.length ? selectedColumns : ['projectNumber', 'name', 'status']
     return projects.map((p) => {
+      const totalBudget = p.totalBudget != null ? Number(p.totalBudget) : 0
+      const gastadoHastaElMomento = spentMap.get(p.id) ?? 0
+      const montoAvance = certTotalByProject.get(p.id) ?? 0
+      const avanceObraPct = totalBudget > 0 ? (montoAvance / totalBudget) * 100 : 0
+      const diferencia = montoAvance - gastadoHastaElMomento
+
+      const base: Record<string, unknown> = {
+        ...p,
+        totalBudget: totalBudget || null,
+        gastadoHastaElMomento,
+        avanceObraPct: Math.round(avanceObraPct * 100) / 100,
+        montoAvance,
+        diferencia,
+      }
       const row: Record<string, unknown> = {}
       for (const k of keys) {
-        if (k in p) row[k] = (p as Record<string, unknown>)[k]
+        if (k in base) row[k] = base[k]
       }
       return row
     })
@@ -401,6 +544,7 @@ export async function createSavedReport(params: {
 // ==================== Eliminar reporte ====================
 
 export async function deleteCustomReport(reportId: string) {
+  await requirePermission('REPORTS', 'delete')
   const { session, org } = await getAuthForReports()
   const report = await prisma.customReport.findFirst({
     where: { id: reportId, orgId: org.orgId },

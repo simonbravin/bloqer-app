@@ -57,4 +57,15 @@ Project conventions and context for the Construction ERP system. Follow these ru
 - **Prisma schema (source of truth):** `packages/database/prisma/schema.prisma` — use this for all model/field names.
 - **Tech stack details:** `docs/01-architecture/step2-tech-stack.md`
 
+---
+
+## Message Bus & Event Architecture
+- **Pattern:** Use the `OutboxEvent` table for any state change in Projects, WBS, or Finances.
+- **Real-time:** Inngest functions should trigger client-side notifications (SSE/WebSockets).
+- **Consistency:** All calculations for 'Computos' (totals, unit costs, quantity take-offs) MUST reside in `src/lib/calculations` or `@/lib/logic`. Do not duplicate math in React components.
+
+## Cleanup & Refactoring Rules
+- **No Blind Deletes:** Before removing a library or file, check for dynamic imports or usage in `public/` or configuration files.
+- **Reusability:** If a piece of logic is used in both the Gantt chart and the Budget Table, it must be extracted to a shared Hook or Service.
+
 When changing data models, auth, or architecture, consult these docs first.

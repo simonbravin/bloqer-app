@@ -6,6 +6,7 @@ import { prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { requirePermission } from '@/lib/auth-helpers'
 import {
   createProjectSchema,
   updateProjectSchema,
@@ -86,6 +87,7 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
 }
 
 export async function createProject(data: CreateProjectInput) {
+  await requirePermission('PROJECTS', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
@@ -259,6 +261,7 @@ export async function getProject(projectId: string) {
 }
 
 export async function updateProject(projectId: string, data: UpdateProjectInput) {
+  await requirePermission('PROJECTS', 'edit')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
@@ -297,6 +300,7 @@ export async function updateProject(projectId: string, data: UpdateProjectInput)
 }
 
 export async function deleteProject(projectId: string) {
+  await requirePermission('PROJECTS', 'delete')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 

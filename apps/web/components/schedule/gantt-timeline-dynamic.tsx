@@ -9,6 +9,7 @@ import {
 } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { addWorkingDays, countWorkingDays } from '@/lib/schedule/working-days'
+import { GANTT_HEADER_HEIGHT, GANTT_ROW_HEIGHT } from '@/lib/schedule/gantt-constants'
 
 interface GanttTask {
   id: string
@@ -40,9 +41,6 @@ interface GanttTimelineDynamicProps {
   highlightedTask: string | null
   onTaskHover?: (taskId: string | null) => void
 }
-
-const ROW_HEIGHT = 40
-const HEADER_HEIGHT = 60
 
 export function GanttTimelineDynamic({
   tasks,
@@ -78,7 +76,7 @@ export function GanttTimelineDynamic({
 
   const DAY_WIDTH = containerWidth > 0 ? containerWidth / days.length : 40
   const timelineWidth = days.length * DAY_WIDTH
-  const canvasHeight = HEADER_HEIGHT + tasks.length * ROW_HEIGHT + 50
+  const canvasHeight = GANTT_HEADER_HEIGHT + tasks.length * GANTT_ROW_HEIGHT
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -145,11 +143,13 @@ export function GanttTimelineDynamic({
 
   function drawHeader(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = '#1e293b'
-    ctx.fillRect(0, 0, timelineWidth, HEADER_HEIGHT)
+    ctx.fillRect(0, 0, timelineWidth, GANTT_HEADER_HEIGHT)
 
     ctx.fillStyle = '#ffffff'
     ctx.font = '11px Inter, sans-serif'
 
+    const yDay = GANTT_HEADER_HEIGHT - 8
+    const yMonth = 10
     if (zoom === 'day') {
       days.forEach((day, idx) => {
         const x = idx * DAY_WIDTH
@@ -157,15 +157,15 @@ export function GanttTimelineDynamic({
         ctx.fillText(
           format(day, 'd'),
           x + DAY_WIDTH / 2 - 6,
-          HEADER_HEIGHT - 15
+          yDay
         )
 
         if (day.getDate() === 1 || idx === 0) {
-          ctx.font = 'bold 11px Inter, sans-serif'
+          ctx.font = 'bold 10px Inter, sans-serif'
           ctx.fillText(
             format(day, 'MMM yyyy', { locale: es }),
-            x + 4,
-            HEADER_HEIGHT - 35
+            x + 2,
+            yMonth
           )
           ctx.font = '11px Inter, sans-serif'
         }
@@ -175,7 +175,7 @@ export function GanttTimelineDynamic({
           ctx.lineWidth = 2
           ctx.beginPath()
           ctx.moveTo(x, 0)
-          ctx.lineTo(x, HEADER_HEIGHT)
+          ctx.lineTo(x, GANTT_HEADER_HEIGHT)
           ctx.stroke()
         }
       })
@@ -186,7 +186,7 @@ export function GanttTimelineDynamic({
           ctx.fillText(
             format(day, 'dd/MM', { locale: es }),
             x + 2,
-            HEADER_HEIGHT - 15
+            GANTT_HEADER_HEIGHT - 15
           )
         }
 
@@ -196,7 +196,7 @@ export function GanttTimelineDynamic({
           ctx.fillText(
             format(day, 'MMM yyyy', { locale: es }),
             x + 2,
-            HEADER_HEIGHT - 35
+            GANTT_HEADER_HEIGHT - 35
           )
           ctx.font = '11px Inter, sans-serif'
         }
@@ -210,11 +210,11 @@ export function GanttTimelineDynamic({
           lastMonth = monthStart
           const x = idx * DAY_WIDTH
 
-          ctx.font = 'bold 12px Inter, sans-serif'
+          ctx.font = 'bold 10px Inter, sans-serif'
           ctx.fillText(
             format(day, 'MMMM yyyy', { locale: es }),
             x + 4,
-            HEADER_HEIGHT / 2 + 5
+            GANTT_HEADER_HEIGHT / 2 + 4
           )
           ctx.font = '11px Inter, sans-serif'
         }
@@ -230,18 +230,18 @@ export function GanttTimelineDynamic({
       const x = idx * DAY_WIDTH
 
       ctx.beginPath()
-      ctx.moveTo(x, HEADER_HEIGHT)
+      ctx.moveTo(x, GANTT_HEADER_HEIGHT)
       ctx.lineTo(x, canvasHeight)
       ctx.stroke()
 
       if (day.getDay() === 0) {
         ctx.fillStyle = 'rgba(248, 250, 252, 0.5)'
-        ctx.fillRect(x, HEADER_HEIGHT, DAY_WIDTH, canvasHeight - HEADER_HEIGHT)
+        ctx.fillRect(x, GANTT_HEADER_HEIGHT, DAY_WIDTH, canvasHeight - GANTT_HEADER_HEIGHT)
       }
     })
 
     tasks.forEach((_, idx) => {
-      const y = HEADER_HEIGHT + (idx + 1) * ROW_HEIGHT
+      const y = GANTT_HEADER_HEIGHT + (idx + 1) * GANTT_ROW_HEIGHT
 
       ctx.strokeStyle = '#f1f5f9'
       ctx.beginPath()
@@ -262,20 +262,20 @@ export function GanttTimelineDynamic({
       ctx.lineWidth = 2
       ctx.setLineDash([5, 5])
       ctx.beginPath()
-      ctx.moveTo(x, HEADER_HEIGHT)
+      ctx.moveTo(x, GANTT_HEADER_HEIGHT)
       ctx.lineTo(x, canvasHeight)
       ctx.stroke()
       ctx.setLineDash([])
 
       ctx.fillStyle = '#dc2626'
       ctx.font = 'bold 10px Inter'
-      ctx.fillText('HOY', x + 4, HEADER_HEIGHT + 15)
+      ctx.fillText('HOY', x + 4, GANTT_HEADER_HEIGHT - 4)
     }
   }
 
   function drawTasks(ctx: CanvasRenderingContext2D) {
     tasks.forEach((task, idx) => {
-      const y = HEADER_HEIGHT + idx * ROW_HEIGHT
+      const y = GANTT_HEADER_HEIGHT + idx * GANTT_ROW_HEIGHT
 
       let startDate = task.startDate
       let endDate = task.endDate
@@ -289,6 +289,7 @@ export function GanttTimelineDynamic({
       const endDay = days.findIndex((d) => isSameDay(d, endDate))
 
       if (startDay === -1 || endDay === -1) return
+      if (startDate.getTime() === endDate.getTime()) return
 
       const barX = startDay * DAY_WIDTH
       const barWidth = Math.max(
@@ -403,11 +404,11 @@ export function GanttTimelineDynamic({
         if (startDay === -1 || endDay === -1) return
 
         const x1 = (startDay + 1) * DAY_WIDTH
-        const y1 = HEADER_HEIGHT + idx * ROW_HEIGHT + ROW_HEIGHT / 2
+        const y1 = GANTT_HEADER_HEIGHT + idx * GANTT_ROW_HEIGHT + GANTT_ROW_HEIGHT / 2
 
         const x2 = endDay * DAY_WIDTH
         const y2 =
-          HEADER_HEIGHT + targetIdx * ROW_HEIGHT + ROW_HEIGHT / 2
+          GANTT_HEADER_HEIGHT + targetIdx * GANTT_ROW_HEIGHT + GANTT_ROW_HEIGHT / 2
 
         ctx.beginPath()
         ctx.moveTo(x1, y1)
@@ -442,7 +443,7 @@ export function GanttTimelineDynamic({
     taskIndex: number
     position: 'start' | 'end' | 'middle'
   } | null {
-    const taskIndex = Math.floor((y - HEADER_HEIGHT) / ROW_HEIGHT)
+    const taskIndex = Math.floor((y - GANTT_HEADER_HEIGHT) / GANTT_ROW_HEIGHT)
     if (taskIndex < 0 || taskIndex >= tasks.length) return null
 
     const task = tasks[taskIndex]
@@ -452,6 +453,7 @@ export function GanttTimelineDynamic({
     const endDay = days.findIndex((d) => isSameDay(d, task.endDate))
 
     if (startDay === -1 || endDay === -1) return null
+    if (task.startDate.getTime() === task.endDate.getTime()) return null
 
     const barX = startDay * DAY_WIDTH
     const barWidth = Math.max(
@@ -640,7 +642,7 @@ export function GanttTimelineDynamic({
   return (
     <div
       ref={containerRef}
-      className="h-full w-full overflow-x-auto overflow-y-auto bg-white"
+      className="w-full overflow-x-auto bg-white"
     >
       <canvas
         ref={canvasRef}

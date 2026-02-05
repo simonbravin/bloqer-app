@@ -5,7 +5,14 @@ import { useTranslations } from 'next-intl'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Calendar } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Calendar, ZoomIn, ZoomOut } from 'lucide-react'
 import { format, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -15,6 +22,8 @@ interface DateRangeSliderProps {
   currentStartDate: Date
   currentEndDate: Date
   onRangeChange: (startDate: Date, endDate: Date) => void
+  zoom?: 'day' | 'week' | 'month'
+  onZoomChange?: (zoom: 'day' | 'week' | 'month') => void
 }
 
 export function DateRangeSlider({
@@ -23,6 +32,8 @@ export function DateRangeSlider({
   currentStartDate,
   currentEndDate,
   onRangeChange,
+  zoom = 'week',
+  onZoomChange,
 }: DateRangeSliderProps) {
   const t = useTranslations('schedule')
 
@@ -87,81 +98,111 @@ export function DateRangeSlider({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between">
-        <Label className="text-sm font-semibold">{t('visibleRange')}</Label>
-        <Button variant="ghost" size="sm" onClick={handleResetToProject}>
-          {t('resetToProject')}
-        </Button>
+    <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-2">
+      {/* Fila 1: Título Visibilidad + Zoom + Restablecer */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Label className="text-xs font-semibold">{t('visibility')}</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          {onZoomChange && (
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => {
+                  if (zoom === 'month') onZoomChange('week')
+                  else if (zoom === 'week') onZoomChange('day')
+                }}
+                disabled={zoom === 'day'}
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+              <Select
+                value={zoom}
+                onValueChange={(v) => onZoomChange(v as 'day' | 'week' | 'month')}
+              >
+                <SelectTrigger className="h-7 w-[90px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">{t('daily')}</SelectItem>
+                  <SelectItem value="week">{t('weekly')}</SelectItem>
+                  <SelectItem value="month">{t('monthly')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => {
+                  if (zoom === 'day') onZoomChange('week')
+                  else if (zoom === 'week') onZoomChange('month')
+                }}
+                disabled={zoom === 'month'}
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleResetToProject}>
+            {t('resetToProject')}
+          </Button>
+        </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="daysSlider" className="text-sm">
-            {t('daysToShow')}: <strong>{daysToShow}</strong>
-          </Label>
-          <Input
-            type="number"
-            min={5}
-            max={365}
-            value={daysToShow}
-            onChange={(e) =>
-              handleDaysChange(parseInt(e.target.value, 10) || 30)
-            }
-            className="w-20 text-right"
-          />
-        </div>
-        <input
-          id="daysSlider"
-          type="range"
-          min={5}
-          max={365}
-          step={1}
-          value={daysToShow}
-          onChange={(e) => handleDaysChange(parseInt(e.target.value, 10))}
-          className="mt-2 w-full"
-        />
-        <div className="mt-1 flex justify-between text-xs text-slate-500">
-          <span>5 días</span>
-          <span>1 año</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+      {/* Fila 2: Ver desde / Ver hasta + slider de días */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[auto_auto_1fr] sm:items-end">
+        <div className="min-w-0">
           <Label htmlFor="rangeStart" className="text-xs">
             {t('viewFrom')}
           </Label>
-          <div className="relative mt-1">
-            <Calendar className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+          <div className="relative mt-0.5">
+            <Calendar className="absolute left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
             <Input
               id="rangeStart"
               type="date"
               value={rangeStart}
               onChange={(e) => handleStartChange(e.target.value)}
-              className="pl-8 text-xs"
+              className="h-7 pl-6 text-xs"
             />
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <Label htmlFor="rangeEnd" className="text-xs">
             {t('viewTo')}
           </Label>
-          <div className="relative mt-1">
-            <Calendar className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
-            <Input
-              id="rangeEnd"
-              type="date"
-              value={rangeEnd}
-              onChange={(e) => handleEndChange(e.target.value)}
-              className="pl-8 text-xs"
-            />
+          <div className="relative mt-0.5 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Calendar className="absolute left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="rangeEnd"
+                type="date"
+                value={rangeEnd}
+                onChange={(e) => handleEndChange(e.target.value)}
+                className="h-7 pl-6 text-xs"
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-1 sm:min-w-[140px]">
+              <input
+                id="daysSlider"
+                type="range"
+                min={5}
+                max={365}
+                step={1}
+                value={daysToShow}
+                onChange={(e) => handleDaysChange(parseInt(e.target.value, 10))}
+                className="w-24 flex-1 min-w-[80px] sm:w-40"
+              />
+              <span className="w-7 shrink-0 text-[10px] text-slate-500">{daysToShow}d</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-[10px] text-slate-500">
         {t('showingDaysInfo', {
           start: format(new Date(rangeStart), 'dd MMM', { locale: es }),
           end: format(new Date(rangeEnd), 'dd MMM', { locale: es }),

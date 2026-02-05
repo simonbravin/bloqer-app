@@ -6,6 +6,7 @@ import { prisma, Prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { requirePermission } from '@/lib/auth-helpers'
 import { calculateTotalStock, calculateStockBalance } from '@/lib/inventory-utils'
 
 async function getAuthContext() {
@@ -78,6 +79,7 @@ export async function createInventoryItem(data: {
   minStockQty?: number
   reorderQty?: number
 }) {
+  await requirePermission('INVENTORY', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
@@ -119,6 +121,7 @@ export async function updateInventoryItem(
     reorderQty?: number
   }
 ) {
+  await requirePermission('INVENTORY', 'edit')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
@@ -155,6 +158,7 @@ export async function updateInventoryItem(
 }
 
 export async function deleteInventoryItem(itemId: string) {
+  await requirePermission('INVENTORY', 'delete')
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 

@@ -12,6 +12,7 @@ import { DateRangeSlider } from './date-range-slider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import {
   exportScheduleToPDF,
@@ -72,6 +73,7 @@ export function ScheduleViewClient({
   >(null)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [highlightedTask, setHighlightedTask] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const schedule = {
     ...scheduleData,
@@ -117,6 +119,20 @@ export function ScheduleViewClient({
     }
   })
 
+  function shouldShowTask(
+    task: { code: string; id: string },
+    allTasks: { code: string; id: string }[]
+  ): boolean {
+    if (searchQuery) return true
+    const levelCodes = task.code.split('.')
+    for (let i = 1; i < levelCodes.length; i++) {
+      const parentCode = levelCodes.slice(0, i).join('.')
+      const parentTask = allTasks.find((t) => t.code === parentCode)
+      if (parentTask && !expandedNodes.has(parentTask.id)) return false
+    }
+    return true
+  }
+
   const tableTasks = schedule.tasks.map((task: (typeof schedule.tasks)[0]) => {
     const level = task.wbsNode.code.split('.').length - 1
     const predecessors = (task.predecessors || []) as {
@@ -151,6 +167,18 @@ export function ScheduleViewClient({
       successorCount: successors.length,
     }
   })
+
+  const filteredTableTasks = tableTasks.filter(
+    (task) =>
+      task.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+  const visibleTableTasks = filteredTableTasks.filter((task) =>
+    shouldShowTask(task, tableTasks)
+  )
+  const visibleGanttTasks = ganttTasks.filter((t) =>
+    visibleTableTasks.some((v) => v.id === t.id)
+  )
 
   const totalTasks = schedule.tasks.length
   const criticalTasks = schedule.tasks.filter(
@@ -326,8 +354,39 @@ export function ScheduleViewClient({
       ]
     : []
 
+  const editTaskDependencies = selectedTaskForEditData
+    ? [
+        ...((selectedTaskForEditData.predecessors as DepWithPredecessor[]) || []).map(
+          (dep) => ({
+            id: dep.id,
+            predecessorName:
+              dep.predecessor?.wbsNode?.name ??
+              schedule.tasks.find(
+                (t: (typeof schedule.tasks)[0]) => t.id === dep.predecessorId
+              )?.wbsNode.name ??
+              '',
+            successorName: selectedTaskForEditData.wbsNode.name,
+            type: dep.dependencyType,
+          })
+        ),
+        ...((selectedTaskForEditData.successors as DepWithSuccessor[]) || []).map(
+          (dep) => ({
+            id: dep.id,
+            predecessorName: selectedTaskForEditData.wbsNode.name,
+            successorName:
+              dep.successor?.wbsNode?.name ??
+              schedule.tasks.find(
+                (t: (typeof schedule.tasks)[0]) => t.id === dep.successorId
+              )?.wbsNode.name ??
+              '',
+            type: dep.dependencyType,
+          })
+        ),
+      ]
+    : []
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -462,8 +521,6 @@ export function ScheduleViewClient({
       </div>
 
       <GanttControlPanel
-        zoom={zoom}
-        onZoomChange={setZoom}
         showCriticalPath={showCriticalPath}
         onShowCriticalPathChange={setShowCriticalPath}
         showBaseline={showBaseline}
@@ -483,25 +540,42 @@ export function ScheduleViewClient({
         currentStartDate={visibleStartDate}
         currentEndDate={visibleEndDate}
         onRangeChange={handleRangeChange}
+        zoom={zoom}
+        onZoomChange={setZoom}
       />
 
-      <div className="grid grid-cols-[500px_1fr] gap-0 overflow-hidden rounded-lg border border-slate-200">
-        <div className="h-[600px] overflow-hidden">
-          <GanttDataTable
-            tasks={tableTasks}
-            expandedNodes={expandedNodes}
-            onToggleExpand={handleToggleExpand}
-            onTaskClick={(taskId) => setSelectedTaskForEdit(taskId)}
-            onDependenciesClick={(taskId) =>
-              setSelectedTaskForDependency(taskId)
-            }
-            canEdit={canEdit}
-            highlightedTask={highlightedTask}
+      <div className="space-y-1">
+        <div className="flex w-full items-center gap-2">
+          <Input
+            placeholder={t('searchTasks')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 min-w-[320px] flex-1 max-w-full text-xs"
           />
         </div>
-        <div className="h-[600px] overflow-hidden">
-          <GanttTimelineDynamic
-            tasks={ganttTasks}
+
+        <div className="flex h-[520px] overflow-hidden rounded-lg border border-slate-200">
+          <div className="flex min-h-0 flex-1 overflow-auto">
+            <div className="min-w-[420px] shrink-0 border-r border-slate-200">
+              <GanttDataTable
+                tasks={visibleTableTasks}
+                allTasks={tableTasks}
+                expandedNodes={expandedNodes}
+                onToggleExpand={handleToggleExpand}
+                onTaskClick={(taskId) => setSelectedTaskForEdit(taskId)}
+                onDependenciesClick={(taskId) =>
+                  setSelectedTaskForDependency(taskId)
+                }
+                onTaskDatesChange={handleTaskDragEnd}
+                canEdit={canEdit}
+                highlightedTask={highlightedTask}
+                searchQuery={searchQuery}
+                workingDaysPerWeek={schedule.workingDaysPerWeek}
+              />
+            </div>
+            <div className="min-h-0 min-w-0 flex-1">
+              <GanttTimelineDynamic
+            tasks={visibleGanttTasks}
             visibleStartDate={visibleStartDate}
             visibleEndDate={visibleEndDate}
             zoom={zoom}
@@ -514,6 +588,8 @@ export function ScheduleViewClient({
             highlightedTask={highlightedTask}
             onTaskHover={setHighlightedTask}
           />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -537,6 +613,13 @@ export function ScheduleViewClient({
           }}
           workingDaysPerWeek={schedule.workingDaysPerWeek}
           canEdit={canEdit}
+          dependencies={editTaskDependencies}
+          onOpenDependencies={() => {
+            if (selectedTaskForEdit) {
+              setSelectedTaskForDependency(selectedTaskForEdit)
+              setSelectedTaskForEdit(null)
+            }
+          }}
         />
       )}
 

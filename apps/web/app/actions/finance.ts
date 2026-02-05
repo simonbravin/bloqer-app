@@ -6,6 +6,7 @@ import { prisma, Prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole, hasMinimumRole } from '@/lib/rbac'
+import { requirePermission } from '@/lib/auth-helpers'
 import {
   createFinanceTransactionSchema,
   updateFinanceTransactionSchema,
@@ -169,6 +170,7 @@ export async function listWbsNodesForProject(projectId: string) {
 }
 
 export async function createFinanceTransaction(data: CreateFinanceTransactionInput) {
+  await requirePermission('FINANCE', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
 
@@ -224,6 +226,7 @@ export async function createFinanceTransactionWithLines(
   data: CreateFinanceTransactionInput,
   lines: { description: string; amount: number; wbsNodeId?: string | null; unit?: string | null; quantity?: number }[]
 ) {
+  await requirePermission('FINANCE', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
 
@@ -313,6 +316,7 @@ export async function createFinanceTransactionWithLines(
 }
 
 export async function updateFinanceTransaction(id: string, data: UpdateFinanceTransactionInput) {
+  await requirePermission('FINANCE', 'edit')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
 
@@ -464,6 +468,7 @@ export async function updateFinanceLine(lineId: string, data: UpdateFinanceLineI
 }
 
 export async function deleteFinanceLine(lineId: string) {
+  await requirePermission('FINANCE', 'delete')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
 
@@ -720,6 +725,7 @@ export async function createProjectTransaction(
   projectId: string,
   data: ProjectTransactionCreateInput
 ) {
+  await requirePermission('FINANCE', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
 
@@ -813,6 +819,7 @@ export async function createProjectTransaction(
 }
 
 export async function updateProjectTransaction(id: string, data: ProjectTransactionUpdateInput) {
+  await requirePermission('FINANCE', 'edit')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
 
@@ -876,6 +883,7 @@ export async function updateProjectTransaction(id: string, data: ProjectTransact
 }
 
 export async function deleteProjectTransaction(id: string) {
+  await requirePermission('FINANCE', 'delete')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
 
@@ -1162,6 +1170,8 @@ export async function getWBSActualCost(wbsNodeId: string): Promise<number> {
 
 export type CompanyTransactionsFilters = {
   projectId?: string | null // 'null' o null = solo overhead
+  /** Varios proyectos (tiene prioridad sobre projectId si tiene longitud) */
+  projectIds?: string[]
   type?: string
   partyId?: string
   status?: string
@@ -1179,6 +1189,13 @@ export async function getCompanyTransactions(filters: CompanyTransactionsFilters
     })
     if (!project) throw new Error('Proyecto no encontrado')
   }
+  if (filters.projectIds?.length) {
+    const found = await prisma.project.findMany({
+      where: { id: { in: filters.projectIds }, orgId: org.orgId },
+      select: { id: true },
+    })
+    if (found.length !== filters.projectIds.length) throw new Error('Uno o más proyectos no encontrados')
+  }
   if (filters.partyId) {
     const party = await prisma.party.findFirst({
       where: { id: filters.partyId, orgId: org.orgId },
@@ -1191,7 +1208,9 @@ export async function getCompanyTransactions(filters: CompanyTransactionsFilters
     orgId: org.orgId,
     deleted: false,
   }
-  if (filters.projectId !== undefined) {
+  if (filters.projectIds?.length) {
+    where.projectId = { in: filters.projectIds }
+  } else if (filters.projectId !== undefined) {
     if (filters.projectId === 'null' || filters.projectId === null) {
       where.projectId = null
     } else {
@@ -1889,6 +1908,7 @@ export async function createCompanyTransaction(data: {
   total: number
   reference?: string
 }) {
+  await requirePermission('FINANCE', 'create')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
   if (data.partyId) {
@@ -2156,6 +2176,7 @@ export async function getOverheadDashboard(): Promise<OverheadDashboard> {
 // ====================
 
 export async function deleteOverheadAllocation(allocationId: string) {
+  await requirePermission('FINANCE', 'edit')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
   const allocation = await prisma.overheadAllocation.findUnique({
@@ -2176,6 +2197,7 @@ export async function updateOverheadAllocation(
   allocationId: string,
   data: { allocationPct: number; notes?: string }
 ) {
+  await requirePermission('FINANCE', 'edit')
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
   const allocation = await prisma.overheadAllocation.findUnique({

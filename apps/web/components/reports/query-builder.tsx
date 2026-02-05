@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -21,10 +22,80 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Trash2, Play, Save } from 'lucide-react'
-import { getAvailableTables, executeCustomQuery } from '@/app/actions/reports'
-import type { TableMetadata, QueryConfig, QueryFilter } from '@/lib/types/reports'
+import { Plus, Trash2, Play, Save, Calendar } from 'lucide-react'
+import { getAvailableTables, executeCustomQuery, getProjectsForQueryBuilder } from '@/app/actions/reports'
+import type { TableMetadata, QueryConfig, QueryFilter, QueryField } from '@/lib/types/reports'
 import { toast } from 'sonner'
+
+const DATE_KEYS = ['startDate', 'plannedEndDate', 'issueDate', 'actualEndDate', 'issuedDate', 'movementDate']
+const AMOUNT_KEYS = ['totalBudget', 'gastadoHastaElMomento', 'montoAvance', 'diferencia', 'total', 'amountBaseCurrency', 'directCostTotal']
+const PCT_KEYS = ['avanceObraPct']
+
+function formatShortDate(val: unknown): string {
+  if (val == null) return '—'
+  const d = typeof val === 'string' ? new Date(val) : val instanceof Date ? val : null
+  if (!d || Number.isNaN(d.getTime())) return String(val)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+function formatPreviewCell(key: string, val: unknown): string {
+  if (val == null) return '—'
+  if (PCT_KEYS.includes(key) && typeof val === 'number') return `${val.toFixed(2)} %`
+  if (AMOUNT_KEYS.includes(key) && typeof val === 'number')
+    return new Intl.NumberFormat('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val)
+  if (DATE_KEYS.includes(key)) return formatShortDate(val)
+  return String(val)
+}
+
+function QueryBuilderPreview({
+  data,
+  selectedFields,
+  fields,
+}: {
+  data: Record<string, unknown>[]
+  selectedFields: string[]
+  fields: QueryField[]
+}) {
+  const columns = selectedFields.length > 0
+    ? selectedFields.filter((k) => data[0] && k in data[0])
+    : data[0]
+      ? Object.keys(data[0])
+      : []
+  const getLabel = (key: string) => fields.find((f) => f.field === key)?.label ?? key
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Vista Previa ({data.length} registros)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {columns.map((key) => (
+                  <TableHead key={key}>{getLabel(key)}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.slice(0, 50).map((row, idx) => (
+                <TableRow key={idx}>
+                  {columns.map((key) => (
+                    <TableCell key={key}>{formatPreviewCell(key, row[key])}</TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 const OPERATORS: { value: QueryFilter['operator']; label: string }[] = [
   { value: '=', label: '=' },
@@ -36,16 +107,26 @@ const OPERATORS: { value: QueryFilter['operator']; label: string }[] = [
   { value: 'CONTAINS', label: 'Contiene' },
 ]
 
+type ProjectOption = { id: string; name: string; projectNumber: string }
+
 export function QueryBuilder() {
   const [tables, setTables] = useState<TableMetadata[]>([])
+  const [projects, setProjects] = useState<ProjectOption[]>([])
   const [selectedTable, setSelectedTable] = useState('')
   const [selectedFields, setSelectedFields] = useState<string[]>([])
   const [filters, setFilters] = useState<QueryFilter[]>([])
   const [previewData, setPreviewData] = useState<Record<string, unknown>[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [projectFilter, setProjectFilter] = useState<'all' | 'selected'>('all')
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set())
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   useEffect(() => {
     getAvailableTables().then(setTables)
+  }, [])
+  useEffect(() => {
+    getProjectsForQueryBuilder().then(setProjects)
   }, [])
 
   const currentTable = tables.find((t) => t.name === selectedTable)
@@ -78,6 +159,11 @@ export function QueryBuilder() {
         table: selectedTable,
         select: selectedFields,
         where: filters.filter((f) => f.field && f.value !== undefined && String(f.value).trim() !== ''),
+        ...(projectFilter === 'selected' && selectedProjectIds.size > 0
+          ? { projectIds: Array.from(selectedProjectIds) }
+          : {}),
+        ...(dateFrom ? { dateFrom: dateFrom.slice(0, 10) } : {}),
+        ...(dateTo ? { dateTo: dateTo.slice(0, 10) } : {}),
       }
       const result = await executeCustomQuery(config)
       setPreviewData(result.data)
@@ -89,6 +175,22 @@ export function QueryBuilder() {
     }
   }
 
+  const toggleProject = (id: string) => {
+    setSelectedProjectIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAllProjects = () => {
+    setSelectedProjectIds(new Set(projects.map((p) => p.id)))
+  }
+  const clearAllProjects = () => {
+    setSelectedProjectIds(new Set())
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -97,7 +199,7 @@ export function QueryBuilder() {
         </CardHeader>
         <CardContent>
           <Select value={selectedTable} onValueChange={(v) => { setSelectedTable(v); setSelectedFields([]); setPreviewData([]) }}>
-            <SelectTrigger className="w-full max-w-sm">
+            <SelectTrigger className="min-w-[320px] w-full max-w-2xl">
               <SelectValue placeholder="Elige una tabla" />
             </SelectTrigger>
             <SelectContent>
@@ -108,6 +210,100 @@ export function QueryBuilder() {
               ))}
             </SelectContent>
           </Select>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Proyectos (opcional)</CardTitle>
+          <p className="text-sm font-normal text-muted-foreground">
+            Filtrar por uno, varios o todos los proyectos. Si no eliges ninguno, se incluyen todos.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="proj-all"
+                checked={projectFilter === 'all'}
+                onCheckedChange={(checked) => setProjectFilter(checked ? 'all' : 'selected')}
+              />
+              <Label htmlFor="proj-all" className="cursor-pointer">Todos los proyectos</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="proj-selected"
+                checked={projectFilter === 'selected'}
+                onCheckedChange={(checked) => setProjectFilter(checked ? 'selected' : 'all')}
+              />
+              <Label htmlFor="proj-selected" className="cursor-pointer">Seleccionar proyectos</Label>
+            </div>
+            {projectFilter === 'selected' && (
+              <>
+                <Button type="button" variant="outline" size="sm" onClick={selectAllProjects}>
+                  Marcar todos
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={clearAllProjects}>
+                  Desmarcar todos
+                </Button>
+              </>
+            )}
+          </div>
+          {projectFilter === 'selected' && (
+            <div className="max-h-48 overflow-y-auto rounded-md border p-3">
+              <div className="flex flex-wrap gap-4">
+                {projects.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex cursor-pointer items-center gap-2 text-sm"
+                  >
+                    <Checkbox
+                      checked={selectedProjectIds.has(p.id)}
+                      onCheckedChange={() => toggleProject(p.id)}
+                    />
+                    <span className="font-mono text-muted-foreground">{p.projectNumber}</span>
+                    <span>{p.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Rango de fechas (opcional)
+          </CardTitle>
+          <p className="text-sm font-normal text-muted-foreground">
+            Para tablas con fechas (ej. Transacciones: Fecha Emisión). Dejar vacío = sin filtro.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="dateFrom">Desde</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="min-w-[180px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dateTo">Hasta</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="min-w-[180px]"
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -226,34 +422,12 @@ export function QueryBuilder() {
         </Button>
       </div>
 
-      {previewData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Vista Previa ({previewData.length} registros)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {Object.keys(previewData[0]).map((key) => (
-                      <TableHead key={key}>{key}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewData.slice(0, 50).map((row, idx) => (
-                    <TableRow key={idx}>
-                      {Object.values(row).map((value, i) => (
-                        <TableCell key={i}>{value != null ? String(value) : '—'}</TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+      {previewData.length > 0 && currentTable && (
+        <QueryBuilderPreview
+          data={previewData}
+          selectedFields={selectedFields}
+          fields={currentTable.fields}
+        />
       )}
     </div>
   )
