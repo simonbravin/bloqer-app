@@ -1,21 +1,11 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
-import { requirePermission } from '@/lib/auth-helpers'
+import { requirePermission, getAuthContext } from '@/lib/auth-helpers'
 import crypto from 'crypto'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
+import { publishOutboxEvent } from '@/lib/events/event-publisher'
 
 async function generateCertNumber(projectId: string): Promise<number> {
   const lastCert = await prisma.certification.findFirst({
@@ -82,18 +72,28 @@ export async function createCertification(
   const number = await generateCertNumber(projectId)
   const issuedDateValue = data.issuedDate ? new Date(data.issuedDate) : undefined
 
-  const cert = await prisma.certification.create({
-    data: {
+  const cert = await prisma.$transaction(async (tx) => {
+    const created = await tx.certification.create({
+      data: {
+        orgId: org.orgId,
+        projectId,
+        budgetVersionId: data.budgetVersionId,
+        number,
+        periodMonth: data.periodMonth,
+        periodYear: data.periodYear,
+        status: 'DRAFT',
+        notes: data.notes,
+        issuedDate: issuedDateValue,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      projectId,
-      budgetVersionId: data.budgetVersionId,
-      number,
-      periodMonth: data.periodMonth,
-      periodYear: data.periodYear,
-      status: 'DRAFT',
-      notes: data.notes,
-      issuedDate: issuedDateValue,
-    },
+      eventType: 'CERTIFICATION.CREATED',
+      entityType: 'Certification',
+      entityId: created.id,
+      payload: { projectId, number: created.number },
+    })
+    return created
   })
 
   revalidatePath(`/projects/${projectId}/certifications`)
@@ -190,8 +190,17 @@ export async function deleteCertificationLine(lineId: string) {
     throw new Error('Cannot delete line from issued or approved certification')
   }
 
-  await prisma.certificationLine.delete({
-    where: { id: lineId },
+  await prisma.$transaction(async (tx) => {
+    await tx.certificationLine.delete({
+      where: { id: lineId },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'CERTIFICATION.UPDATED',
+      entityType: 'CertificationLine',
+      entityId: lineId,
+      payload: { certificationId: line.certificationId, projectId: line.certification.projectId, deleted: true },
+    })
   })
 
   revalidatePath(`/projects/${line.certification.projectId}/certifications`)
@@ -247,9 +256,18 @@ export async function updateCertification(
   if (data.periodYear !== undefined) updateData.periodYear = data.periodYear
   if (data.issuedDate !== undefined) updateData.issuedDate = data.issuedDate ? new Date(data.issuedDate) : null
 
-  await prisma.certification.update({
-    where: { id: certId },
-    data: updateData,
+  await prisma.$transaction(async (tx) => {
+    await tx.certification.update({
+      where: { id: certId },
+      data: updateData,
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'CERTIFICATION.UPDATED',
+      entityType: 'Certification',
+      entityId: certId,
+      payload: { projectId: cert.projectId },
+    })
   })
 
   revalidatePath(`/projects/${cert.projectId}/certifications`)
@@ -295,37 +313,48 @@ export async function issueCertification(certId: string) {
   const integritySeal = crypto.createHash('sha256').update(data).digest('hex')
 
   const issuedDate = new Date()
-  await prisma.certification.update({
-    where: { id: certId },
-    data: {
-      status: 'ISSUED',
-      integritySeal,
-      issuedByOrgMemberId: org.memberId,
-      issuedAt: issuedDate,
-      issuedDate,
-    },
-  })
-
   const totalAmount = cert.lines.reduce((sum, l) => sum.add(l.periodAmount), new Prisma.Decimal(0))
   const transactionNumber = await getNextCertTransactionNumber(org.orgId)
-  await prisma.financeTransaction.create({
-    data: {
+
+  await prisma.$transaction(async (tx) => {
+    await tx.certification.update({
+      where: { id: certId },
+      data: {
+        status: 'ISSUED',
+        integritySeal,
+        issuedByOrgMemberId: org.memberId,
+        issuedAt: issuedDate,
+        issuedDate,
+      },
+    })
+
+    await tx.financeTransaction.create({
+      data: {
+        orgId: org.orgId,
+        projectId: cert.projectId,
+        type: 'INCOME',
+        status: 'SUBMITTED',
+        transactionNumber,
+        issueDate: issuedDate,
+        currency: 'USD',
+        subtotal: totalAmount,
+        taxTotal: new Prisma.Decimal(0),
+        total: totalAmount,
+        amountBaseCurrency: totalAmount,
+        exchangeRateSnapshot: { rate: 1, baseCurrency: 'USD' } as object,
+        description: `Certificación #${cert.number} - ${cert.project.name}`,
+        reference: `CERT-${cert.number}`,
+        createdByOrgMemberId: org.memberId,
+      },
+    })
+
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      projectId: cert.projectId,
-      type: 'INCOME',
-      status: 'SUBMITTED',
-      transactionNumber,
-      issueDate: issuedDate,
-      currency: 'USD',
-      subtotal: totalAmount,
-      taxTotal: new Prisma.Decimal(0),
-      total: totalAmount,
-      amountBaseCurrency: totalAmount,
-      exchangeRateSnapshot: { rate: 1, baseCurrency: 'USD' } as object,
-      description: `Certificación #${cert.number} - ${cert.project.name}`,
-      reference: `CERT-${cert.number}`,
-      createdByOrgMemberId: org.memberId,
-    },
+      eventType: 'CERTIFICATION.ISSUED',
+      entityType: 'Certification',
+      entityId: certId,
+      payload: { projectId: cert.projectId, number: cert.number },
+    })
   })
 
   revalidatePath(`/projects/${cert.projectId}/certifications`)
@@ -407,23 +436,33 @@ export async function approveCertification(certId: string) {
 
   if (!cert) throw new Error('Certification not found or not issued')
 
-  await prisma.certification.update({
-    where: { id: certId },
-    data: {
-      status: 'APPROVED',
-      approvedByOrgMemberId: org.memberId,
-      approvedAt: new Date(),
-    },
-  })
+  await prisma.$transaction(async (tx) => {
+    await tx.certification.update({
+      where: { id: certId },
+      data: {
+        status: 'APPROVED',
+        approvedByOrgMemberId: org.memberId,
+        approvedAt: new Date(),
+      },
+    })
 
-  await prisma.financeTransaction.updateMany({
-    where: {
-      projectId: cert.projectId,
+    await tx.financeTransaction.updateMany({
+      where: {
+        projectId: cert.projectId,
+        orgId: org.orgId,
+        reference: `CERT-${cert.number}`,
+        type: 'INCOME',
+      },
+      data: { status: 'PAID', paidDate: new Date() },
+    })
+
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      reference: `CERT-${cert.number}`,
-      type: 'INCOME',
-    },
-    data: { status: 'PAID', paidDate: new Date() },
+      eventType: 'CERTIFICATION.APPROVED',
+      entityType: 'Certification',
+      entityId: certId,
+      payload: { projectId: cert.projectId, number: cert.number },
+    })
   })
 
   revalidatePath(`/projects/${cert.projectId}/certifications`)
@@ -445,14 +484,23 @@ export async function rejectCertification(certId: string, notes?: string) {
 
   if (!cert) throw new Error('Certification not found or not issued')
 
-  await prisma.certification.update({
-    where: { id: certId },
-    data: {
-      status: 'REJECTED',
-      approvedByOrgMemberId: org.memberId,
-      approvedAt: new Date(),
-      notes: notes ?? cert.notes ?? undefined,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.certification.update({
+      where: { id: certId },
+      data: {
+        status: 'REJECTED',
+        approvedByOrgMemberId: org.memberId,
+        approvedAt: new Date(),
+        notes: notes ?? cert.notes ?? undefined,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'CERTIFICATION.REJECTED',
+      entityType: 'Certification',
+      entityId: certId,
+      payload: { projectId: cert.projectId },
+    })
   })
 
   revalidatePath(`/projects/${cert.projectId}/certifications`)

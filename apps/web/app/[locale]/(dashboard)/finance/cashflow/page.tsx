@@ -3,6 +3,7 @@ import { CashflowComparisonCards } from '@/components/finance/cashflow-compariso
 import { CashflowSummaryStats } from '@/components/finance/cashflow-summary-stats'
 import { CompanyCashflowChartClient } from '@/components/finance/company-cashflow-chart-client'
 import { CashflowBreakdownChart } from '@/components/finance/cashflow-breakdown-chart'
+import { CashflowExportToolbar } from '@/components/finance/cashflow-export-toolbar'
 
 type PageProps = {
   searchParams: Promise<{ from?: string; to?: string }>
@@ -22,13 +23,16 @@ export default async function CompanyCashflowPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Cashflow consolidado
-        </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Ingresos, gastos y balance de toda la empresa. Desglose overhead vs proyectos.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">
+            Cashflow consolidado
+          </h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Ingresos, gastos y balance de toda la empresa. Desglose overhead vs proyectos.
+          </p>
+        </div>
+        <CashflowExportToolbar dateFrom={fromDate} dateTo={toDate} />
       </div>
 
       <CashflowComparisonCards data={comparison} />

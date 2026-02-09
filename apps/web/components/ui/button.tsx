@@ -20,7 +20,7 @@ const buttonVariants = {
   ghost:
     'hover:bg-muted active:bg-muted/80 dark:hover:bg-muted dark:active:bg-muted/80',
   destructive:
-    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus-visible:ring-red-500 dark:bg-red-700 dark:hover:bg-red-800',
+    'bg-destructive text-destructive-foreground hover:opacity-90 active:opacity-80 focus-visible:ring-destructive/50',
   link:
     'text-primary underline-offset-4 hover:underline',
 }
@@ -46,7 +46,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const classes = cn(
-      'inline-flex items-center justify-center rounded-md font-medium transition-colors',
+      'inline-flex items-center justify-center rounded-md font-medium transition-opacity duration-200',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       'active:scale-[0.98]',
       'disabled:pointer-events-none disabled:opacity-50',

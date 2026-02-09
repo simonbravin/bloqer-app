@@ -1,6 +1,8 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import { HierarchicalComputeTable, type WbsRow } from './hierarchical-compute-table'
 
 type ComputeSheetLine = {
@@ -42,12 +44,21 @@ function computeSheetToRows(lines: ComputeSheetLine[]): WbsRow[] {
  */
 export function PlanillaComputeView({ computeSheetLines }: PlanillaComputeViewProps) {
   const t = useTranslations('budget')
+  const router = useRouter()
+
+  useMessageBus('BUDGET_LINE.CREATED', () => router.refresh())
+  useMessageBus('BUDGET_LINE.UPDATED', () => router.refresh())
+  useMessageBus('BUDGET_LINE.DELETED', () => router.refresh())
+  useMessageBus('BUDGET_RESOURCE.ADDED', () => router.refresh())
+  useMessageBus('BUDGET_VERSION.APPROVED', () => router.refresh())
+  useMessageBus('FINANCE_TRANSACTION.CREATED', () => router.refresh())
+
   const rows = computeSheetToRows(computeSheetLines)
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-        <p className="text-slate-500">
+      <div className="rounded-lg border border-border bg-card p-12 text-center">
+        <p className="text-muted-foreground">
           {t('noLines', { defaultValue: 'No hay partidas en esta versión' })}
         </p>
       </div>
@@ -55,7 +66,7 @@ export function PlanillaComputeView({ computeSheetLines }: PlanillaComputeViewPr
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
       <HierarchicalComputeTable
         rows={rows}
         showVariance={false}

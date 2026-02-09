@@ -70,7 +70,7 @@ export function COForm({
         <Label htmlFor="co-title">Title</Label>
         <Input id="co-title" {...register('title')} className="mt-1" />
         {errors.title && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.title.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.title.message}</p>
         )}
       </div>
       <div>
@@ -82,7 +82,7 @@ export function COForm({
           className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
         />
         {errors.reason && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.reason.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.reason.message}</p>
         )}
       </div>
       <div>
@@ -95,7 +95,7 @@ export function COForm({
         />
       </div>
       {errors.root && (
-        <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+        <p className="text-sm text-destructive">{errors.root.message}</p>
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={isSubmitting}>

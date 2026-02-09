@@ -16,7 +16,7 @@ export function FinanceTabs() {
   const pathname = usePathname()
 
   return (
-    <nav className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50/50 p-1 dark:border-slate-800 dark:bg-slate-900/50">
+    <nav className="flex gap-1 rounded-lg border border-border bg-muted/50 p-1">
       {tabs.map((tab) => {
         const isActive = pathname === tab.href || (tab.href !== '/finance' && pathname.startsWith(tab.href))
         return (
@@ -26,8 +26,8 @@ export function FinanceTabs() {
             className={cn(
               'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
               isActive
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <tab.icon className="h-4 w-4" />

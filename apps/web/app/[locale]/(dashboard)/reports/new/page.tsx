@@ -23,12 +23,12 @@ export default async function NewReportPage() {
       <div className="mb-6">
         <Link
           href="/reports"
-          className="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           ← Reports
         </Link>
       </div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">
         Create report
       </h1>
       <ReportBuilder projects={projects} />

@@ -34,27 +34,27 @@ export function LoginPageCard({ initialTab = 'login' }: LoginPageCardProps) {
   const [tab, setTab] = useState<AuthTab>(initialTab)
 
   return (
-    <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-900 md:flex md:min-h-[520px]">
+    <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-card shadow-xl md:flex md:min-h-[520px]">
       {/* Left: Brand — bloque centrado en la vista, texto alineado a la izquierda (estética VBT) */}
       <div
-        className="flex flex-col justify-center px-10 py-12 text-white md:w-[45%] md:min-w-[280px] md:px-12 md:py-14"
+        className="flex flex-col justify-center px-10 py-12 text-primary-foreground md:w-[45%] md:min-w-[280px] md:px-12 md:py-14"
         style={{ backgroundColor: BRAND_PURPLE }}
       >
         <div className="mx-auto w-full max-w-[20rem] text-left">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
             Construction ERP
           </h1>
-          <p className="mt-4 text-sm leading-relaxed text-white/90 md:text-base">
+          <p className="mt-4 text-sm leading-relaxed text-primary-foreground/90 md:text-base">
             La plataforma profesional para gestión de presupuestos y seguimiento
             de obras de construcción.
           </p>
           <ul className="mt-8 space-y-4">
             {features.map(({ icon: Icon, textKey }) => (
               <li key={textKey} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/15">
                   <Icon className="h-4 w-4" />
                 </span>
-                <span className="text-sm text-white/95 md:text-base">
+                <span className="text-sm text-primary-foreground/95 md:text-base">
                   {t(textKey)}
                 </span>
               </li>
@@ -63,16 +63,16 @@ export function LoginPageCard({ initialTab = 'login' }: LoginPageCardProps) {
         </div>
       </div>
 
-      {/* Right: Form — estética VBT (limpia, espaciado generoso, pestaña activa con fondo y borde púrpura) */}
+      {/* Right: Form */}
       <div className="flex flex-col justify-center px-8 py-10 md:w-[55%] md:px-10 md:py-12">
-        <div className="mb-8 flex rounded-lg border border-slate-200 bg-slate-50/50 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+        <div className="mb-8 flex rounded-lg border border-border bg-muted/50 p-1">
           <button
             type="button"
             onClick={() => setTab('login')}
             className={`flex flex-1 items-center justify-center rounded-md py-2.5 text-sm font-medium transition ${
               tab === 'login'
-                ? 'border border-[#5D5CDE] bg-[#5D5CDE]/10 text-[#5D5CDE] dark:bg-[#5D5CDE]/20 dark:text-[#8B8BEE]'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'border border-accent bg-accent/10 text-accent'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {t('signIn')}
@@ -82,8 +82,8 @@ export function LoginPageCard({ initialTab = 'login' }: LoginPageCardProps) {
             onClick={() => setTab('register')}
             className={`flex flex-1 items-center justify-center rounded-md py-2.5 text-sm font-medium transition ${
               tab === 'register'
-                ? 'border border-[#5D5CDE] bg-[#5D5CDE]/10 text-[#5D5CDE] dark:bg-[#5D5CDE]/20 dark:text-[#8B8BEE]'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'border border-accent bg-accent/10 text-accent'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {t('signUp')}
@@ -95,7 +95,7 @@ export function LoginPageCard({ initialTab = 'login' }: LoginPageCardProps) {
             <Button
               type="button"
               variant="outline"
-              className="w-full rounded-lg border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800/50"
+              className="w-full rounded-lg border-border bg-background"
               disabled
             >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden>
@@ -119,11 +119,11 @@ export function LoginPageCard({ initialTab = 'login' }: LoginPageCardProps) {
               {t('continueWithGoogle')}
             </Button>
             <div className="my-8 flex items-center gap-3">
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-600" />
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">
                 {t('orSignInWithAccount')}
               </span>
-              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-600" />
+              <span className="h-px flex-1 bg-border" />
             </div>
             <LoginForm />
           </>

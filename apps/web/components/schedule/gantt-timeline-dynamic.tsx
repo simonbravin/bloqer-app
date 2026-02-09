@@ -642,7 +642,7 @@ export function GanttTimelineDynamic({
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-x-auto bg-white"
+      className="w-full overflow-x-auto bg-card"
     >
       <canvas
         ref={canvasRef}

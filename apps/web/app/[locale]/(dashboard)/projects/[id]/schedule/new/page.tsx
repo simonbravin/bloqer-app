@@ -78,7 +78,7 @@ export default function NewSchedulePage() {
         </Button>
 
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">{t('createNewSchedule')}</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{t('createNewSchedule')}</h1>
           <p className="mt-1 text-sm text-slate-500">{t('createScheduleDesc')}</p>
         </div>
 

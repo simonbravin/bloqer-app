@@ -1,11 +1,12 @@
 "use server";
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { getAuthContext } from '@/lib/auth-helpers'
+import { publishOutboxEvent, type PrismaTransaction } from '@/lib/events/event-publisher'
 import {
   createWBSItemSchema,
   updateWBSItemSchema,
@@ -19,16 +20,6 @@ import {
   MAX_DEPTH,
   type WbsType,
 } from '@/lib/wbs-utils'
-
-type PrismaTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
 
 function ensureProjectInOrg(projectId: string, orgId: string) {
   return prisma.project.findFirst({
@@ -53,7 +44,7 @@ async function getNextSiblingSequence(projectId: string, parentId: string | null
 
 /** Prevent circular ref: ensure parentId is not self and not a descendant of self. */
 async function ensureNoCircular(
-  tx: PrismaTx,
+  tx: PrismaTransaction,
   nodeId: string,
   newParentId: string | null
 ): Promise<void> {
@@ -74,7 +65,7 @@ async function ensureNoCircular(
 
 /** Recalculate codes for node and all descendants (by sortOrder). */
 async function recalculateCodes(
-  tx: PrismaTx,
+  tx: PrismaTransaction,
   nodeId: string,
   newParentCode: string | null
 ): Promise<void> {
@@ -312,7 +303,7 @@ export async function createWBSItem(projectId: string, data: CreateWBSItemInput)
       where: { projectId, parentId: parentId ?? null, active: true },
       _max: { sortOrder: true },
     })
-    await tx.wbsNode.create({
+    const node = await tx.wbsNode.create({
       data: {
         orgId: org.orgId,
         projectId,
@@ -326,6 +317,13 @@ export async function createWBSItem(projectId: string, data: CreateWBSItemInput)
         sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
         active: true,
       },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'WBS_NODE.CREATED',
+      entityType: 'WbsNode',
+      entityId: node.id,
+      payload: { projectId, code: node.code, name: node.name, category: node.category },
     })
   })
 
@@ -371,7 +369,7 @@ export async function updateWBSItem(
     return { error: { type: ['Root items must be PHASE.'] } }
   }
 
-  await prisma.$transaction(async (tx: PrismaTx) => {
+  await prisma.$transaction(async (tx: PrismaTransaction) => {
     if (newParentId !== existing.parentId) {
       await ensureNoCircular(tx, id, newParentId)
       const newParentCode = newParentId
@@ -394,6 +392,13 @@ export async function updateWBSItem(
         data: buildUpdateData(payload, existing),
       })
     }
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'WBS_NODE.UPDATED',
+      entityType: 'WbsNode',
+      entityId: id,
+      payload: { projectId },
+    })
   })
 
   revalidatePath(`/projects/${projectId}/wbs`)
@@ -425,13 +430,21 @@ export async function reorderWBSItems(
   })
   if (nodes.length !== orderedNodeIds.length) return { error: 'Invalid nodes or parent' }
 
-  const updates = orderedNodeIds.map((id, index) =>
-    prisma.wbsNode.update({
-      where: { id },
-      data: { sortOrder: index },
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < orderedNodeIds.length; i++) {
+      await tx.wbsNode.update({
+        where: { id: orderedNodeIds[i] },
+        data: { sortOrder: i },
+      })
+    }
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'WBS_NODE.REORDERED',
+      entityType: 'WbsNode',
+      entityId: projectId,
+      payload: { projectId, nodeIds: orderedNodeIds },
     })
-  )
-  await prisma.$transaction(updates)
+  })
 
   revalidatePath(`/projects/${projectId}/wbs`)
   revalidatePath(`/projects/${projectId}`)
@@ -481,6 +494,13 @@ export async function deleteWBSItem(id: string, projectId: string) {
 
   await prisma.$transaction(async (tx) => {
     await softDeleteRecursive(tx, id)
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'WBS_NODE.DELETED',
+      entityType: 'WbsNode',
+      entityId: id,
+      payload: { projectId },
+    })
   })
 
   revalidatePath(`/projects/${projectId}/wbs`)
@@ -520,19 +540,28 @@ export async function createWbsNode(data: {
     })
     if (existing) return { success: false, error: 'Ya existe un nodo con ese código' }
 
-    await prisma.wbsNode.create({
-      data: {
+    await prisma.$transaction(async (tx) => {
+      const node = await tx.wbsNode.create({
+        data: {
+          orgId: org.orgId,
+          projectId: data.projectId,
+          parentId: data.parentId,
+          code: data.code,
+          name: data.name,
+          category: data.category,
+          unit: data.unit,
+          quantity: new Prisma.Decimal(data.quantity),
+          description: data.description || null,
+          active: true,
+        },
+      })
+      await publishOutboxEvent(tx, {
         orgId: org.orgId,
-        projectId: data.projectId,
-        parentId: data.parentId,
-        code: data.code,
-        name: data.name,
-        category: data.category,
-        unit: data.unit,
-        quantity: new Prisma.Decimal(data.quantity),
-        description: data.description || null,
-        active: true,
-      },
+        eventType: 'WBS_NODE.CREATED',
+        entityType: 'WbsNode',
+        entityId: node.id,
+        payload: { projectId: data.projectId, code: node.code, name: node.name },
+      })
     })
     revalidatePath(`/projects/${data.projectId}/wbs`)
     return { success: true }
@@ -576,16 +605,25 @@ export async function updateWbsNode(
     })
     if (existing) return { success: false, error: 'Ya existe un nodo con ese código' }
 
-    await prisma.wbsNode.update({
-      where: { id: nodeId },
-      data: {
-        code: data.code,
-        name: data.name,
-        category: data.category,
-        unit: data.unit,
-        quantity: new Prisma.Decimal(data.quantity),
-        description: data.description || null,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.wbsNode.update({
+        where: { id: nodeId },
+        data: {
+          code: data.code,
+          name: data.name,
+          category: data.category,
+          unit: data.unit,
+          quantity: new Prisma.Decimal(data.quantity),
+          description: data.description || null,
+        },
+      })
+      await publishOutboxEvent(tx, {
+        orgId: org.orgId,
+        eventType: 'WBS_NODE.UPDATED',
+        entityType: 'WbsNode',
+        entityId: nodeId,
+        payload: { projectId: node.projectId },
+      })
     })
     revalidatePath(`/projects/${node.projectId}/wbs`)
     return { success: true }
@@ -616,9 +654,18 @@ export async function deleteWbsNode(nodeId: string) {
           'No se puede eliminar un nodo que tiene elementos hijos. Elimina primero los hijos.',
       }
     }
-    await prisma.wbsNode.update({
-      where: { id: nodeId },
-      data: { active: false },
+    await prisma.$transaction(async (tx) => {
+      await tx.wbsNode.update({
+        where: { id: nodeId },
+        data: { active: false },
+      })
+      await publishOutboxEvent(tx, {
+        orgId: org.orgId,
+        eventType: 'WBS_NODE.DELETED',
+        entityType: 'WbsNode',
+        entityId: nodeId,
+        payload: { projectId: node.projectId },
+      })
     })
     revalidatePath(`/projects/${node.projectId}/wbs`)
     return { success: true }
@@ -641,9 +688,18 @@ export async function reorderWbsNode(nodeId: string, newSortOrder: number) {
       where: { id: nodeId, orgId: org.orgId },
     })
     if (!node) return { success: false, error: 'Nodo no encontrado' }
-    await prisma.wbsNode.update({
-      where: { id: nodeId },
-      data: { sortOrder: newSortOrder },
+    await prisma.$transaction(async (tx) => {
+      await tx.wbsNode.update({
+        where: { id: nodeId },
+        data: { sortOrder: newSortOrder },
+      })
+      await publishOutboxEvent(tx, {
+        orgId: org.orgId,
+        eventType: 'WBS_NODE.REORDERED',
+        entityType: 'WbsNode',
+        entityId: nodeId,
+        payload: { projectId: node.projectId, sortOrder: newSortOrder },
+      })
     })
     revalidatePath(`/projects/${node.projectId}/wbs`)
     return { success: true }
@@ -681,9 +737,9 @@ async function calculateNextCode(
       orderBy: { code: 'desc' },
       select: { code: true },
     })
-    if (!lastRoot) return '01'
+    if (!lastRoot) return '1'
     const lastNum = parseInt(lastRoot.code, 10)
-    return String(Number.isNaN(lastNum) ? 1 : lastNum + 1).padStart(2, '0')
+    return String(Number.isNaN(lastNum) ? 1 : lastNum + 1)
   }
 
   const parent = await prisma.wbsNode.findUnique({
@@ -694,26 +750,109 @@ async function calculateNextCode(
 
   const siblings = await prisma.wbsNode.findMany({
     where: { projectId, parentId, active: true },
-    orderBy: { code: 'desc' },
+    orderBy: { code: 'asc' },
     select: { code: true },
-    take: 1,
   })
-  if (siblings.length === 0) return `${parent.code}.01`
-  const lastCode = siblings[0].code
+  if (siblings.length === 0) return `${parent.code}.1`
+  const lastCode = siblings[siblings.length - 1].code
   const parts = lastCode.split('.')
   const lastNum = parseInt(parts[parts.length - 1], 10)
-  const newNum = String(Number.isNaN(lastNum) ? 1 : lastNum + 1).padStart(2, '0')
-  parts[parts.length - 1] = newNum
+  const nextNum = Number.isNaN(lastNum) ? 1 : lastNum + 1
+  parts[parts.length - 1] = String(nextNum)
   return parts.join('.')
+}
+
+/** Root WBS templates for the "library" in Add phase dialog (from all project templates). */
+export async function listWbsTemplatesForLibrary(): Promise<
+  Array<{ id: string; name: string; code: string; unit: string; hasResources: boolean }>
+> {
+  await getAuthContext()
+  const rows = await prisma.wbsTemplate.findMany({
+    where: { parentId: null },
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      unit: true,
+      _count: { select: { resourceTemplates: true } },
+    },
+    orderBy: [{ code: 'asc' }, { name: 'asc' }],
+  })
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    code: r.code,
+    unit: r.unit ?? 'un',
+    hasResources: (r._count?.resourceTemplates ?? 0) > 0,
+  }))
+}
+
+async function ensureBudgetLineForVersion(
+  projectId: string,
+  budgetVersionId: string,
+  wbsNodeId: string,
+  description: string,
+  unit: string,
+  orgId: string
+): Promise<{ error?: string }> {
+  const version = await prisma.budgetVersion.findFirst({
+    where: { id: budgetVersionId, orgId, projectId },
+    select: {
+      id: true,
+      projectId: true,
+      status: true,
+      globalOverheadPct: true,
+      globalFinancialPct: true,
+      globalProfitPct: true,
+      globalTaxPct: true,
+    },
+  })
+  if (!version) return { error: 'Budget version not found' }
+  if (version.status !== 'DRAFT') return { error: 'Cannot add line to locked or approved version' }
+  const maxSort = await prisma.budgetLine.aggregate({
+    where: { budgetVersionId },
+    _max: { sortOrder: true },
+  })
+  await prisma.$transaction(async (tx) => {
+    const line = await tx.budgetLine.create({
+      data: {
+        orgId,
+        budgetVersionId,
+        wbsNodeId,
+        description,
+        unit,
+        quantity: new Prisma.Decimal(1),
+        directCostTotal: new Prisma.Decimal(0),
+        salePriceTotal: new Prisma.Decimal(0),
+        overheadPct: version.globalOverheadPct,
+        indirectCostPct: new Prisma.Decimal(0),
+        financialPct: version.globalFinancialPct,
+        profitPct: version.globalProfitPct,
+        taxPct: version.globalTaxPct,
+        retentionPct: new Prisma.Decimal(0),
+        sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId,
+      eventType: 'BUDGET_LINE.CREATED',
+      entityType: 'BudgetLine',
+      entityId: line.id,
+      payload: { budgetVersionId, projectId },
+    })
+  })
+  return {}
 }
 
 /**
  * Add WBS node from template or custom data with auto code.
+ * When budgetVersionId is provided (e.g. from budget page), also creates a BudgetLine for that version.
  */
 export async function addWbsNode(data: {
   projectId: string
   parentId: string | null
   templateId?: string
+  budgetVersionId?: string
   customData?: {
     name: string
     unit: string
@@ -737,42 +876,90 @@ export async function addWbsNode(data: {
       })
       if (!template) return { success: false, error: 'Template not found' }
 
-      const node = await prisma.wbsNode.create({
-        data: {
+      const node = await prisma.$transaction(async (tx) => {
+        const created = await tx.wbsNode.create({
+          data: {
+            orgId: org.orgId,
+            projectId: data.projectId,
+            parentId: data.parentId,
+            code: newCode,
+            name: template.name,
+            category: mapTemplateCategory(template.category),
+            unit: template.unit ?? 'un',
+            quantity: template.defaultQuantity ?? new Prisma.Decimal(1),
+            description: template.description ?? null,
+            active: true,
+          },
+        })
+        await publishOutboxEvent(tx, {
           orgId: org.orgId,
-          projectId: data.projectId,
-          parentId: data.parentId,
-          code: newCode,
-          name: template.name,
-          category: mapTemplateCategory(template.category),
-          unit: template.unit ?? 'un',
-          quantity: template.defaultQuantity ?? new Prisma.Decimal(1),
-          description: template.description ?? null,
-          active: true,
-        },
+          eventType: 'WBS_NODE.CREATED',
+          entityType: 'WbsNode',
+          entityId: created.id,
+          payload: { projectId: data.projectId, code: created.code, name: created.name },
+        })
+        return created
       })
+      if (data.budgetVersionId) {
+        const created = await ensureBudgetLineForVersion(
+          data.projectId,
+          data.budgetVersionId,
+          node.id,
+          node.name,
+          node.unit,
+          org.orgId
+        )
+        if (created?.error) return { success: false, error: created.error }
+      }
       revalidatePath(`/projects/${data.projectId}/wbs`)
       revalidatePath(`/projects/${data.projectId}`)
+      if (data.budgetVersionId) {
+        revalidatePath(`/projects/${data.projectId}/budget/${data.budgetVersionId}`)
+      }
       return { success: true, nodeId: node.id }
     }
 
     if (data.customData) {
-      const node = await prisma.wbsNode.create({
-        data: {
+      const node = await prisma.$transaction(async (tx) => {
+        const created = await tx.wbsNode.create({
+          data: {
+            orgId: org.orgId,
+            projectId: data.projectId,
+            parentId: data.parentId,
+            code: newCode,
+            name: data.customData!.name,
+            category,
+            unit: data.customData!.unit,
+            quantity: new Prisma.Decimal(1),
+            description: data.customData!.description ?? null,
+            active: true,
+          },
+        })
+        await publishOutboxEvent(tx, {
           orgId: org.orgId,
-          projectId: data.projectId,
-          parentId: data.parentId,
-          code: newCode,
-          name: data.customData.name,
-          category,
-          unit: data.customData.unit,
-          quantity: new Prisma.Decimal(1),
-          description: data.customData.description ?? null,
-          active: true,
-        },
+          eventType: 'WBS_NODE.CREATED',
+          entityType: 'WbsNode',
+          entityId: created.id,
+          payload: { projectId: data.projectId, code: created.code, name: created.name },
+        })
+        return created
       })
+      if (data.budgetVersionId) {
+        const created = await ensureBudgetLineForVersion(
+          data.projectId,
+          data.budgetVersionId,
+          node.id,
+          node.name,
+          node.unit,
+          org.orgId
+        )
+        if (created?.error) return { success: false, error: created.error }
+      }
       revalidatePath(`/projects/${data.projectId}/wbs`)
       revalidatePath(`/projects/${data.projectId}`)
+      if (data.budgetVersionId) {
+        revalidatePath(`/projects/${data.projectId}/budget/${data.budgetVersionId}`)
+      }
       return { success: true, nodeId: node.id }
     }
 
@@ -792,8 +979,12 @@ function decrementCode(code: string): string {
 }
 
 /** Renumber all children of a node under new parent code. */
-async function renumberChildren(nodeId: string, newParentCode: string): Promise<void> {
-  const children = await prisma.wbsNode.findMany({
+async function renumberChildren(
+  txOrPrisma: PrismaTransaction | typeof prisma,
+  nodeId: string,
+  newParentCode: string
+): Promise<void> {
+  const children = await txOrPrisma.wbsNode.findMany({
     where: { parentId: nodeId, active: true },
     orderBy: { code: 'asc' },
   })
@@ -801,11 +992,11 @@ async function renumberChildren(nodeId: string, newParentCode: string): Promise<
     const child = children[i]
     const childNum = String(i + 1).padStart(2, '0')
     const newCode = `${newParentCode}.${childNum}`
-    await prisma.wbsNode.update({
+    await txOrPrisma.wbsNode.update({
       where: { id: child.id },
       data: { code: newCode },
     })
-    await renumberChildren(child.id, newCode)
+    await renumberChildren(txOrPrisma, child.id, newCode)
   }
 }
 
@@ -863,17 +1054,25 @@ export async function deleteWbsNodeWithRenumber(nodeId: string) {
       orderBy: { code: 'asc' },
     })
 
-    await prisma.budgetLine.deleteMany({ where: { wbsNodeId: nodeId } })
-    await prisma.wbsNode.delete({ where: { id: nodeId } })
-
-    for (const sibling of siblings) {
-      const newCode = decrementCode(sibling.code)
-      await prisma.wbsNode.update({
-        where: { id: sibling.id },
-        data: { code: newCode },
+    await prisma.$transaction(async (tx) => {
+      await tx.budgetLine.deleteMany({ where: { wbsNodeId: nodeId } })
+      await tx.wbsNode.delete({ where: { id: nodeId } })
+      for (const sibling of siblings) {
+        const newCode = decrementCode(sibling.code)
+        await tx.wbsNode.update({
+          where: { id: sibling.id },
+          data: { code: newCode },
+        })
+        await renumberChildren(tx, sibling.id, newCode)
+      }
+      await publishOutboxEvent(tx, {
+        orgId: org.orgId,
+        eventType: 'WBS_NODE.DELETED',
+        entityType: 'WbsNode',
+        entityId: nodeId,
+        payload: { projectId: node.projectId },
       })
-      await renumberChildren(sibling.id, newCode)
-    }
+    })
 
     revalidatePath(`/projects/${node.projectId}/wbs`)
     revalidatePath(`/projects/${node.projectId}`)
@@ -901,11 +1100,20 @@ export async function deleteWbsNodeCascade(nodeId: string) {
     const descendants = await getAllDescendants(nodeId)
     const idsToDelete = [...descendants.map((d) => d.id), nodeId]
 
-    await prisma.budgetLine.deleteMany({
-      where: { wbsNodeId: { in: idsToDelete } },
-    })
-    await prisma.wbsNode.deleteMany({
-      where: { id: { in: idsToDelete } },
+    await prisma.$transaction(async (tx) => {
+      await tx.budgetLine.deleteMany({
+        where: { wbsNodeId: { in: idsToDelete } },
+      })
+      await tx.wbsNode.deleteMany({
+        where: { id: { in: idsToDelete } },
+      })
+      await publishOutboxEvent(tx, {
+        orgId: org.orgId,
+        eventType: 'WBS_NODE.DELETED',
+        entityType: 'WbsNode',
+        entityId: nodeId,
+        payload: { projectId: node.projectId, cascadeIds: idsToDelete },
+      })
     })
 
     const siblings = await prisma.wbsNode.findMany({
@@ -924,7 +1132,7 @@ export async function deleteWbsNodeCascade(nodeId: string) {
         where: { id: sibling.id },
         data: { code: newCode },
       })
-      await renumberChildren(sibling.id, newCode)
+      await renumberChildren(prisma, sibling.id, newCode)
     }
 
     revalidatePath(`/projects/${node.projectId}/wbs`)

@@ -1,11 +1,9 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole, hasMinimumRole } from '@/lib/rbac'
+import { getAuthContext } from '@/lib/auth-helpers'
 import { uploadToR2, getDownloadUrl, calculateChecksum } from '@/lib/r2-client'
 import {
   createDailyReportSchema,
@@ -21,14 +19,6 @@ import {
 
 const MAX_FILES_PER_REPORT = 10
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
 
 async function auditDailyReport(params: {
   orgId: string

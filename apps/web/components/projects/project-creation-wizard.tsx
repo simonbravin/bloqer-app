@@ -112,7 +112,7 @@ export function ProjectCreationWizard({
             <div
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 ${
                 step >= stepNumber
-                  ? 'border-blue-600 bg-blue-600 text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-slate-300 bg-white text-slate-400'
               }`}
             >
@@ -305,7 +305,7 @@ export function ProjectCreationWizard({
                   placeholder="Ej: Ampliación Casa Rodriguez"
                 />
                 {form.formState.errors.name && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-sm text-destructive">
                     {form.formState.errors.name.message}
                   </p>
                 )}

@@ -81,10 +81,10 @@ export default async function ReportsPage() {
     <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-foreground">
             Reportes y Exportaciones
           </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             Genera reportes personalizados y exporta datos
           </p>
         </div>
@@ -100,7 +100,7 @@ export default async function ReportsPage() {
       </div>
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">
           Reportes Predefinidos
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -108,35 +108,35 @@ export default async function ReportsPage() {
             <Link
               key={report.id}
               href={`/reports/predefined/${report.id}`}
-              className="group rounded-lg border border-slate-200 bg-white p-4 transition-all hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-600"
+              className="group rounded-lg border border-border bg-card p-4 transition-all hover:border-accent hover:shadow-md"
             >
               <div className="mb-3 text-3xl">{report.icon}</div>
-              <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+              <h3 className="font-semibold text-foreground group-hover:text-accent">
                 {report.name}
               </h3>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{report.description}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{report.description}</p>
             </Link>
           ))}
         </div>
       </div>
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">
           Query Builder
         </h2>
-        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mb-4 text-sm text-muted-foreground">
           Construí consultas sin SQL: elegí tabla, campos y filtros para previsualizar datos.
         </p>
         <QueryBuilder />
       </div>
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">
           Reportes Personalizados
         </h2>
         {reports.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-300 p-12 text-center dark:border-slate-600">
-            <p className="text-slate-500 dark:text-slate-400">
+          <div className="rounded-lg border border-dashed border-border p-12 text-center">
+            <p className="text-muted-foreground">
               Aún no hay reportes personalizados.
             </p>
             {['ADMIN', 'OWNER'].includes(org.role) && (

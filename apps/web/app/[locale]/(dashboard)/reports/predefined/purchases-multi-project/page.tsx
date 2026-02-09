@@ -21,10 +21,10 @@ export default async function PurchasesMultiProjectPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+        <h1 className="text-2xl font-semibold text-foreground">
           {t('purchasesMultiProject')}
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-muted-foreground">
           {t('purchasesMultiProjectDesc')}
         </p>
       </div>

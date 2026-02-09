@@ -89,7 +89,7 @@ export function BudgetLineForm({
             ))}
           </select>
           {errors.wbsNodeId && (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.wbsNodeId.message}</p>
+            <p className="mt-1 text-xs text-destructive">{errors.wbsNodeId.message}</p>
           )}
         </div>
         <div className="min-w-[240px]">
@@ -104,26 +104,26 @@ export function BudgetLineForm({
           <Label htmlFor="line-desc">Description</Label>
           <Input id="line-desc" {...register('description')} className="mt-1" placeholder="Line description" />
           {errors.description && (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.description.message}</p>
+            <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>
           )}
         </div>
         <div className="w-20">
           <Label htmlFor="line-unit">Unit</Label>
           <Input id="line-unit" {...register('unit')} className="mt-1" placeholder="ea" />
-          {errors.unit && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.unit.message}</p>}
+          {errors.unit && <p className="mt-1 text-xs text-destructive">{errors.unit.message}</p>}
         </div>
         <div className="w-24">
           <Label htmlFor="line-qty">Qty</Label>
           <Input id="line-qty" type="number" step="any" {...register('quantity')} className="mt-1" />
           {errors.quantity && (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.quantity.message}</p>
+            <p className="mt-1 text-xs text-destructive">{errors.quantity.message}</p>
           )}
         </div>
         <div className="w-28">
           <Label htmlFor="line-unitcost">Unit cost</Label>
           <Input id="line-unitcost" type="number" step="0.01" {...register('unitCost')} className="mt-1" />
           {errors.unitCost && (
-            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.unitCost.message}</p>
+            <p className="mt-1 text-xs text-destructive">{errors.unitCost.message}</p>
           )}
         </div>
         <div className="w-20">

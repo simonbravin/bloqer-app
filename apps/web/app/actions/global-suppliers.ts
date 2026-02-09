@@ -1,19 +1,10 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
+import { getAuthContext } from '@/lib/auth-helpers'
+import { publishOutboxEvent } from '@/lib/events/event-publisher'
 
 export async function linkGlobalSupplier(
   globalPartyId: string,
@@ -46,26 +37,35 @@ export async function linkGlobalSupplier(
     throw new Error('Already linked to this supplier')
   }
 
-  const link = await prisma.orgPartyLink.create({
-    data: {
+  const link = await prisma.$transaction(async (tx) => {
+    const created = await tx.orgPartyLink.create({
+      data: {
+        orgId: org.orgId,
+        globalPartyId,
+        localAlias: data.localAlias || undefined,
+        localContactName: data.localContactName || undefined,
+        localContactEmail: data.localContactEmail || undefined,
+        localContactPhone: data.localContactPhone || undefined,
+        preferred: data.preferred ?? false,
+        status: 'ACTIVE',
+        paymentTerms: data.paymentTerms || undefined,
+        discountPct: data.discountPct != null ? new Prisma.Decimal(data.discountPct) : undefined,
+        notes: data.notes || undefined,
+        createdByOrgMemberId: org.memberId,
+      },
+    })
+    await tx.globalParty.update({
+      where: { id: globalPartyId },
+      data: { orgCount: { increment: 1 } },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      globalPartyId,
-      localAlias: data.localAlias || undefined,
-      localContactName: data.localContactName || undefined,
-      localContactEmail: data.localContactEmail || undefined,
-      localContactPhone: data.localContactPhone || undefined,
-      preferred: data.preferred ?? false,
-      status: 'ACTIVE',
-      paymentTerms: data.paymentTerms || undefined,
-      discountPct: data.discountPct != null ? new Prisma.Decimal(data.discountPct) : undefined,
-      notes: data.notes || undefined,
-      createdByOrgMemberId: org.memberId,
-    },
-  })
-
-  await prisma.globalParty.update({
-    where: { id: globalPartyId },
-    data: { orgCount: { increment: 1 } },
+      eventType: 'PARTY.LINKED',
+      entityType: 'OrgPartyLink',
+      entityId: created.id,
+      payload: { globalPartyId },
+    })
+    return created
   })
 
   revalidatePath('/suppliers')
@@ -85,14 +85,22 @@ export async function unlinkGlobalSupplier(globalPartyId: string) {
 
   if (!link) throw new Error('Not linked to this supplier')
 
-  await prisma.orgPartyLink.update({
-    where: { id: link.id },
-    data: { status: 'INACTIVE' },
-  })
-
-  await prisma.globalParty.update({
-    where: { id: globalPartyId },
-    data: { orgCount: { decrement: 1 } },
+  await prisma.$transaction(async (tx) => {
+    await tx.orgPartyLink.update({
+      where: { id: link.id },
+      data: { status: 'INACTIVE' },
+    })
+    await tx.globalParty.update({
+      where: { id: globalPartyId },
+      data: { orgCount: { decrement: 1 } },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'PARTY.UNLINKED',
+      entityType: 'OrgPartyLink',
+      entityId: link.id,
+      payload: { globalPartyId },
+    })
   })
 
   revalidatePath('/suppliers')
@@ -131,9 +139,18 @@ export async function updateSupplierLink(
   if (data.discountPct !== undefined) updateData.discountPct = new Prisma.Decimal(data.discountPct)
   if (data.notes !== undefined) updateData.notes = data.notes
 
-  await prisma.orgPartyLink.update({
-    where: { id: linkId },
-    data: updateData,
+  await prisma.$transaction(async (tx) => {
+    await tx.orgPartyLink.update({
+      where: { id: linkId },
+      data: updateData,
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'PARTY.UPDATED',
+      entityType: 'OrgPartyLink',
+      entityId: linkId,
+      payload: { globalPartyId: link.globalPartyId },
+    })
   })
 
   revalidatePath('/suppliers')
@@ -188,19 +205,29 @@ export async function createLocalSupplier(data: {
   const { org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
-  const party = await prisma.party.create({
-    data: {
+  const party = await prisma.$transaction(async (tx) => {
+    const created = await tx.party.create({
+      data: {
+        orgId: org.orgId,
+        partyType: 'SUPPLIER',
+        name: data.name,
+        taxId: data.taxId || undefined,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        address: data.address || undefined,
+        city: data.city || undefined,
+        country: data.country || undefined,
+        website: data.website || undefined,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      partyType: 'SUPPLIER',
-      name: data.name,
-      taxId: data.taxId || undefined,
-      email: data.email || undefined,
-      phone: data.phone || undefined,
-      address: data.address || undefined,
-      city: data.city || undefined,
-      country: data.country || undefined,
-      website: data.website || undefined,
-    },
+      eventType: 'PARTY.CREATED',
+      entityType: 'Party',
+      entityId: created.id,
+      payload: { partyType: 'SUPPLIER', name: created.name },
+    })
+    return created
   })
 
   revalidatePath('/suppliers')

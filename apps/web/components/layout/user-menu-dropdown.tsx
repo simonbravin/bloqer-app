@@ -31,7 +31,7 @@ export function UserMenuDropdown({ user }: UserMenuDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
           <span className="text-xs font-semibold text-slate-600">{initials}</span>
         </div>
         <span className="text-sm font-medium text-slate-700">

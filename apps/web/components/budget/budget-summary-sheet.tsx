@@ -45,15 +45,9 @@ export function BudgetSummarySheet({
 
   function calculateSalePrice(line: BudgetSummarySheetLine): number {
     const directUnitCost = line.total / line.quantity
-
-    let price = directUnitCost
-
-    price += price * (Number(line.overheadPct) / 100)
-    price += price * (Number(line.financialPct) / 100)
-    price += price * (Number(line.profitPct) / 100)
-    price += price * (Number(line.taxPct) / 100)
-
-    return price
+    const sub1 = directUnitCost * (1 + Number(line.overheadPct) / 100)
+    const sub2 = sub1 * (1 + Number(line.financialPct) / 100 + Number(line.profitPct) / 100)
+    return sub2 * (1 + Number(line.taxPct) / 100)
   }
 
   const totalDirectCost = data.reduce((sum, item) => sum + item.total, 0)
@@ -67,39 +61,37 @@ export function BudgetSummarySheet({
   const subtotal1 = totalDirectCost + overheadAmount
 
   const financialAmount = subtotal1 * (markups.financialPct / 100)
-  const subtotal2 = subtotal1 + financialAmount
+  const profitAmount = subtotal1 * (markups.profitPct / 100)
+  const subtotal2 = subtotal1 + financialAmount + profitAmount
 
-  const profitAmount = subtotal2 * (markups.profitPct / 100)
-  const subtotal3 = subtotal2 + profitAmount
-
-  const taxAmount = subtotal3 * (markups.taxPct / 100)
+  const taxAmount = subtotal2 * (markups.taxPct / 100)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Tabla de items */}
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-slate-800">
+          <TableHeader className="sticky top-0 z-10 bg-table-head">
             <TableRow className="h-9">
-              <TableHead className="text-white text-xs py-1 px-2 w-[100px]">
+              <TableHead className="text-foreground text-xs py-1 px-2 w-[100px]">
                 {t('code')}
               </TableHead>
-              <TableHead className="text-white text-xs py-1 px-2">
+              <TableHead className="text-foreground text-xs py-1 px-2">
                 {t('description')}
               </TableHead>
-              <TableHead className="text-white text-xs py-1 px-2 w-[60px]">
+              <TableHead className="text-foreground text-xs py-1 px-2 w-[60px]">
                 {t('unit')}
               </TableHead>
-              <TableHead className="text-white text-xs py-1 px-2 text-right w-[80px]">
+              <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[80px]">
                 {t('quantity')}
               </TableHead>
-              <TableHead className="text-white text-xs py-1 px-2 text-right w-[100px]">
+              <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[100px]">
                 {t('unitPrice')}
               </TableHead>
-              <TableHead className="text-white text-xs py-1 px-2 text-right w-[120px]">
+              <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[120px]">
                 {t('total')}
               </TableHead>
-              <TableHead className="text-white text-xs py-1 px-2 text-right w-[70px]">
+              <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[70px]">
                 {t('inc')} %
               </TableHead>
             </TableRow>
@@ -114,7 +106,7 @@ export function BudgetSummarySheet({
                   : 0
 
               return (
-                <TableRow key={idx} className="h-8 hover:bg-slate-50">
+                <TableRow key={idx} className="h-8 hover:bg-muted/50">
                   <TableCell className="font-mono text-[10px] py-1 px-2">
                     {item.code}
                   </TableCell>
@@ -151,55 +143,65 @@ export function BudgetSummarySheet({
         <CardContent>
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600">
+              <span className="text-muted-foreground">
                 {t('subtotalDirectCost')}:
               </span>
-              <span className="font-mono font-medium tabular-nums">
+              <span className="font-mono font-medium tabular-nums text-foreground">
                 {formatCurrency(totalDirectCost)}
               </span>
             </div>
 
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600">
+              <span className="text-muted-foreground">
                 + {t('overhead')} ({markups.overheadPct}%):
               </span>
-              <span className="font-mono tabular-nums text-slate-700">
+              <span className="font-mono tabular-nums text-foreground">
                 {formatCurrency(overheadAmount)}
               </span>
             </div>
 
+            <div className="flex justify-between border-t border-border pt-1 text-sm font-medium">
+              <span className="text-foreground">{t('subtotal', { defaultValue: 'Subtotal' })} 1:</span>
+              <span className="font-mono tabular-nums text-foreground">{formatCurrency(subtotal1)}</span>
+            </div>
+
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600">
+              <span className="text-muted-foreground">
                 + {t('financial')} ({markups.financialPct}%):
               </span>
-              <span className="font-mono tabular-nums text-slate-700">
+              <span className="font-mono tabular-nums text-foreground">
                 {formatCurrency(financialAmount)}
               </span>
             </div>
 
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600">
+              <span className="text-muted-foreground">
                 + {t('profit')} ({markups.profitPct}%):
               </span>
-              <span className="font-mono tabular-nums text-slate-700">
+              <span className="font-mono tabular-nums text-foreground">
                 {formatCurrency(profitAmount)}
               </span>
             </div>
 
+            <div className="flex justify-between border-t border-border pt-1 text-sm font-medium">
+              <span className="text-foreground">{t('subtotal', { defaultValue: 'Subtotal' })} 2:</span>
+              <span className="font-mono tabular-nums text-foreground">{formatCurrency(subtotal2)}</span>
+            </div>
+
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600">
+              <span className="text-muted-foreground">
                 + {t('tax')} ({markups.taxPct}%):
               </span>
-              <span className="font-mono tabular-nums text-slate-700">
+              <span className="font-mono tabular-nums text-foreground">
                 {formatCurrency(taxAmount)}
               </span>
             </div>
 
-            <div className="flex justify-between border-t-2 border-slate-300 pt-3">
-              <span className="text-lg font-bold text-blue-900">
+            <div className="flex justify-between border-t-2 border-border pt-3">
+              <span className="text-lg font-bold text-primary">
                 {t('totalSale')}:
               </span>
-              <span className="font-mono text-2xl font-bold tabular-nums text-blue-900">
+              <span className="font-mono text-2xl font-bold tabular-nums text-primary">
                 {formatCurrency(totalSale)}
               </span>
             </div>

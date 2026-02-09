@@ -125,7 +125,7 @@ export function OverheadListClient({ initialTransactions, projects }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
@@ -186,7 +186,7 @@ export function OverheadListClient({ initialTransactions, projects }: Props) {
       </div>
 
       <Dialog open={!!allocatingTxId} onOpenChange={(open) => !open && closeAllocationDialog()}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Asignar overhead a proyectos</DialogTitle>
           </DialogHeader>

@@ -1,3 +1,5 @@
+export { monetarySchema, monetaryOptionalSchema } from './coerce'
+
 export {
   loginSchema,
   loginFormSchema,

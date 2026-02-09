@@ -63,7 +63,7 @@ export default async function SubmittalsPage({
         </h1>
         <Link
           href={`/projects/${projectId}/quality/submittals/new`}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
         >
           New Submittal
         </Link>

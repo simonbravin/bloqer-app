@@ -93,12 +93,12 @@ export function WbsFormDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" aria-hidden onClick={onClose} />
       <div
-        className="relative z-10 erp-form-modal rounded-lg border border-slate-200 bg-white p-6 shadow-xl"
+        className="relative z-10 w-full max-w-2xl erp-form-modal rounded-lg border border-border bg-card p-6 shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="wbs-dialog-title"
       >
-        <h2 id="wbs-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h2 id="wbs-dialog-title" className="text-lg font-semibold text-foreground">
           {mode === 'create' ? 'Add WBS Item' : 'Edit WBS Item'}
         </h2>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="mt-4 space-y-4">
@@ -106,7 +106,7 @@ export function WbsFormDialog({
             <Label htmlFor="wbs-name">Name</Label>
             <Input id="wbs-name" {...register('name')} className="mt-1 w-full" />
             {errors.name && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>
+              <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>
             )}
           </div>
           <div>
@@ -132,7 +132,7 @@ export function WbsFormDialog({
               ))}
             </select>
             {errors.type && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.type.message}</p>
+              <p className="mt-1 text-sm text-destructive">{errors.type.message}</p>
             )}
           </div>
           <div>
@@ -150,7 +150,7 @@ export function WbsFormDialog({
               ))}
             </select>
             {errors.parentId && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.parentId.message}</p>
+              <p className="mt-1 text-sm text-destructive">{errors.parentId.message}</p>
             )}
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -171,7 +171,7 @@ export function WbsFormDialog({
             </div>
           </div>
           {errors.root && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+            <p className="text-sm text-destructive">{errors.root.message}</p>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>

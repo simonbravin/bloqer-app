@@ -92,7 +92,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
         </div>
       )}
       {errors.root && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {errors.root.message}
         </p>
       )}
@@ -108,7 +108,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('username')}
           />
           {errors.username && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.username.message}
             </p>
           )}
@@ -123,7 +123,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('fullName')}
           />
           {errors.fullName && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.fullName.message}
             </p>
           )}
@@ -139,7 +139,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('orgName')}
           />
           {errors.orgName && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.orgName.message}
             </p>
           )}
@@ -154,7 +154,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('email')}
           />
           {errors.email && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.email.message}
             </p>
           )}
@@ -181,7 +181,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             )}
           />
           {errors.country && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.country.message}
             </p>
           )}
@@ -196,7 +196,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('city')}
           />
           {errors.city && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.city.message}
             </p>
           )}
@@ -212,7 +212,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('phone')}
           />
           {errors.phone && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.phone.message}
             </p>
           )}
@@ -229,7 +229,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('password')}
           />
           {errors.password && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.password.message}
             </p>
           )}
@@ -244,7 +244,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
             {...register('passwordConfirm')}
           />
           {errors.passwordConfirm && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.passwordConfirm.message}
             </p>
           )}

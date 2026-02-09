@@ -77,7 +77,7 @@ export function TeamMembersTable({ members, currentUserId, canManage }: TeamMemb
     ADMIN: 'bg-red-100 text-red-800',
     EDITOR: 'bg-blue-100 text-blue-800',
     ACCOUNTANT: 'bg-green-100 text-green-800',
-    VIEWER: 'bg-slate-100 text-slate-800',
+    VIEWER: 'bg-muted text-foreground',
   }
 
   const roleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -155,7 +155,7 @@ export function TeamMembersTable({ members, currentUserId, canManage }: TeamMemb
           {tExport('export')}
         </Button>
       </div>
-    <div className="rounded-lg border border-slate-200 bg-white">
+    <div className="rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
@@ -227,7 +227,7 @@ export function TeamMembersTable({ members, currentUserId, canManage }: TeamMemb
                   ) : (
                     <Badge
                       variant="outline"
-                      className="border-slate-200 bg-slate-50 text-slate-600"
+                      className="border-border bg-muted text-muted-foreground"
                     >
                       {t('inactive')}
                     </Badge>

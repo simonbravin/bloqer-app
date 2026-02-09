@@ -6,10 +6,7 @@ import {
   getCompanyTransactions,
   getFinanceFilterOptions,
 } from '@/app/actions/finance'
-import {
-  CompanyTransactionsListClient,
-  type CompanyTransactionRow,
-} from '@/components/finance/company-transactions-list-client'
+import { CompanyTransactionsListClient } from '@/components/finance/company-transactions-list-client'
 
 export default async function FinanceTransactionsPage() {
   const session = await getSession()
@@ -26,7 +23,7 @@ export default async function FinanceTransactionsPage() {
   return (
     <div className="p-6">
       <CompanyTransactionsListClient
-        initialTransactions={(transactions ?? []) as CompanyTransactionRow[]}
+        initialTransactions={transactions ?? []}
         filterOptions={filterOptions ?? { projects: [], parties: [] }}
         canCreate={canCreate}
       />

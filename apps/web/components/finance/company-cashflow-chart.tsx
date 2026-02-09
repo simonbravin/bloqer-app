@@ -38,7 +38,7 @@ export function CompanyCashflowChart({ initialData }: CompanyCashflowChartProps)
 
   if (chartData.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-950">
+      <div className="rounded-lg border border-border bg-card p-8 text-center">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           No hay datos de cashflow para el período seleccionado
         </p>
@@ -47,7 +47,7 @@ export function CompanyCashflowChart({ initialData }: CompanyCashflowChartProps)
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">
+    <div className="rounded-lg border border-border bg-card p-6">
       <div className="h-80 min-h-[200px] w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%" minHeight={200}>
           <LineChart data={chartData}>

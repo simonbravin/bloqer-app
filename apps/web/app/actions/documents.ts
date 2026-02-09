@@ -1,20 +1,11 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { getAuthContext } from '@/lib/auth-helpers'
 import { uploadToR2, getDownloadUrl, calculateChecksum } from '@/lib/r2-client'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
+import { publishOutboxEvent } from '@/lib/events/event-publisher'
 
 export async function createDocument(formData: FormData) {
   const { org } = await getAuthContext()
@@ -70,6 +61,13 @@ export async function createDocument(formData: FormData) {
       },
     })
 
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'DOCUMENT.UPLOADED',
+      entityType: 'Document',
+      entityId: created.id,
+      payload: { projectId: projectId ?? undefined, title: created.title },
+    })
     return created
   })
 
@@ -114,19 +112,28 @@ export async function uploadNewVersion(docId: string, formData: FormData) {
 
   await uploadToR2(file, storageKey)
 
-  await prisma.documentVersion.create({
-    data: {
+  await prisma.$transaction(async (tx) => {
+    const version = await tx.documentVersion.create({
+      data: {
+        orgId: org.orgId,
+        documentId: docId,
+        versionNumber: nextVersion,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        storageKey,
+        checksum,
+        notes,
+        uploadedByOrgMemberId: org.memberId,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      documentId: docId,
-      versionNumber: nextVersion,
-      fileName: file.name,
-      mimeType: file.type,
-      sizeBytes: file.size,
-      storageKey,
-      checksum,
-      notes,
-      uploadedByOrgMemberId: org.memberId,
-    },
+      eventType: 'DOCUMENT.VERSION_ADDED',
+      entityType: 'DocumentVersion',
+      entityId: version.id,
+      payload: { documentId: docId, versionNumber: nextVersion, projectId: doc.projectId ?? undefined },
+    })
   })
 
   revalidatePath('/documents')
@@ -175,13 +182,23 @@ export async function linkDocumentToEntity(
 
   if (existing) return { success: true, linkId: existing.id }
 
-  const link = await prisma.documentLink.create({
-    data: {
+  const link = await prisma.$transaction(async (tx) => {
+    const created = await tx.documentLink.create({
+      data: {
+        orgId: org.orgId,
+        documentId: docId,
+        entityType,
+        entityId,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      documentId: docId,
-      entityType,
-      entityId,
-    },
+      eventType: 'DOCUMENT.LINKED',
+      entityType: 'DocumentLink',
+      entityId: created.id,
+      payload: { documentId: docId, entityType, entityId },
+    })
+    return created
   })
 
   revalidatePath(`/documents/${docId}`)
@@ -197,9 +214,18 @@ export async function deleteDocument(docId: string) {
   })
   if (!doc) throw new Error('Document not found')
 
-  await prisma.document.update({
-    where: { id: docId },
-    data: { deleted: true },
+  await prisma.$transaction(async (tx) => {
+    await tx.document.update({
+      where: { id: docId },
+      data: { deleted: true },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'DOCUMENT.DELETED',
+      entityType: 'Document',
+      entityId: docId,
+      payload: { projectId: doc.projectId ?? undefined },
+    })
   })
 
   revalidatePath('/documents')

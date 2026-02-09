@@ -51,7 +51,7 @@ export function BudgetVersionStatusDropdown({
       value: 'DRAFT',
       label: t('statusDraft'),
       icon: FileEdit,
-      color: 'bg-slate-100 text-slate-800',
+      color: 'bg-muted text-foreground',
       description: t('statusDraftDesc'),
     },
     {
@@ -111,7 +111,7 @@ export function BudgetVersionStatusDropdown({
   if (!canEdit) {
     const Icon = currentStatusData?.icon ?? FileEdit
     return (
-      <Badge className={currentStatusData?.color ?? 'bg-slate-100 text-slate-800'}>
+      <Badge className={currentStatusData?.color ?? 'bg-muted text-foreground'}>
         <Icon className="mr-1 h-3 w-3" />
         {currentStatusData?.label ?? currentStatus}
       </Badge>
@@ -161,7 +161,7 @@ export function BudgetVersionStatusDropdown({
       </Select>
 
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-2xl min-w-[min(28rem,95vw)]">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pendingStatus === 'BASELINE'
@@ -194,7 +194,7 @@ export function BudgetVersionStatusDropdown({
             <AlertDialogAction
               onClick={() => pendingStatus && confirmStatusChange(pendingStatus)}
               disabled={isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary text-primary-foreground hover:opacity-90"
             >
               {isPending ? (
                 <>

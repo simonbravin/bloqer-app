@@ -75,33 +75,33 @@ export function GanttDataTable({
   const visibleTasks = tasks
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-card">
       <div className="flex-1 overflow-visible">
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-slate-800 [&_tr]:border-0">
+          <TableHeader className="sticky top-0 z-10 bg-muted [&_tr]:border-0">
             <TableRow style={{ height: GANTT_HEADER_HEIGHT }} className="[&>th]:!py-0 [&>th]:!min-h-0 [&>th]:leading-none [&>th]:align-middle">
-              <TableHead className="w-[72px] px-1 text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="w-[72px] px-1 text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 {t('code')}
               </TableHead>
-              <TableHead className="min-w-[140px] px-1 text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="min-w-[140px] px-1 text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 {t('task')}
               </TableHead>
-              <TableHead className="w-[72px] px-1 text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="w-[72px] px-1 text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 {t('start')}
               </TableHead>
-              <TableHead className="w-[72px] px-1 text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="w-[72px] px-1 text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 {t('end')}
               </TableHead>
-              <TableHead className="w-[44px] px-1 text-right text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="w-[44px] px-1 text-right text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 {t('days')}
               </TableHead>
-              <TableHead className="w-[40px] px-1 text-right text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="w-[40px] px-1 text-right text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 %
               </TableHead>
-              <TableHead className="w-[40px] px-1 text-center text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="w-[40px] px-1 text-center text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 {t('deps')}
               </TableHead>
-              <TableHead className="w-[40px] px-1 text-center text-[10px] text-white" style={{ height: GANTT_HEADER_HEIGHT }}>
+              <TableHead className="w-[40px] px-1 text-center text-[10px] text-muted-foreground" style={{ height: GANTT_HEADER_HEIGHT }}>
                 {t('actions')}
               </TableHead>
             </TableRow>
@@ -123,7 +123,7 @@ export function GanttDataTable({
                   key={task.id}
                   style={{ height: GANTT_ROW_HEIGHT }}
                   className={cn(
-                    'transition-colors hover:bg-slate-50 [&>td]:py-0 [&>td]:leading-none',
+                    'transition-colors hover:bg-muted/50 [&>td]:py-0 [&>td]:leading-none',
                     isHighlighted && 'bg-blue-50',
                     task.isCritical && 'bg-red-50'
                   )}
@@ -141,7 +141,7 @@ export function GanttDataTable({
                         <button
                           type="button"
                           onClick={() => onToggleExpand(task.id)}
-                          className="rounded p-0.5 hover:bg-slate-200"
+                          className="rounded p-0.5 hover:bg-muted"
                         >
                           {isExpanded ? (
                             <ChevronDown className="h-3 w-3" />
@@ -188,7 +188,7 @@ export function GanttDataTable({
                       />
                     ) : (
                       <span
-                        className={cn('block text-[10px]', canEditDates && 'cursor-pointer rounded px-0.5 hover:bg-slate-100')}
+                        className={cn('block text-[10px]', canEditDates && 'cursor-pointer rounded px-0.5 hover:bg-muted/50')}
                         title={canEditDates ? t('clickToEdit') : undefined}
                         onClick={() => canEditDates && setEditingCell({ taskId: task.id, field: 'start' })}
                       >
@@ -213,7 +213,7 @@ export function GanttDataTable({
                       />
                     ) : (
                       <span
-                        className={cn('block text-[10px]', canEditDates && 'cursor-pointer rounded px-0.5 hover:bg-slate-100')}
+                        className={cn('block text-[10px]', canEditDates && 'cursor-pointer rounded px-0.5 hover:bg-muted/50')}
                         title={canEditDates ? t('clickToEdit') : undefined}
                         onClick={() => canEditDates && setEditingCell({ taskId: task.id, field: 'end' })}
                       >
@@ -240,7 +240,7 @@ export function GanttDataTable({
                       />
                     ) : (
                       <span
-                        className={cn('block font-mono text-[10px]', canEditDates && 'cursor-pointer rounded px-0.5 hover:bg-slate-100')}
+                        className={cn('block font-mono text-[10px]', canEditDates && 'cursor-pointer rounded px-0.5 hover:bg-muted/50')}
                         title={canEditDates ? t('clickToEdit') : undefined}
                         onClick={() => canEditDates && setEditingCell({ taskId: task.id, field: 'days' })}
                       >
@@ -251,18 +251,18 @@ export function GanttDataTable({
 
                   <TableCell className="px-1 py-0.5">
                     <div className="flex items-center gap-0.5">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
                           className={cn(
                             'h-full transition-all',
                             task.progress === 100
-                              ? 'bg-green-600'
-                              : 'bg-blue-600'
+                              ? 'bg-status-success'
+                              : 'bg-accent'
                           )}
                           style={{ width: `${task.progress}%` }}
                         />
                       </div>
-                      <span className="text-[9px] font-mono text-slate-600">
+                      <span className="text-[9px] font-mono text-muted-foreground">
                         {task.progress}
                       </span>
                     </div>
@@ -277,7 +277,7 @@ export function GanttDataTable({
                         onClick={() => onDependenciesClick(task.id)}
                         className="h-6 w-6 p-0"
                       >
-                        <GitBranch className="h-3 w-3 text-slate-600" />
+                        <GitBranch className="h-3 w-3 text-muted-foreground" />
                         <span className="ml-1 text-[9px]">
                           {task.predecessorCount + task.successorCount}
                         </span>
@@ -303,8 +303,8 @@ export function GanttDataTable({
         </Table>
       </div>
 
-      <div className="border-t border-slate-200 bg-slate-50 px-2 py-1">
-        <div className="flex items-center justify-between text-[10px] text-slate-600">
+      <div className="border-t border-border bg-muted px-2 py-1">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>
             {visibleTasks.length} {t('tasksShown')}
           </span>

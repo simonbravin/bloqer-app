@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Inter, Roboto_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from 'sonner'
+import { SystemHealthWidgetGate } from '@/components/debug/system-health-widget-gate'
+import { GlobalNotificationsListener } from '@/components/global-notifications-listener'
 import './globals.css'
 
 const inter = Inter({
@@ -32,7 +34,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${robotoMono.variable}`}
     >
-      <body className="antialiased font-sans">
+      <body className="erp-shell antialiased font-sans">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -41,6 +43,8 @@ export default function RootLayout({
         >
           {children}
           <Toaster richColors position="top-right" />
+          <GlobalNotificationsListener />
+          <SystemHealthWidgetGate />
         </ThemeProvider>
       </body>
     </html>

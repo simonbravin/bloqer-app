@@ -1,11 +1,10 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole, hasMinimumRole } from '@/lib/rbac'
+import { getAuthContext } from '@/lib/auth-helpers'
+import { type PrismaTransaction } from '@/lib/events/event-publisher'
 import {
   createChangeOrderSchema,
   updateChangeOrderSchema,
@@ -18,14 +17,6 @@ import type {
   CreateChangeOrderLineInput,
   UpdateChangeOrderLineInput,
 } from '@repo/validators'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
 
 function ensureProjectInOrg(projectId: string, orgId: string) {
   return prisma.project.findFirst({
@@ -319,7 +310,6 @@ export async function submitForApproval(coId: string) {
   return { success: true }
 }
 
-type PrismaTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
 
 export async function approveChangeOrder(coId: string) {
   const { org } = await getAuthContext()
@@ -332,7 +322,7 @@ export async function approveChangeOrder(coId: string) {
   if (!co) return { error: 'Change order not found' }
   if (co.status !== 'SUBMITTED') return { error: 'Only submitted change orders can be approved.' }
 
-  await prisma.$transaction(async (tx: PrismaTx) => {
+  await prisma.$transaction(async (tx: PrismaTransaction) => {
     const latestVersion = await tx.budgetVersion.findFirst({
       where: { projectId: co.projectId },
       orderBy: { createdAt: 'desc' },

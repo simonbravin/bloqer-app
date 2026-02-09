@@ -69,7 +69,7 @@ export function InviteMemberForm() {
               placeholder="usuario@ejemplo.com"
             />
             {form.formState.errors.email && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {form.formState.errors.email.message}
               </p>
             )}
@@ -123,7 +123,7 @@ export function InviteMemberForm() {
               </SelectContent>
             </Select>
             {form.formState.errors.role && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {form.formState.errors.role.message}
               </p>
             )}

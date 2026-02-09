@@ -9,6 +9,9 @@ import {
 } from '@/lib/permissions'
 import type { OrgRole } from '@/types/next-auth'
 import { prisma } from '@repo/database'
+import { getSession } from '@/lib/session'
+import { getOrgContext, type OrgContext } from '@/lib/org-context'
+import { redirectToLogin } from '@/lib/i18n-redirect'
 
 type ModuleKey = keyof typeof MODULES
 
@@ -73,4 +76,17 @@ export async function requireAccess(moduleKey: ModuleKey) {
   }
 
   return session
+}
+
+/**
+ * Shared auth context helper for server actions.
+ * Validates session and org membership, redirects to login on failure.
+ * Returns the session and org context for the current user.
+ */
+export async function getAuthContext(): Promise<{ session: NonNullable<Awaited<ReturnType<typeof getSession>>>; org: OrgContext }> {
+  const session = await getSession()
+  if (!session?.user?.id) return redirectToLogin()
+  const org = await getOrgContext(session.user.id)
+  if (!org) return redirectToLogin()
+  return { session, org }
 }

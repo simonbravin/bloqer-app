@@ -17,11 +17,11 @@ export function DashboardHeader({ user, orgName }: DashboardHeaderProps) {
   const t = useTranslations('common')
   
   return (
-    <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 dark:border-slate-800 dark:bg-slate-950">
+    <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-6">
-        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Construction ERP</span>
-        <span className="text-slate-300 dark:text-slate-600">|</span>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{orgName}</p>
+        <span className="text-sm font-semibold text-foreground">Construction ERP</span>
+        <span className="text-muted-foreground/70">|</span>
+        <p className="text-sm text-muted-foreground">{orgName}</p>
       </div>
       
       <div className="flex items-center gap-4">
@@ -29,10 +29,10 @@ export function DashboardHeader({ user, orgName }: DashboardHeaderProps) {
         <ThemeToggle />
         {/* Notifications */}
         <button 
-          className="relative rounded-lg p-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+          className="relative rounded-lg p-2 transition-colors hover:bg-muted"
           aria-label="Notificaciones"
         >
-          <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+          <Bell className="h-5 w-5 text-muted-foreground" />
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
         </button>
         

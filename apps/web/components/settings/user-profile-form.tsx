@@ -126,7 +126,7 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
             className="mt-1 w-full min-w-0"
           />
           {errors.fullName && (
-            <p className="mt-1 text-sm text-red-600">{errors.fullName.message}</p>
+            <p className="mt-1 text-sm text-destructive">{errors.fullName.message}</p>
           )}
         </div>
         <div className="w-full min-w-0">
@@ -136,7 +136,7 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
             type="email"
             value={user.email}
             disabled
-            className="mt-1 w-full min-w-0 bg-slate-50"
+            className="mt-1 w-full min-w-0 bg-muted/50"
           />
           <p className="mt-1 text-xs text-slate-500">{t('emailNotEditable')}</p>
         </div>
@@ -148,7 +148,7 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
             className="mt-1 w-full min-w-0"
           />
           {errors.username && (
-            <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
+            <p className="mt-1 text-sm text-destructive">{errors.username.message}</p>
           )}
         </div>
       </div>

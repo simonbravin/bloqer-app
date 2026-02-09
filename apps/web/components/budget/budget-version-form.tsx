@@ -76,7 +76,7 @@ export function BudgetVersionForm({ projectId }: BudgetVersionFormProps) {
         />
       </div>
       {errors.root && (
-        <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+        <p className="text-sm text-destructive">{errors.root.message}</p>
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={isSubmitting}>

@@ -345,6 +345,7 @@
     }
   },
   "budget": {
+    "error": "Error",
     "title": "Budget",
     "versions": "Versions",
     "version": "Version",
@@ -365,6 +366,7 @@
     "budgetLines": "Budget Lines",
     "computeSheet": "Compute Sheet",
     "noBudgetLinesYet": "No budget lines yet. Add a line above or import from a previous version.",
+    "noResultsFound": "No results for this search",
     "wbs": "WBS",
     "exportCsv": "Export to Excel (CSV)",
     "importFrom": "Import from",
@@ -496,6 +498,10 @@
     "markupsSavedDesc": "Markups were saved successfully.",
     "markupsSaveError": "Error saving markups",
     "globalMarkupsBase": "Global markups",
+    "overheadLabel": "Overhead %",
+    "financialLabel": "Financial %",
+    "profitLabel": "Profit %",
+    "taxLabel": "Tax (VAT) %",
     "calculationBreakdown": "Calculation breakdown",
     "simpleModeTitle": "Simple Mode",
     "simpleModeDesc": "One set of percentages (overhead, financial, profit, tax) applies to all budget lines.",
@@ -515,6 +521,7 @@
     "backToVersions": "Back to Versions",
     "linesTab": "Budget Lines",
     "summaryTab": "Summary Sheet",
+    "view": "View",
     "actions": "Actions",
     "grandTotal": "GRAND TOTAL"
   },
@@ -661,12 +668,14 @@
     "addingUnder": "Add under",
     "addingAtRoot": "Add at WBS root",
     "searchTasks": "Search tasks...",
+    "searchOrCustomPlaceholder": "Search task or add your custom task",
     "fromLibrary": "From library",
     "recentlyUsed": "Recently used",
     "customTask": "Custom task",
     "noTemplatesFound": "No templates found",
     "noHistoryFound": "No recently used items",
     "namePlaceholder": "Item name",
+    "description": "Description",
     "descriptionPlaceholder": "Optional description",
     "nodeAdded": "Node added",
     "nodeAddedDesc": "The item was added to the WBS successfully",
@@ -714,7 +723,9 @@
       "APPROVED": "Approved",
       "PAID": "Paid",
       "VOIDED": "Voided"
-    }
+    },
+    "export": "Export",
+    "exportCashflowTitle": "Export cash flow (current period)"
   },
   "quality": {
     "title": "Quality",
@@ -1142,7 +1153,8 @@
     "activity_update_dailyreport": "updated a daily report",
     "activity_approve_dailyreport": "approved a daily report",
     "activity_create_schedule": "created the schedule",
-    "activity_update_schedule": "updated the schedule"
+    "activity_update_schedule": "updated the schedule",
+    "activity_update_task_dates_scheduletask": "updated schedule task dates"
   },
   "settings": {
     "settings": "Settings",

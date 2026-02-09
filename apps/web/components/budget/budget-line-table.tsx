@@ -11,13 +11,13 @@ export type BudgetLineRow = {
   id: string
   description: string
   unit: string
-  quantity: { toNumber: () => number } | number
-  directCostTotal: { toNumber: () => number } | number
-  salePriceTotal?: { toNumber: () => number } | number
-  overheadPct?: { toNumber: () => number } | number
-  financialPct?: { toNumber: () => number } | number
-  profitPct?: { toNumber: () => number } | number
-  taxPct?: { toNumber: () => number } | number
+  quantity: number
+  directCostTotal: number
+  salePriceTotal?: number
+  overheadPct?: number
+  financialPct?: number
+  profitPct?: number
+  taxPct?: number
   wbsNode: { id: string; code: string; name: string }
 }
 
@@ -29,9 +29,9 @@ type BudgetLineTableProps = {
   onDelete: (lineId: string) => Promise<void>
 }
 
-function toNum(v: { toNumber: () => number } | number | undefined): number {
+function toNum(v: number | undefined): number {
   if (v == null) return 0
-  return typeof v === 'number' ? v : v.toNumber()
+  return typeof v === 'number' ? v : 0
 }
 
 function unitCost(line: BudgetLineRow): number {
@@ -54,9 +54,8 @@ function calculateLineBreakdown(line: BudgetLineRow) {
     overheadAmount: Number(calc.overheadAmount) * qty,
     subtotal1: Number(calc.subtotal1) * qty,
     financialAmount: Number(calc.financialAmount) * qty,
-    subtotal2: Number(calc.subtotal2) * qty,
     profitAmount: Number(calc.profitAmount) * qty,
-    subtotal3: Number(calc.subtotal3) * qty,
+    subtotal2: Number(calc.subtotal2) * qty,
     taxAmount: Number(calc.taxAmount) * qty,
     totalPrice: Number(calc.totalPrice) * qty,
   }
@@ -75,7 +74,7 @@ export function BudgetLineTable({
 
   if (lines.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white py-8 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+      <div className="rounded-lg border border-border bg-card py-8 text-center text-muted-foreground">
         {t('noBudgetLinesYet')}
       </div>
     )
@@ -103,7 +102,7 @@ export function BudgetLineTable({
     <div className="space-y-4">
       {canViewAdmin && (
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('viewModeTitle', { defaultValue: 'Modo de Visualización' })}:</span>
+          <span className="text-sm font-medium text-muted-foreground">{t('viewModeTitle', { defaultValue: 'Modo de Visualización' })}:</span>
           <Button
             variant={viewMode === 'admin' ? 'default' : 'outline'}
             size="sm"
@@ -121,37 +120,36 @@ export function BudgetLineTable({
         </div>
       )}
       {viewMode === 'client' && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100">
+        <div className="rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
           <strong>{t('clientViewNotice', { defaultValue: 'Vista para Cliente' })}</strong>
-          <p className="mt-1 text-blue-800 dark:text-blue-200">
+          <p className="mt-1 text-muted-foreground">
             {t('clientViewNoticeDesc', { defaultValue: 'Esta vista oculta los costos internos y márgenes. Solo muestra precios de venta.' })}
           </p>
         </div>
       )}
-      <div className="rounded-lg border border-gray-200 overflow-x-auto dark:border-gray-700">
-      <table className="w-full text-sm">
+      <div className="rounded-lg border border-border overflow-x-auto bg-card">
+      <table className="erp-table-surface w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
-            <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">{t('wbs')}</th>
-            <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">{t('description')}</th>
-            <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('quantity')}</th>
-            <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">{t('unit')}</th>
+          <tr className="border-b border-border bg-muted">
+            <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t('wbs')}</th>
+            <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t('description')}</th>
+            <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('quantity')}</th>
+            <th className="px-3 py-2 text-left font-medium text-muted-foreground">{t('unit')}</th>
             {showAdmin ? (
               <>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('directCost', { defaultValue: 'Costo Directo' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('overhead', { defaultValue: 'GG %' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('subtotal1', { defaultValue: 'Subtotal 1' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('financial', { defaultValue: 'GF %' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('subtotal2', { defaultValue: 'Subtotal 2' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('profit', { defaultValue: 'Benef %' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('subtotal3', { defaultValue: 'Subtotal 3' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('tax', { defaultValue: 'IVA %' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('total')}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('directCost', { defaultValue: 'Costo Directo' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('overhead', { defaultValue: 'GG' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('subtotal1', { defaultValue: 'Subtotal 1' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('financial', { defaultValue: 'GF' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('profit', { defaultValue: 'Benef.' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('subtotal2', { defaultValue: 'Subtotal 2' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('tax', { defaultValue: 'IVA' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('total')}</th>
               </>
             ) : (
               <>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('unitPrice', { defaultValue: 'P. Unitario' })}</th>
-                <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-400">{t('total')}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('unitPrice', { defaultValue: 'P. Unitario' })}</th>
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground">{t('total')}</th>
               </>
             )}
             {canEdit && <th className="w-20 px-3 py-2" />}
@@ -167,20 +165,18 @@ export function BudgetLineTable({
                   <tr
                     key={line.id}
                     className={cn(
-                      'border-b border-gray-100 dark:border-gray-800',
-                      idx === 0 && 'bg-gray-50/50 dark:bg-gray-800/30'
+                      'border-b border-border hover:bg-muted/50',
+                      idx === 0 && 'bg-muted/30'
                     )}
                   >
-                    <td className="whitespace-nowrap px-3 py-2 font-mono text-gray-600 dark:text-gray-400">
+                    <td className="whitespace-nowrap px-3 py-2 font-mono text-muted-foreground">
                       {idx === 0 ? first.wbsNode.code : ''}
                     </td>
-                    <td className="px-3 py-2 text-gray-900 dark:text-white">{line.description}</td>
-                    <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">
-                      {typeof line.quantity === 'number'
-                        ? line.quantity
-                        : line.quantity.toNumber()}
+                    <td className="px-3 py-2 text-foreground">{line.description}</td>
+                    <td className="text-right tabular-nums text-foreground">
+                      {line.quantity}
                     </td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{line.unit}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{line.unit}</td>
                     {showAdmin ? (
                       (() => {
                         const b = calculateLineBreakdown(line)
@@ -190,9 +186,8 @@ export function BudgetLineTable({
                             <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.overheadAmount)}</td>
                             <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.subtotal1)}</td>
                             <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.financialAmount)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.subtotal2)}</td>
                             <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.profitAmount)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.subtotal3)}</td>
+                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.subtotal2)}</td>
                             <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.taxAmount)}</td>
                             <td className="text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(b.totalPrice)}</td>
                           </>
@@ -204,8 +199,8 @@ export function BudgetLineTable({
                         const unitPrice = toNum(line.quantity) > 0 ? b.totalPrice / toNum(line.quantity) : 0
                         return (
                           <>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(unitPrice)}</td>
-                            <td className="text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(b.totalPrice)}</td>
+                            <td className="text-right tabular-nums text-foreground">{formatCurrency(unitPrice)}</td>
+                            <td className="text-right tabular-nums font-medium text-foreground">{formatCurrency(b.totalPrice)}</td>
                           </>
                         )
                       })()
@@ -215,7 +210,7 @@ export function BudgetLineTable({
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-8 px-2 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
+                          className="h-8 px-2 text-xs text-destructive hover:opacity-90"
                           onClick={() => onDelete(line.id)}
                         >
                           Delete
@@ -229,11 +224,11 @@ export function BudgetLineTable({
           })}
         </tbody>
         <tfoot>
-          <tr className="border-t-2 border-slate-300 bg-slate-100 font-bold dark:border-slate-600 dark:bg-slate-800">
+          <tr className="border-t-2 border-border bg-muted font-bold">
             <td colSpan={showAdmin ? 12 : 5} className="px-3 py-2 text-right">
               {t('grandTotal', { defaultValue: 'TOTAL GENERAL' })}:
             </td>
-            <td className="px-3 py-2 text-right text-lg tabular-nums text-gray-900 dark:text-white">
+            <td className="px-3 py-2 text-right text-lg tabular-nums text-foreground">
               {formatCurrency(grandTotal)}
             </td>
             {canEdit && <td />}
@@ -241,7 +236,7 @@ export function BudgetLineTable({
         </tfoot>
       </table>
       </div>
-      <div className="border-t border-gray-200 bg-gray-50 px-3 py-2 text-right font-medium tabular-nums text-gray-900 dark:border-gray-700 dark:bg-gray-800/50 dark:text-white">
+      <div className="border-t border-border bg-muted px-3 py-2 text-right font-medium tabular-nums text-foreground">
         {t('versionTotal')}: {formatCurrency(versionTotal)}
       </div>
     </div>

@@ -1,21 +1,11 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
-import { requirePermission } from '@/lib/auth-helpers'
+import { requirePermission, getAuthContext } from '@/lib/auth-helpers'
+import { publishOutboxEvent } from '@/lib/events/event-publisher'
 import { calculateTotalStock, calculateStockBalance } from '@/lib/inventory-utils'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { org }
-}
 
 /** List all inventory categories (for dropdowns). */
 export async function getInventoryCategories() {
@@ -44,8 +34,18 @@ export async function createInventoryCategory(name: string) {
     orderBy: { sortOrder: 'desc' },
     select: { sortOrder: true },
   })
-  const created = await prisma.inventoryCategory.create({
-    data: { name: name.trim(), sortOrder: (maxOrder?.sortOrder ?? -1) + 1 },
+  const created = await prisma.$transaction(async (tx) => {
+    const cat = await tx.inventoryCategory.create({
+      data: { name: name.trim(), sortOrder: (maxOrder?.sortOrder ?? -1) + 1 },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'INVENTORY_CATEGORY.CREATED',
+      entityType: 'InventoryCategory',
+      entityId: cat.id,
+      payload: { name: cat.name },
+    })
+    return cat
   })
   revalidatePath('/inventory/items')
   revalidatePath('/inventory/items/new')
@@ -61,8 +61,18 @@ export async function createInventorySubcategory(categoryId: string, name: strin
     orderBy: { sortOrder: 'desc' },
     select: { sortOrder: true },
   })
-  const created = await prisma.inventorySubcategory.create({
-    data: { categoryId, name: name.trim(), sortOrder: (maxOrder?.sortOrder ?? -1) + 1 },
+  const created = await prisma.$transaction(async (tx) => {
+    const sub = await tx.inventorySubcategory.create({
+      data: { categoryId, name: name.trim(), sortOrder: (maxOrder?.sortOrder ?? -1) + 1 },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'INVENTORY_SUBCATEGORY.CREATED',
+      entityType: 'InventorySubcategory',
+      entityId: sub.id,
+      payload: { categoryId, name: sub.name },
+    })
+    return sub
   })
   revalidatePath('/inventory/items')
   revalidatePath('/inventory/items/new')
@@ -88,19 +98,29 @@ export async function createInventoryItem(data: {
   })
   if (existing) return { success: false as const, error: 'SKU ya existe' }
 
-  const item = await prisma.inventoryItem.create({
-    data: {
+  const item = await prisma.$transaction(async (tx) => {
+    const created = await tx.inventoryItem.create({
+      data: {
+        orgId: org.orgId,
+        sku: data.sku,
+        name: data.name,
+        description: data.description,
+        categoryId: data.categoryId,
+        subcategoryId: data.subcategoryId ?? undefined,
+        unit: data.unit,
+        minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
+        reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,
+        active: true,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      sku: data.sku,
-      name: data.name,
-      description: data.description,
-      categoryId: data.categoryId,
-      subcategoryId: data.subcategoryId ?? undefined,
-      unit: data.unit,
-      minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
-      reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,
-      active: true,
-    },
+      eventType: 'INVENTORY_ITEM.CREATED',
+      entityType: 'InventoryItem',
+      entityId: created.id,
+      payload: { sku: created.sku, name: created.name },
+    })
+    return created
   })
 
   revalidatePath('/inventory')
@@ -137,18 +157,27 @@ export async function updateInventoryItem(
     return { success: false as const, error: 'SKU ya existe' }
   }
 
-  await prisma.inventoryItem.update({
-    where: { id: itemId },
-    data: {
-      sku: data.sku,
-      name: data.name,
-      description: data.description ?? null,
-      categoryId: data.categoryId,
-      subcategoryId: data.subcategoryId ?? undefined,
-      unit: data.unit,
-      minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
-      reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.inventoryItem.update({
+      where: { id: itemId },
+      data: {
+        sku: data.sku,
+        name: data.name,
+        description: data.description ?? null,
+        categoryId: data.categoryId,
+        subcategoryId: data.subcategoryId ?? undefined,
+        unit: data.unit,
+        minStockQty: data.minStockQty != null ? new Prisma.Decimal(data.minStockQty) : null,
+        reorderQty: data.reorderQty != null ? new Prisma.Decimal(data.reorderQty) : null,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'INVENTORY_ITEM.UPDATED',
+      entityType: 'InventoryItem',
+      entityId: itemId,
+      payload: { sku: data.sku, name: data.name },
+    })
   })
 
   revalidatePath('/inventory')
@@ -168,9 +197,18 @@ export async function deleteInventoryItem(itemId: string) {
   })
   if (!item) return { success: false as const, error: 'Item no encontrado' }
 
-  await prisma.inventoryItem.update({
-    where: { id: itemId },
-    data: { active: false },
+  await prisma.$transaction(async (tx) => {
+    await tx.inventoryItem.update({
+      where: { id: itemId },
+      data: { active: false },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'INVENTORY_ITEM.DELETED',
+      entityType: 'InventoryItem',
+      entityId: itemId,
+      payload: {},
+    })
   })
 
   revalidatePath('/inventory')
@@ -191,15 +229,25 @@ export async function createInventoryLocation(data: {
     throw new Error('Project is required for project site locations')
   }
 
-  const loc = await prisma.inventoryLocation.create({
-    data: {
+  const loc = await prisma.$transaction(async (tx) => {
+    const created = await tx.inventoryLocation.create({
+      data: {
+        orgId: org.orgId,
+        type: data.type,
+        name: data.name,
+        projectId: data.projectId || undefined,
+        address: data.address,
+        active: true,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      type: data.type,
-      name: data.name,
-      projectId: data.projectId || undefined,
-      address: data.address,
-      active: true,
-    },
+      eventType: 'INVENTORY_LOCATION.CREATED',
+      entityType: 'InventoryLocation',
+      entityId: created.id,
+      payload: { type: created.type, name: created.name },
+    })
+    return created
   })
 
   revalidatePath('/inventory')
@@ -346,6 +394,14 @@ export async function createInventoryMovement(data: {
         data: { transactionId: financeTx.id },
       })
 
+      await publishOutboxEvent(tx, {
+        orgId: org.orgId,
+        eventType: 'INVENTORY_MOVEMENT.CREATED',
+        entityType: 'InventoryMovement',
+        entityId: mov.id,
+        payload: { movementType: data.movementType, itemId: data.itemId },
+      })
+
       return mov
     })
 
@@ -356,22 +412,32 @@ export async function createInventoryMovement(data: {
     return { success: true, movementId: movement.id, duplicate: false }
   }
 
-  const movement = await prisma.inventoryMovement.create({
-    data: {
+  const movement = await prisma.$transaction(async (tx) => {
+    const mov = await tx.inventoryMovement.create({
+      data: {
+        orgId: org.orgId,
+        itemId: data.itemId,
+        movementType: data.movementType,
+        fromLocationId: data.fromLocationId || undefined,
+        toLocationId: data.toLocationId || undefined,
+        projectId: data.projectId || undefined,
+        wbsNodeId: data.wbsNodeId || undefined,
+        quantity: new Prisma.Decimal(data.quantity),
+        unitCost: new Prisma.Decimal(data.unitCost),
+        totalCost,
+        notes: data.notes,
+        idempotencyKey: data.idempotencyKey,
+        createdByOrgMemberId: org.memberId,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      itemId: data.itemId,
-      movementType: data.movementType,
-      fromLocationId: data.fromLocationId || undefined,
-      toLocationId: data.toLocationId || undefined,
-      projectId: data.projectId || undefined,
-      wbsNodeId: data.wbsNodeId || undefined,
-      quantity: new Prisma.Decimal(data.quantity),
-      unitCost: new Prisma.Decimal(data.unitCost),
-      totalCost,
-      notes: data.notes,
-      idempotencyKey: data.idempotencyKey,
-      createdByOrgMemberId: org.memberId,
-    },
+      eventType: 'INVENTORY_MOVEMENT.CREATED',
+      entityType: 'InventoryMovement',
+      entityId: mov.id,
+      payload: { movementType: data.movementType, itemId: data.itemId },
+    })
+    return mov
   })
 
   revalidatePath('/inventory')

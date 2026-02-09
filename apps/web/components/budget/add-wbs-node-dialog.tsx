@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useMemo, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import {
@@ -21,11 +21,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { addWbsNode } from '@/app/actions/wbs'
-import { Loader2, BookOpen, History, Pencil, Package } from 'lucide-react'
+import { Loader2, Package } from 'lucide-react'
+
+export type WbsTemplateForLibrary = {
+  id: string
+  name: string
+  code: string
+  unit: string
+  hasResources: boolean
+}
 
 interface AddWbsNodeDialogProps {
   open: boolean
@@ -34,6 +41,37 @@ interface AddWbsNodeDialogProps {
   parentId: string | null
   parentCode?: string
   parentName?: string
+  budgetVersionId?: string
+  wbsTemplates?: WbsTemplateForLibrary[]
+}
+
+const MAX_SUGGESTIONS = 5
+
+const units = [
+  'un', 'm', 'm2', 'm3', 'kg', 'tn', 'h', 'día', 'gl', 'bolsa', 'l',
+]
+
+/** Deduplicate by name (case insensitive), keep first occurrence. */
+function deduplicateByName(
+  templates: WbsTemplateForLibrary[]
+): WbsTemplateForLibrary[] {
+  const seen = new Set<string>()
+  return templates.filter((t) => {
+    const key = t.name.toLowerCase().trim()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/** Score: 0 = no match, higher = better (starts with query > contains). */
+function matchScore(name: string, query: string): number {
+  const n = name.toLowerCase().trim()
+  const q = query.toLowerCase().trim()
+  if (!q) return 0
+  if (n.startsWith(q)) return 10
+  if (n.includes(q)) return 5
+  return 0
 }
 
 export function AddWbsNodeDialog({
@@ -43,70 +81,96 @@ export function AddWbsNodeDialog({
   parentId,
   parentCode,
   parentName,
+  budgetVersionId,
+  wbsTemplates = [],
 }: AddWbsNodeDialogProps) {
   const t = useTranslations('wbs')
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
-  const [source, setSource] = useState<'template' | 'history' | 'custom'>('template')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [unit, setUnit] = useState('un')
+  const [description, setDescription] = useState('')
 
-  const [customName, setCustomName] = useState('')
-  const [customUnit, setCustomUnit] = useState('un')
-  const [customDescription, setCustomDescription] = useState('')
-
-  const [templates] = useState([
-    { id: '1', name: 'Demoliciones', unit: 'm3', hasResources: true },
-    { id: '2', name: 'Excavación manual', unit: 'm3', hasResources: true },
-    { id: '3', name: 'Excavación mecánica', unit: 'm3', hasResources: true },
-    { id: '4', name: 'Rellenos compactados', unit: 'm3', hasResources: false },
-  ])
-
-  const [history] = useState([
-    { name: 'Limpieza de escombros', unit: 'm2' },
-    { name: 'Nivelación de terreno', unit: 'm2' },
-  ])
-
-  const units = [
-    'un',
-    'm',
-    'm2',
-    'm3',
-    'kg',
-    'tn',
-    'h',
-    'día',
-    'gl',
-    'bolsa',
-    'l',
-  ]
-
-  const filteredTemplates = templates.filter((tm) =>
-    tm.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const uniqueTemplates = useMemo(
+    () => deduplicateByName(wbsTemplates),
+    [wbsTemplates]
   )
-  const filteredHistory = history.filter((h) =>
-    h.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+
+  const suggestions = useMemo(() => {
+    const q = searchQuery.trim()
+    if (!q) return []
+    return uniqueTemplates
+      .map((tm) => ({ tm, score: matchScore(tm.name, q) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_SUGGESTIONS)
+      .map(({ tm }) => tm)
+  }, [uniqueTemplates, searchQuery])
+
+  const selectedTemplate =
+    selectedId != null
+      ? uniqueTemplates.find((tm) => tm.id === selectedId) ?? null
+      : null
+
+  const isCustom =
+    searchQuery.trim() !== '' &&
+    (selectedTemplate == null || selectedTemplate.name !== searchQuery.trim())
+
+  const canAdd =
+    searchQuery.trim() !== '' &&
+    (selectedTemplate != null || isCustom)
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      setUnit(selectedTemplate.unit)
+    }
+  }, [selectedTemplate?.id])
+
+  function handleSelectTemplate(tm: WbsTemplateForLibrary) {
+    setSelectedId(tm.id)
+    setSearchQuery(tm.name)
+    setUnit(tm.unit)
+    setShowSuggestions(false)
+  }
+
+  function handleInputChange(value: string) {
+    setSearchQuery(value)
+    setSelectedId(null)
+    setShowSuggestions(true)
+  }
 
   function handleAdd() {
-    if (source === 'template' && !selectedTemplateId) {
-      toast.error(t('error'), {
-        description: t('selectTemplate'),
-      })
+    if (!searchQuery.trim()) {
+      toast.error(t('error'), { description: t('enterName') })
       return
     }
 
-    if (source === 'history') {
-      toast.error(t('error'), {
-        description: t('selectFromHistoryOrCustom'),
-      })
-      return
-    }
-
-    if (source === 'custom' && !customName.trim()) {
-      toast.error(t('error'), {
-        description: t('enterName'),
+    if (selectedTemplate && !isCustom) {
+      startTransition(async () => {
+        try {
+          const result = await addWbsNode({
+            projectId,
+            parentId,
+            templateId: selectedTemplate.id,
+            budgetVersionId: budgetVersionId ?? undefined,
+          })
+          if (result.success) {
+            toast.success(t('nodeAdded'), { description: t('nodeAddedDesc') })
+            onOpenChange(false)
+            router.refresh()
+            resetForm()
+          } else {
+            toast.error(t('error'), {
+              description: result.error ?? t('addNodeError'),
+            })
+          }
+        } catch {
+          toast.error(t('error'), { description: t('addNodeError') })
+        }
       })
       return
     }
@@ -116,27 +180,18 @@ export function AddWbsNodeDialog({
         const result = await addWbsNode({
           projectId,
           parentId,
-          templateId: source === 'template' ? selectedTemplateId! : undefined,
-          customData:
-            source === 'custom'
-              ? {
-                  name: customName.trim(),
-                  unit: customUnit,
-                  description: customDescription.trim() || undefined,
-                }
-              : undefined,
+          budgetVersionId: budgetVersionId ?? undefined,
+          customData: {
+            name: searchQuery.trim(),
+            unit,
+            description: description.trim() || undefined,
+          },
         })
-
         if (result.success) {
           toast.success(t('nodeAdded'), { description: t('nodeAddedDesc') })
           onOpenChange(false)
           router.refresh()
-          setSource('template')
-          setSelectedTemplateId(null)
-          setCustomName('')
-          setCustomUnit('un')
-          setCustomDescription('')
-          setSearchQuery('')
+          resetForm()
         } else {
           toast.error(t('error'), {
             description: result.error ?? t('addNodeError'),
@@ -148,16 +203,22 @@ export function AddWbsNodeDialog({
     })
   }
 
+  function resetForm() {
+    setSearchQuery('')
+    setSelectedId(null)
+    setUnit('un')
+    setDescription('')
+    setShowSuggestions(false)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] w-[95vw] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('addNewTask')}</DialogTitle>
+          <DialogTitle className="text-lg">{t('addNewTask')}</DialogTitle>
           <DialogDescription>
             {parentName != null && parentName !== '' ? (
-              <>
-                {t('addingUnder')}: <strong>{parentCode}</strong> - {parentName}
-              </>
+              <>{t('addingUnder')}: <strong>{parentCode}</strong> - {parentName}</>
             ) : (
               t('addingAtRoot')
             )}
@@ -165,156 +226,101 @@ export function AddWbsNodeDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
+          <div className="relative">
+            <Label className="sr-only">{t('searchTasks')}</Label>
             <Input
-              placeholder={t('searchTasks')}
+              ref={inputRef}
+              placeholder={t('searchOrCustomPlaceholder')}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
+              onChange={(e) => handleInputChange(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => {
+                setTimeout(() => setShowSuggestions(false), 150)
+              }}
+              disabled={isPending}
+              className="h-10 w-full pr-3 text-base"
             />
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-10 mt-1 max-h-52 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                {suggestions.map((tm) => (
+                  <button
+                    key={tm.id}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSelectTemplate(tm)
+                    }}
+                    className="flex w-full items-center justify-between border-b border-border/50 px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-muted"
+                  >
+                    <span className="font-medium">{tm.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {tm.unit}
+                      </span>
+                      {tm.hasResources && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Package className="mr-0.5 h-3 w-3" />
+                          APU
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <RadioGroup value={source} onValueChange={(v) => setSource(v as typeof source)}>
-            <div className="space-y-3">
-              <div className="rounded-lg border border-slate-200 p-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="template" id="template" />
-                  <Label htmlFor="template" className="flex cursor-pointer items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-blue-600" />
-                    <span className="font-semibold">{t('fromLibrary')}</span>
-                  </Label>
-                </div>
-
-                {source === 'template' && (
-                  <div className="mt-3 space-y-2 pl-6">
-                    {filteredTemplates.length === 0 ? (
-                      <p className="text-sm text-slate-500">{t('noTemplatesFound')}</p>
-                    ) : (
-                      filteredTemplates.map((template) => (
-                        <button
-                          key={template.id}
-                          type="button"
-                          onClick={() => setSelectedTemplateId(template.id)}
-                          className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors ${
-                            selectedTemplateId === template.id
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{template.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {t('unit')}: {template.unit}
-                            </p>
-                          </div>
-                          {template.hasResources && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Package className="mr-1 h-3 w-3" />
-                              Con APU
-                            </Badge>
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-lg border border-slate-200 p-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="history" id="history" />
-                  <Label htmlFor="history" className="flex cursor-pointer items-center gap-2">
-                    <History className="h-4 w-4 text-purple-600" />
-                    <span className="font-semibold">{t('recentlyUsed')}</span>
-                  </Label>
-                </div>
-
-                {source === 'history' && (
-                  <div className="mt-3 space-y-2 pl-6">
-                    {filteredHistory.length === 0 ? (
-                      <p className="text-sm text-slate-500">{t('noHistoryFound')}</p>
-                    ) : (
-                      filteredHistory.map((item, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setCustomName(item.name)
-                            setCustomUnit(item.unit)
-                            setSource('custom')
-                          }}
-                          className="flex w-full items-center justify-between rounded-lg border border-slate-200 p-3 text-left hover:border-purple-300 hover:bg-slate-50"
-                        >
-                          <p className="text-sm font-medium">{item.name}</p>
-                          <p className="text-xs text-slate-500">
-                            {t('unit')}: {item.unit}
-                          </p>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-lg border border-slate-200 p-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="custom" id="custom" />
-                  <Label htmlFor="custom" className="flex cursor-pointer items-center gap-2">
-                    <Pencil className="h-4 w-4 text-green-600" />
-                    <span className="font-semibold">{t('customTask')}</span>
-                  </Label>
-                </div>
-
-                {source === 'custom' && (
-                  <div className="mt-3 space-y-3 pl-6">
-                    <div>
-                      <Label htmlFor="customName">{t('name')} *</Label>
-                      <Input
-                        id="customName"
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                        placeholder={t('namePlaceholder')}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="customUnit">{t('unit')} *</Label>
-                      <Select value={customUnit} onValueChange={setCustomUnit}>
-                        <SelectTrigger id="customUnit" className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {units.map((unit) => (
-                            <SelectItem key={unit} value={unit}>
-                              {unit}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="customDescription">{t('description')}</Label>
-                      <Textarea
-                        id="customDescription"
-                        value={customDescription}
-                        onChange={(e) => setCustomDescription(e.target.value)}
-                        placeholder={t('descriptionPlaceholder')}
-                        className="mt-1"
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="unit" className="text-sm">
+                {t('unit')} *
+              </Label>
+              <Select
+                value={unit}
+                onValueChange={setUnit}
+                disabled={isPending}
+              >
+                <SelectTrigger id="unit" className="mt-1 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {units.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </RadioGroup>
+            <div className="sm:col-span-2">
+              <Label htmlFor="description" className="text-sm">
+                {t('description')}
+              </Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('descriptionPlaceholder')}
+                disabled={isPending}
+                className="mt-1 min-h-[72px] resize-none text-sm"
+                rows={2}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
             {t('cancel')}
           </Button>
-          <Button onClick={handleAdd} disabled={isPending}>
+          <Button
+            onClick={handleAdd}
+            disabled={isPending || !canAdd}
+          >
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

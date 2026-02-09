@@ -71,7 +71,7 @@ export function RfiForm({ projectId, wbsNodes, orgMembers }: RfiFormProps) {
           className="mt-1"
         />
         {errors.subject && (
-          <p className="mt-1 text-sm text-red-600">{errors.subject.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.subject.message}</p>
         )}
       </div>
 
@@ -84,7 +84,7 @@ export function RfiForm({ projectId, wbsNodes, orgMembers }: RfiFormProps) {
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
         />
         {errors.question && (
-          <p className="mt-1 text-sm text-red-600">{errors.question.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.question.message}</p>
         )}
       </div>
 
@@ -145,7 +145,7 @@ export function RfiForm({ projectId, wbsNodes, orgMembers }: RfiFormProps) {
       </div>
 
       {errors.root && (
-        <p className="text-sm text-red-600">{errors.root.message}</p>
+        <p className="text-sm text-destructive">{errors.root.message}</p>
       )}
 
       <div className="flex gap-2">

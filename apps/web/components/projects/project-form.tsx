@@ -84,7 +84,7 @@ export function ProjectForm({
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="erp-form-page space-y-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900"
+      className="erp-form-page space-y-6 rounded-lg border border-border bg-card p-6"
     >
       <div className="space-y-4">
         <div className="space-y-2">
@@ -95,7 +95,7 @@ export function ProjectForm({
             placeholder="ej. Torre Oficinas A"
           />
           {errors.name && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.name.message}
             </p>
           )}
@@ -108,7 +108,7 @@ export function ProjectForm({
             placeholder="Nombre del cliente o empresa"
           />
           {errors.clientName && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.clientName.message}
             </p>
           )}
@@ -121,7 +121,7 @@ export function ProjectForm({
             placeholder="Dirección o ubicación del proyecto"
           />
           {errors.location && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.location.message}
             </p>
           )}
@@ -132,11 +132,11 @@ export function ProjectForm({
             id="description"
             {...register('description')}
             rows={3}
-            className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
             placeholder="Brief description"
           />
           {errors.description && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-destructive">
               {errors.description.message}
             </p>
           )}
@@ -153,7 +153,7 @@ export function ProjectForm({
               placeholder="0"
             />
             {errors.m2 && (
-              <p className="text-sm text-red-600 dark:text-red-400">
+              <p className="text-sm text-destructive">
                 {errors.m2.message}
               </p>
             )}
@@ -166,7 +166,7 @@ export function ProjectForm({
               {...register('startDate')}
             />
             {errors.startDate && (
-              <p className="text-sm text-red-600 dark:text-red-400">
+              <p className="text-sm text-destructive">
                 {errors.startDate.message}
               </p>
             )}
@@ -178,7 +178,7 @@ export function ProjectForm({
             <select
               id="status"
               {...register('status')}
-              className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
             >
               <option value="DRAFT">Borrador</option>
               <option value="ACTIVE">Activo</option>
@@ -189,7 +189,7 @@ export function ProjectForm({
         )}
       </div>
       {errors.root && (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-destructive">
           {errors.root.message}
         </p>
       )}

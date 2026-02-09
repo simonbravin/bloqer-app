@@ -164,7 +164,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
         cell: ({ row }) => (
           <Link
             href={`/projects/${row.original.id}`}
-            className="font-medium text-slate-900 hover:text-blue-600 hover:underline"
+            className="font-medium text-foreground hover:text-accent hover:underline"
           >
             {row.getValue('name')}
           </Link>
@@ -209,7 +209,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
           )
         },
         cell: ({ row }) => (
-          <span className="font-medium tabular-nums text-slate-900">
+          <span className="font-medium tabular-nums text-foreground">
             {formatCurrency(row.getValue('totalBudget'))}
           </span>
         ),
@@ -282,10 +282,10 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
           </Button>
         </div>
       )}
-      {/* Filters and view toggle */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Search */}
-        <div className="flex-1 min-w-[280px]">
+      {/* Search arriba, botones en filas debajo */}
+      <div className="flex flex-col gap-4">
+        {/* Fila 1: Campo de búsqueda */}
+        <div className="w-full max-w-md">
           <Input
             placeholder={t('searchPlaceholder')}
             value={search}
@@ -293,12 +293,13 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
               setSearch(e.target.value)
               updateFilters(e.target.value, statusFilter, phaseFilter)
             }}
-            className="h-9"
+            className="h-11 w-full text-base"
           />
         </div>
 
+        {/* Fila 2: Filtro por estado */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Status filter */}
+          <span className="text-sm font-medium text-muted-foreground">{t('status')}:</span>
           <Select
             value={statusFilter}
             onValueChange={(value) => {
@@ -306,7 +307,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
               updateFilters(search, value, phaseFilter)
             }}
           >
-            <SelectTrigger className="h-9 w-[160px]">
+            <SelectTrigger className="h-9 w-[180px]">
               <SelectValue placeholder={t('statusAll')} />
             </SelectTrigger>
             <SelectContent>
@@ -317,8 +318,11 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
               <SelectItem value="COMPLETED">{t('statusComplete')}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
 
-          {/* Phase filter */}
+        {/* Fila 3: Filtro por fase */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">{t('phase')}:</span>
           <Select
             value={phaseFilter}
             onValueChange={(value) => {
@@ -326,7 +330,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
               updateFilters(search, statusFilter, value)
             }}
           >
-            <SelectTrigger className="h-9 w-[160px]">
+            <SelectTrigger className="h-9 w-[180px]">
               <SelectValue placeholder={t('phaseAll')} />
             </SelectTrigger>
             <SelectContent>
@@ -340,33 +344,38 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
               <SelectItem value="CLOSEOUT">{t('phaseCloseout')}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
 
-          {/* View mode toggle */}
-          <div className="flex items-center gap-1 rounded-lg border border-slate-200 p-1">
+        {/* Fila 4: Vista tabla / cuadrícula */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Vista:</span>
+          <div className="flex items-center gap-1 rounded-lg border border-border p-1">
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('table')}
-              className="h-7 px-2"
+              className="h-8 px-3"
               title="Vista de tabla"
             >
-              <List className="h-4 w-4" />
+              <List className="mr-1.5 h-4 w-4" />
+              Tabla
             </Button>
             <Button
               variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('grid')}
-              className="h-7 px-2"
+              className="h-8 px-3"
               title="Vista de cuadrícula"
             >
-              <Grid className="h-4 w-4" />
+              <Grid className="mr-1.5 h-4 w-4" />
+              Cuadrícula
             </Button>
           </div>
         </div>
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted-foreground">
         {t('showing')} {filteredProjects.length} {t('of')} {projects.length}{' '}
         {t('projectsCount')}
       </p>
@@ -397,7 +406,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted/50"
                     onClick={() => router.push(`/projects/${row.original.id}`)}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -417,7 +426,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
                     className="h-24 text-center"
                   >
                     <div className="flex flex-col items-center justify-center py-8">
-                      <FolderKanban className="h-12 w-12 text-slate-300" />
+                      <FolderKanban className="h-12 w-12 text-muted-foreground" />
                       <p className="mt-2 text-sm text-slate-500">
                         {t('noResults')}
                       </p>
@@ -436,8 +445,8 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
             ))
           ) : (
             <div className="col-span-full flex flex-col items-center justify-center py-12">
-              <FolderKanban className="h-12 w-12 text-slate-300" />
-              <p className="mt-2 text-sm text-slate-500">{t('noResults')}</p>
+              <FolderKanban className="h-12 w-12 text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">{t('noResults')}</p>
             </div>
           )}
         </div>

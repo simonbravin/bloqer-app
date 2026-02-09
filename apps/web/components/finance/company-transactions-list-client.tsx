@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -71,12 +73,16 @@ export function CompanyTransactionsListClient({
   filterOptions,
   canCreate,
 }: Props) {
+  const router = useRouter()
   const t = useTranslations('finance')
   const tCommon = useTranslations('common')
   const [transactions, setTransactions] = useState<CompanyTransactionRow[]>(initialTransactions)
   const [isPending, startTransition] = useTransition()
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
+
+  useMessageBus('FINANCE_TRANSACTION.CREATED', () => router.refresh())
+  useMessageBus('FINANCE_TRANSACTION.UPDATED', () => router.refresh())
 
   const [projectFilter, setProjectFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -157,7 +163,7 @@ export function CompanyTransactionsListClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('transactions')}</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t('transactions')}</h2>
         <div className="flex gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => setShowExportDialog(true)}>
             <FileDown className="mr-2 h-4 w-4" />
@@ -171,8 +177,8 @@ export function CompanyTransactionsListClient({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('filters')}:</span>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 dark:border-gray-700 dark:bg-gray-900">
+        <span className="text-sm font-medium text-foreground">{t('filters')}:</span>
         <Select
           value={projectFilter}
           onValueChange={(v) => {
@@ -276,18 +282,18 @@ export function CompanyTransactionsListClient({
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+      <div className="overflow-hidden rounded-lg border border-border bg-card dark:border-gray-700 dark:bg-gray-900">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
-              <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Fecha</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Número</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Tipo</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Proyecto</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Descripción</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Proveedor/Cliente</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">Monto (ARS)</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">Estado</th>
+              <th className="px-4 py-3 text-left font-medium text-foreground">Fecha</th>
+              <th className="px-4 py-3 text-left font-medium text-foreground">Número</th>
+              <th className="px-4 py-3 text-left font-medium text-foreground">Tipo</th>
+              <th className="px-4 py-3 text-left font-medium text-foreground">Proyecto</th>
+              <th className="px-4 py-3 text-left font-medium text-foreground">Descripción</th>
+              <th className="px-4 py-3 text-left font-medium text-foreground">Proveedor/Cliente</th>
+              <th className="px-4 py-3 text-right font-medium text-foreground">Monto (ARS)</th>
+              <th className="px-4 py-3 text-left font-medium text-foreground">Estado</th>
               <th className="w-20" />
             </tr>
           </thead>
@@ -300,7 +306,7 @@ export function CompanyTransactionsListClient({
               </tr>
             ) : (
               transactions.map((tx) => (
-                <tr key={tx.id} className="border-b border-gray-100 dark:border-gray-800">
+                <tr key={tx.id} className="border-b border-border">
                   <td className="px-4 py-2 text-muted-foreground">{formatDateShort(tx.issueDate)}</td>
                   <td className="px-4 py-2 font-mono text-foreground">{tx.transactionNumber}</td>
                   <td className="px-4 py-2">
@@ -342,8 +348,8 @@ export function CompanyTransactionsListClient({
       </div>
 
       {transactions.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-          <span className="text-sm text-gray-700 dark:text-gray-300">
+        <div className="rounded-lg border border-border bg-muted p-3">
+          <span className="text-sm text-foreground">
             Total: {transactions.length} transacción(es). Suma: {formatCurrency(totalAmount, 'ARS')}
           </span>
         </div>

@@ -96,7 +96,7 @@ export function ResourceForm({
             placeholder="Leave blank to auto-generate"
           />
           {errors.code && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.code.message}</p>
+            <p className="mt-1 text-sm text-destructive">{errors.code.message}</p>
           )}
         </div>
       )}
@@ -104,7 +104,7 @@ export function ResourceForm({
         <Label htmlFor="name">Name</Label>
         <Input id="name" {...register('name')} className="mt-1" />
         {errors.name && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>
         )}
       </div>
       <div>
@@ -135,7 +135,7 @@ export function ResourceForm({
           <Label htmlFor="unit">Unit</Label>
           <Input id="unit" {...register('unit')} className="mt-1" placeholder="ea, hr, day" />
           {errors.unit && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.unit.message}</p>
+            <p className="mt-1 text-sm text-destructive">{errors.unit.message}</p>
           )}
         </div>
         <div>
@@ -148,7 +148,7 @@ export function ResourceForm({
             className="mt-1"
           />
           {errors.unitCost && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.unitCost.message}</p>
+            <p className="mt-1 text-sm text-destructive">{errors.unitCost.message}</p>
           )}
         </div>
       </div>
@@ -169,11 +169,11 @@ export function ResourceForm({
           ))}
         </select>
         {errors.supplierId && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.supplierId.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.supplierId.message}</p>
         )}
       </div>
       {errors.root && (
-        <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+        <p className="text-sm text-destructive">{errors.root.message}</p>
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={isSubmitting}>

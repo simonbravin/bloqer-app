@@ -345,6 +345,7 @@
     }
   },
   "budget": {
+    "error": "Error",
     "title": "Presupuesto",
     "versions": "Versiones",
     "version": "Versión",
@@ -375,6 +376,7 @@
     "close": "Cerrar",
     "totalBudget": "TOTAL PRESUPUESTO",
     "noBudgetLinesYet": "Aún no hay partidas. Agrega una o importa desde una versión anterior.",
+    "noResultsFound": "Sin resultados para la búsqueda",
     "wbs": "EDT",
     "unitCost": "P.U.",
     "description": "Descripción",
@@ -506,6 +508,10 @@
     "markupsSavedDesc": "Los márgenes se guardaron correctamente.",
     "markupsSaveError": "Error al guardar los márgenes",
     "globalMarkupsBase": "Márgenes globales",
+    "overheadLabel": "Gastos Generales %",
+    "financialLabel": "Gastos Financieros %",
+    "profitLabel": "Utilidad %",
+    "taxLabel": "IVA %",
     "calculationBreakdown": "Desglose de cálculo",
     "simpleModeTitle": "Modo Simple",
     "simpleModeDesc": "Un solo juego de porcentajes (GG, GF, Utilidad, IVA) se aplica a todas las partidas del presupuesto.",
@@ -525,6 +531,7 @@
     "backToVersions": "Volver a Versiones",
     "linesTab": "Líneas de Presupuesto",
     "summaryTab": "Planilla Final",
+    "view": "Vista",
     "actions": "Acciones",
     "grandTotal": "TOTAL GENERAL"
   },
@@ -671,12 +678,14 @@
     "addingUnder": "Agregar bajo",
     "addingAtRoot": "Agregar en la raíz del EDT",
     "searchTasks": "Buscar tareas...",
+    "searchOrCustomPlaceholder": "Busca tarea o agrega tu tarea personalizada",
     "fromLibrary": "Desde biblioteca",
     "recentlyUsed": "Usados recientemente",
     "customTask": "Tarea personalizada",
     "noTemplatesFound": "No se encontraron plantillas",
     "noHistoryFound": "No hay ítems usados recientemente",
     "namePlaceholder": "Nombre del ítem",
+    "description": "Descripción",
     "descriptionPlaceholder": "Descripción opcional",
     "nodeAdded": "Nodo agregado",
     "nodeAddedDesc": "El ítem se agregó correctamente al EDT",
@@ -724,7 +733,9 @@
       "APPROVED": "Aprobado",
       "PAID": "Pagado",
       "VOIDED": "Anulado"
-    }
+    },
+    "export": "Exportar",
+    "exportCashflowTitle": "Exportar flujo de caja (según período actual)"
   },
   "quality": {
     "title": "Calidad",
@@ -1154,7 +1165,8 @@
     "activity_update_dailyreport": "actualizó un reporte de obra",
     "activity_approve_dailyreport": "aprobó un reporte de obra",
     "activity_create_schedule": "creó el cronograma",
-    "activity_update_schedule": "actualizó el cronograma"
+    "activity_update_schedule": "actualizó el cronograma",
+    "activity_update_task_dates_scheduletask": "actualizó fechas de tareas del cronograma"
   },
   "settings": {
     "settings": "Configuración",

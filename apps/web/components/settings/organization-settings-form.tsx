@@ -209,7 +209,7 @@ export function OrganizationSettingsForm({
               className="mt-1 w-full min-w-0"
             />
             {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+              <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>
             )}
           </div>
           <div>
@@ -326,7 +326,7 @@ export function OrganizationSettingsForm({
             />
             <p className="mt-1 text-xs text-slate-500">{t('defaultTaxPctHelp')}</p>
             {errors.defaultTaxPct && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {errors.defaultTaxPct.message}
               </p>
             )}

@@ -98,7 +98,7 @@ export function DateRangeSlider({
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-2">
+    <div className="space-y-2 rounded-lg border border-border bg-card p-2">
       {/* Fila 1: Título Visibilidad + Zoom + Restablecer */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Label className="text-xs font-semibold">{t('visibility')}</Label>

@@ -45,7 +45,7 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
       case 'UPDATE_RFI':
         return { icon: AlertCircle, color: 'bg-orange-100 text-orange-600' }
       default:
-        return { icon: FileEdit, color: 'bg-slate-100 text-slate-600' }
+        return { icon: FileEdit, color: 'bg-muted text-muted-foreground' }
     }
   }
 
@@ -89,17 +89,17 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <h3 className="text-lg font-semibold text-foreground">
         {t('recentActivityTitle')}
       </h3>
 
       {activities.length === 0 ? (
         <div className="mt-4 flex flex-col items-center justify-center py-8">
-          <div className="rounded-full bg-slate-100 p-3">
-            <User className="h-8 w-8 text-slate-400" />
+          <div className="rounded-full bg-muted p-3">
+            <User className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-muted-foreground">
             {t('noRecentActivity')}
           </p>
         </div>
@@ -123,7 +123,7 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-slate-900">
+                  <p className="text-sm text-foreground">
                     <span className="font-medium">{activity.actorName}</span>
                     {' '}
                     {getActivityLabel(activity.action, activity.entityType)}
@@ -134,7 +134,7 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
                       </>
                     )}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(activity.createdAt), {
                       addSuffix: true,
                       locale: es,

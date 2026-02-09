@@ -11,6 +11,7 @@ import type { OrgRole } from '@prisma/client'
 import type { InviteTeamMemberInput } from '@repo/validators'
 import { sendInvitationEmail } from '@/lib/email'
 import { requirePermission } from '@/lib/auth-helpers'
+import { publishOutboxEvent } from '@/lib/events/event-publisher'
 
 export async function inviteTeamMember(data: InviteTeamMemberInput) {
   const session = await getSession()
@@ -45,14 +46,23 @@ export async function inviteTeamMember(data: InviteTeamMemberInput) {
         return { success: false, error: 'Este usuario ya es miembro de la organización' }
       }
 
-      await prisma.orgMember.create({
-        data: {
+      await prisma.$transaction(async (tx) => {
+        const member = await tx.orgMember.create({
+          data: {
+            orgId,
+            userId: existingUser.id,
+            role: data.role,
+            active: true,
+            customPermissions: null,
+          },
+        })
+        await publishOutboxEvent(tx, {
           orgId,
-          userId: existingUser.id,
-          role: data.role,
-          active: true,
-          customPermissions: null,
-        },
+          eventType: 'ORG_MEMBER.INVITED',
+          entityType: 'OrgMember',
+          entityId: member.id,
+          payload: { userId: existingUser.id, role: data.role },
+        })
       })
 
       // TODO: Enviar email de notificación
@@ -100,9 +110,18 @@ export async function deactivateMember(memberId: string) {
       return { success: false, error: 'No se puede desactivar al propietario' }
     }
 
-    await prisma.orgMember.update({
-      where: { id: memberId },
-      data: { active: false },
+    await prisma.$transaction(async (tx) => {
+      await tx.orgMember.update({
+        where: { id: memberId },
+        data: { active: false },
+      })
+      await publishOutboxEvent(tx, {
+        orgId: orgContext.orgId,
+        eventType: 'ORG_MEMBER.UPDATED',
+        entityType: 'OrgMember',
+        entityId: memberId,
+        payload: { active: false },
+      })
     })
 
     revalidatePath('/settings/team')
@@ -137,9 +156,18 @@ export async function activateMember(memberId: string) {
       return { success: false, error: 'Miembro no encontrado' }
     }
 
-    await prisma.orgMember.update({
-      where: { id: memberId },
-      data: { active: true },
+    await prisma.$transaction(async (tx) => {
+      await tx.orgMember.update({
+        where: { id: memberId },
+        data: { active: true },
+      })
+      await publishOutboxEvent(tx, {
+        orgId: orgContext.orgId,
+        eventType: 'ORG_MEMBER.UPDATED',
+        entityType: 'OrgMember',
+        entityId: memberId,
+        payload: { active: true },
+      })
     })
 
     revalidatePath('/settings/team')
@@ -251,9 +279,18 @@ export async function updateMemberPermissions(
     return { success: false, error: 'No se pueden modificar permisos del dueño' }
   }
 
-  await prisma.orgMember.update({
-    where: { id: memberId },
-    data: { customPermissions: customPermissions as object },
+  await prisma.$transaction(async (tx) => {
+    await tx.orgMember.update({
+      where: { id: memberId },
+      data: { customPermissions: customPermissions as object },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: orgContext.orgId,
+      eventType: 'ORG_MEMBER.UPDATED',
+      entityType: 'OrgMember',
+      entityId: memberId,
+      payload: { customPermissions: true },
+    })
   })
 
   revalidatePath('/team')

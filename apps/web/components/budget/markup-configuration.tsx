@@ -56,18 +56,16 @@ export function MarkupConfiguration({
     null
   )
 
-  // Calcular totales secuenciales
+  // Calcular totales: GG sobre costo directo → Subtotal 1; GF y Beneficio sobre Subtotal 1 → Subtotal 2; IVA sobre Subtotal 2 → Total
   const overheadAmount = directCostTotal * (markups.overheadPct / 100)
   const subtotal1 = directCostTotal + overheadAmount
 
   const financialAmount = subtotal1 * (markups.financialPct / 100)
-  const subtotal2 = subtotal1 + financialAmount
+  const profitAmount = subtotal1 * (markups.profitPct / 100)
+  const subtotal2 = subtotal1 + financialAmount + profitAmount
 
-  const profitAmount = subtotal2 * (markups.profitPct / 100)
-  const subtotal3 = subtotal2 + profitAmount
-
-  const taxAmount = subtotal3 * (markups.taxPct / 100)
-  const totalSale = subtotal3 + taxAmount
+  const taxAmount = subtotal2 * (markups.taxPct / 100)
+  const totalSale = subtotal2 + taxAmount
 
   function handleModeToggle(newMode: 'SIMPLE' | 'ADVANCED') {
     if (newMode === mode) return
@@ -145,202 +143,166 @@ export function MarkupConfiguration({
   return (
     <>
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
-              {t('markupConfiguration')}
-            </CardTitle>
-
-            {canEdit && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor="mode-toggle" className="text-sm font-normal">
-                  {t('simpleMode')}
-                </Label>
-                <Switch
-                  id="mode-toggle"
-                  checked={mode === 'ADVANCED'}
-                  onCheckedChange={(checked) =>
-                    handleModeToggle(checked ? 'ADVANCED' : 'SIMPLE')
-                  }
-                  disabled={isPending}
-                />
-                <Label htmlFor="mode-toggle" className="text-sm font-normal">
-                  {t('advancedMode')}
-                </Label>
-              </div>
-            )}
+        <CardHeader className="py-3">
+          <div className="flex items-center gap-3 flex-nowrap">
+            <CardTitle className="text-base shrink-0">{t('markupConfiguration')}</CardTitle>
+            <div className="flex items-center gap-2 shrink-0">
+              <Label htmlFor="mode-toggle" className="text-xs font-normal whitespace-nowrap">
+                {t('simpleMode')}
+              </Label>
+              <Switch
+                id="mode-toggle"
+                checked={mode === 'ADVANCED'}
+                onCheckedChange={(checked) =>
+                  handleModeToggle(checked ? 'ADVANCED' : 'SIMPLE')
+                }
+                disabled={!canEdit || isPending}
+              />
+              <Label htmlFor="mode-toggle" className="text-xs font-normal whitespace-nowrap">
+                {t('advancedMode')}
+              </Label>
+            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          {/* Modo info */}
+        <CardContent className="space-y-3 pb-4 pt-0">
           <div
-            className={`rounded-lg border p-3 ${
+            className={`rounded border px-2.5 py-2 text-xs ${
               mode === 'SIMPLE'
                 ? 'border-blue-200 bg-blue-50'
                 : 'border-purple-200 bg-purple-50'
             }`}
           >
             <div className="flex items-start gap-2">
-              <Info className="h-4 w-4 mt-0.5 text-blue-600" />
-              <div className="text-sm">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-600" />
+              <div>
                 {mode === 'SIMPLE' ? (
-                  <>
-                    <p className="font-medium text-blue-900">
-                      {t('simpleModeTitle')}
-                    </p>
-                    <p className="mt-1 text-blue-800">{t('simpleModeDesc')}</p>
-                  </>
+                  <p className="font-medium text-blue-900">{t('simpleModeTitle')}: {t('simpleModeDesc')}</p>
                 ) : (
-                  <>
-                    <p className="font-medium text-purple-900">
-                      {t('advancedModeTitle')}
-                    </p>
-                    <p className="mt-1 text-purple-800">
-                      {t('advancedModeDesc')}
-                    </p>
-                  </>
+                  <p className="font-medium text-purple-900">{t('advancedModeTitle')}: {t('advancedModeDesc')}</p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Markups grid */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* Left: Inputs */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                 {t('globalMarkupsBase')}
               </h3>
-
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="overhead" className="text-sm">
-                    {t('overhead')}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="overhead" className="w-36 shrink-0 text-xs">
+                    {t('overheadLabel')}
                   </Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Input
-                      id="overhead"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={markups.overheadPct}
-                      onChange={(e) =>
-                        setMarkups({
-                          ...markups,
-                          overheadPct: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      disabled={!canEdit || isPending}
-                      className="w-24 text-right"
-                    />
-                    <span className="text-sm text-slate-600">%</span>
-                    <span className="ml-auto font-mono text-sm tabular-nums text-slate-700">
-                      {formatCurrency(overheadAmount)}
-                    </span>
-                  </div>
+                  <Input
+                    id="overhead"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={markups.overheadPct}
+                    onChange={(e) =>
+                      setMarkups({
+                        ...markups,
+                        overheadPct: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    disabled={!canEdit || isPending}
+                    className="h-8 w-20 text-right text-sm"
+                  />
+                  <span className="font-mono text-xs tabular-nums text-slate-700">
+                    {formatCurrency(overheadAmount)}
+                  </span>
                 </div>
-
-                <div>
-                  <Label htmlFor="financial" className="text-sm">
-                    {t('financial')}
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="financial" className="w-36 shrink-0 text-xs">
+                    {t('financialLabel')}
                   </Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Input
-                      id="financial"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={markups.financialPct}
-                      onChange={(e) =>
-                        setMarkups({
-                          ...markups,
-                          financialPct: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      disabled={!canEdit || isPending}
-                      className="w-24 text-right"
-                    />
-                    <span className="text-sm text-slate-600">%</span>
-                    <span className="ml-auto font-mono text-sm tabular-nums text-slate-700">
-                      {formatCurrency(financialAmount)}
-                    </span>
-                  </div>
+                  <Input
+                    id="financial"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={markups.financialPct}
+                    onChange={(e) =>
+                      setMarkups({
+                        ...markups,
+                        financialPct: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    disabled={!canEdit || isPending}
+                    className="h-8 w-20 text-right text-sm"
+                  />
+                  <span className="font-mono text-xs tabular-nums text-slate-700">
+                    {formatCurrency(financialAmount)}
+                  </span>
                 </div>
-
-                <div>
-                  <Label htmlFor="profit" className="text-sm">
-                    {t('profit')}
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="profit" className="w-36 shrink-0 text-xs">
+                    {t('profitLabel')}
                   </Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Input
-                      id="profit"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={markups.profitPct}
-                      onChange={(e) =>
-                        setMarkups({
-                          ...markups,
-                          profitPct: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      disabled={!canEdit || isPending}
-                      className="w-24 text-right"
-                    />
-                    <span className="text-sm text-slate-600">%</span>
-                    <span className="ml-auto font-mono text-sm tabular-nums text-slate-700">
-                      {formatCurrency(profitAmount)}
-                    </span>
-                  </div>
+                  <Input
+                    id="profit"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={markups.profitPct}
+                    onChange={(e) =>
+                      setMarkups({
+                        ...markups,
+                        profitPct: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    disabled={!canEdit || isPending}
+                    className="h-8 w-20 text-right text-sm"
+                  />
+                  <span className="font-mono text-xs tabular-nums text-slate-700">
+                    {formatCurrency(profitAmount)}
+                  </span>
                 </div>
-
-                <div>
-                  <Label htmlFor="tax" className="text-sm">
-                    {t('tax')} (IVA)
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tax" className="w-36 shrink-0 text-xs">
+                    {t('taxLabel')}
                   </Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Input
-                      id="tax"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={markups.taxPct}
-                      onChange={(e) =>
-                        setMarkups({
-                          ...markups,
-                          taxPct: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      disabled={!canEdit || isPending}
-                      className="w-24 text-right"
-                    />
-                    <span className="text-sm text-slate-600">%</span>
-                    <span className="ml-auto font-mono text-sm tabular-nums text-slate-700">
-                      {formatCurrency(taxAmount)}
-                    </span>
-                  </div>
+                  <Input
+                    id="tax"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={markups.taxPct}
+                    onChange={(e) =>
+                      setMarkups({
+                        ...markups,
+                        taxPct: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    disabled={!canEdit || isPending}
+                    className="h-8 w-20 text-right text-sm"
+                  />
+                  <span className="font-mono text-xs tabular-nums text-slate-700">
+                    {formatCurrency(taxAmount)}
+                  </span>
                 </div>
               </div>
-
               {canEdit && (
                 <Button
                   onClick={handleSaveMarkups}
                   disabled={isPending}
-                  className="w-full"
+                  size="sm"
+                  className="mt-1.5 h-8 w-full text-xs"
                 >
                   {isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                       {t('saving')}
                     </>
                   ) : (
                     <>
-                      <Save className="mr-2 h-4 w-4" />
+                      <Save className="mr-1.5 h-3.5 w-3.5" />
                       {mode === 'SIMPLE' ? t('applyToAll') : t('saveGlobals')}
                     </>
                   )}
@@ -348,82 +310,73 @@ export function MarkupConfiguration({
               )}
             </div>
 
-            {/* Right: Calculation breakdown */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('calculationBreakdown')}
               </h3>
-
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="space-y-1.5 rounded border border-border bg-muted/50 p-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">{t('directCost')}:</span>
-                  <span className="font-mono font-medium tabular-nums">
+                  <span className="text-muted-foreground">{t('directCost')}:</span>
+                  <span className="font-mono font-medium tabular-nums text-foreground">
                     {formatCurrency(directCostTotal)}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     + {t('overhead')} ({markups.overheadPct}%):
                   </span>
-                  <span className="font-mono tabular-nums text-slate-700">
+                  <span className="font-mono tabular-nums text-foreground">
                     {formatCurrency(overheadAmount)}
                   </span>
                 </div>
 
-                <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-medium">
-                  <span className="text-slate-700">{t('subtotal')} 1:</span>
-                  <span className="font-mono tabular-nums">
+                <div className="flex justify-between border-t border-border pt-1 text-sm font-medium">
+                  <span className="text-foreground">{t('subtotal')} 1:</span>
+                  <span className="font-mono tabular-nums text-foreground">
                     {formatCurrency(subtotal1)}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     + {t('financial')} ({markups.financialPct}%):
                   </span>
-                  <span className="font-mono tabular-nums text-slate-700">
+                  <span className="font-mono tabular-nums text-foreground">
                     {formatCurrency(financialAmount)}
                   </span>
                 </div>
 
-                <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-medium">
-                  <span className="text-slate-700">{t('subtotal')} 2:</span>
-                  <span className="font-mono tabular-nums">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    + {t('profit')} ({markups.profitPct}%):
+                  </span>
+                  <span className="font-mono tabular-nums text-foreground">
+                    {formatCurrency(profitAmount)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between border-t border-border pt-1 text-sm font-medium">
+                  <span className="text-foreground">{t('subtotal')} 2:</span>
+                  <span className="font-mono tabular-nums text-foreground">
                     {formatCurrency(subtotal2)}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">
-                    + {t('profit')} ({markups.profitPct}%):
-                  </span>
-                  <span className="font-mono tabular-nums text-slate-700">
-                    {formatCurrency(profitAmount)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-medium">
-                  <span className="text-slate-700">{t('subtotal')} 3:</span>
-                  <span className="font-mono tabular-nums">
-                    {formatCurrency(subtotal3)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     + {t('tax')} ({markups.taxPct}%):
                   </span>
-                  <span className="font-mono tabular-nums text-slate-700">
+                  <span className="font-mono tabular-nums text-foreground">
                     {formatCurrency(taxAmount)}
                   </span>
                 </div>
 
-                <div className="flex justify-between border-t-2 border-slate-300 pt-2">
-                  <span className="text-base font-bold text-blue-900">
+                <div className="flex justify-between border-t-2 border-border pt-2">
+                  <span className="text-base font-bold text-primary">
                     {t('totalSale')}:
                   </span>
-                  <span className="font-mono text-xl font-bold tabular-nums text-blue-900">
+                  <span className="font-mono text-xl font-bold tabular-nums text-primary">
                     {formatCurrency(totalSale)}
                   </span>
                 </div>
@@ -438,7 +391,10 @@ export function MarkupConfiguration({
         open={showModeChangeConfirm}
         onOpenChange={setShowModeChangeConfirm}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          className="min-w-0"
+          style={{ width: 'min(42rem, 95vw)', maxWidth: '42rem' }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t('confirmModeChangeTitle')}
@@ -461,7 +417,7 @@ export function MarkupConfiguration({
                 pendingMode && confirmModeChange(pendingMode, true)
               }
               disabled={isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary text-primary-foreground hover:opacity-90"
             >
               {isPending ? (
                 <>

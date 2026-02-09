@@ -51,12 +51,12 @@ export function KPICards({ kpis }: KPICardsProps) {
       {cards.map((card) => (
         <div
           key={card.title}
-          className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+          className="rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
         >
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600">{card.title}</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">
+              <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
+              <p className="mt-2 text-3xl font-semibold text-foreground">
                 {card.format === 'currency'
                   ? formatCurrency(card.value)
                   : card.value.toLocaleString('es-AR')}

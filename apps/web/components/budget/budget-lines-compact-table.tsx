@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import React, { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { formatCurrency, formatNumber } from '@/lib/format-utils'
@@ -13,7 +13,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +25,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronRight, Plus, Trash2, Calculator } from 'lucide-react'
-import { AddWbsNodeDialog } from './add-wbs-node-dialog'
+import { AddWbsNodeDialog, type WbsTemplateForLibrary } from './add-wbs-node-dialog'
 import { APUEditorDialog } from './apu-editor-dialog'
 import { deleteWbsNodeWithRenumber, deleteWbsNodeCascade } from '@/app/actions/wbs'
 import type { BudgetTreeNode } from './budget-tree-table-admin'
@@ -37,6 +36,33 @@ interface BudgetLinesCompactTableProps {
   projectId: string
   canEdit: boolean
   markupMode: string
+  wbsTemplates?: WbsTemplateForLibrary[]
+  /** Filtra por código WBS o descripción (partida). Vacío = sin filtrar */
+  searchQuery?: string
+}
+
+/** Filtra el árbol: se incluye un nodo si coincide código/nombre/descripción o si algún hijo coincide */
+function filterTreeBySearch(nodes: BudgetTreeNode[], query: string): BudgetTreeNode[] {
+  if (!query.trim()) return nodes
+  const q = query.trim().toLowerCase()
+  return nodes
+    .map((node) => {
+      const codeMatch = node.wbsNode.code?.toLowerCase().includes(q)
+      const nameMatch = node.wbsNode.name?.toLowerCase().includes(q)
+      const lineMatch = node.lines.some((l) =>
+        String(l.description ?? '').toLowerCase().includes(q)
+      )
+      const matches = codeMatch || nameMatch || lineMatch
+      const filteredChildren = filterTreeBySearch(node.children, query)
+      if (matches || filteredChildren.length > 0) {
+        return {
+          ...node,
+          children: filteredChildren,
+        }
+      }
+      return null
+    })
+    .filter((n): n is BudgetTreeNode => n != null)
 }
 
 export function BudgetLinesCompactTable({
@@ -45,11 +71,18 @@ export function BudgetLinesCompactTable({
   projectId,
   canEdit,
   markupMode,
+  wbsTemplates = [],
+  searchQuery = '',
 }: BudgetLinesCompactTableProps) {
   const t = useTranslations('budget')
   const tCommon = useTranslations('common')
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+
+  const filteredData = React.useMemo(
+    () => filterTreeBySearch(data, searchQuery),
+    [data, searchQuery]
+  )
 
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [editingAPU, setEditingAPU] = useState<string | null>(null)
@@ -161,8 +194,8 @@ export function BudgetLinesCompactTable({
     const hasChildren = node.children.length > 0 || node.lines.length > 0
     const nodeTotal = calculateNodeTotal(node)
 
-    const bgColors = ['bg-slate-50', 'bg-slate-100', 'bg-slate-150', 'bg-slate-200']
-    const bgColor = bgColors[Math.min(level, bgColors.length - 1)] ?? 'bg-slate-50'
+    const bgColors = ['bg-muted/30', 'bg-muted/50', 'bg-muted/70', 'bg-muted/80']
+    const bgColor = bgColors[Math.min(level, bgColors.length - 1)] ?? 'bg-muted/30'
 
     return (
       <>
@@ -240,7 +273,7 @@ export function BudgetLinesCompactTable({
           node.lines.map((line) => {
             const hasAPU = line.resources.length > 0
             return (
-              <TableRow key={line.id} className="h-8 hover:bg-slate-50">
+              <TableRow key={line.id} className="h-8 hover:bg-muted/50">
                 <TableCell
                   style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
                   className="px-2 py-1"
@@ -289,15 +322,11 @@ export function BudgetLinesCompactTable({
     )
   }
 
-  const grandTotal = data.reduce((sum, node) => sum + calculateNodeTotal(node), 0)
+  const grandTotal = filteredData.reduce((sum, node) => sum + calculateNodeTotal(node), 0)
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2">
-        <Input
-          placeholder={t('searchByCodeOrDescription')}
-          className="flex-1"
-        />
+      <div className="mb-4 flex items-center justify-end">
         {canEdit && (
           <Button onClick={() => handleAddClick(null)} variant="outline">
             <Plus className="mr-2 h-4 w-4" />
@@ -328,16 +357,30 @@ export function BudgetLinesCompactTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((node) => renderNode(node))}
-            <TableRow className="h-8 border-t-2 border-slate-300 bg-slate-100 font-bold">
-              <TableCell colSpan={3} className="px-2 py-1 text-right text-xs">
-                {t('grandTotal')}:
-              </TableCell>
-              <TableCell className="px-2 py-1 text-right text-sm">
-                {formatCurrency(grandTotal)}
-              </TableCell>
-              <TableCell className="px-2 py-1" />
-            </TableRow>
+            {filteredData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  {searchQuery.trim() ? t('noResultsFound') : t('noBudgetLinesYet')}
+                </TableCell>
+              </TableRow>
+            ) : (
+              <>
+                {filteredData.map((node) => (
+                  <React.Fragment key={node.wbsNode.id}>
+                    {renderNode(node)}
+                  </React.Fragment>
+                ))}
+                <TableRow className="h-8 border-t-2 border-border bg-muted font-bold">
+                  <TableCell colSpan={3} className="px-2 py-1 text-right text-xs">
+                    {t('grandTotal')}:
+                  </TableCell>
+                  <TableCell className="px-2 py-1 text-right text-sm">
+                    {formatCurrency(grandTotal)}
+                  </TableCell>
+                  <TableCell className="px-2 py-1" />
+                </TableRow>
+              </>
+            )}
           </TableBody>
         </Table>
       </div>
@@ -360,6 +403,8 @@ export function BudgetLinesCompactTable({
         parentId={addDialogParent.id}
         parentCode={addDialogParent.code}
         parentName={addDialogParent.name}
+        budgetVersionId={versionId}
+        wbsTemplates={wbsTemplates}
       />
 
       {deleteConfirm && (
@@ -367,7 +412,7 @@ export function BudgetLinesCompactTable({
           open={!!deleteConfirm}
           onOpenChange={(open) => !open && setDeleteConfirm(null)}
         >
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-xl">
             <AlertDialogHeader>
               <AlertDialogTitle>{t('confirmDeleteTitle')}</AlertDialogTitle>
               <AlertDialogDescription>

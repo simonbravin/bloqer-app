@@ -864,6 +864,127 @@ export async function exportCompanyTransactionsToPDF(
   }
 }
 
+// ==================== Cashflow consolidado ====================
+
+export type CashflowExportParams = {
+  dateFrom: string
+  dateTo: string
+}
+
+export async function exportCompanyCashflowToExcel(
+  params: CashflowExportParams,
+  selectedColumns: string[]
+) {
+  const session = await getSession()
+  if (!session?.user?.id) return { success: false, error: 'Unauthorized' }
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) return { success: false, error: 'Unauthorized' }
+  const orgData = await getOrganizationData(org.orgId)
+  try {
+    const { getCompanyCashflowDetailed } = await import('./finance')
+    const from = new Date(params.dateFrom)
+    const to = new Date(params.dateTo)
+    const { timeline, breakdown } = await getCompanyCashflowDetailed({ from, to })
+    const allColumns = [
+      { field: 'month', label: 'Mes', type: 'text' as const, width: 12 },
+      { field: 'income', label: 'Ingresos', type: 'currency' as const, width: 14, align: 'right' as const },
+      { field: 'expense', label: 'Gastos', type: 'currency' as const, width: 14, align: 'right' as const },
+      { field: 'overhead', label: 'Overhead', type: 'currency' as const, width: 14, align: 'right' as const },
+      { field: 'projectExpense', label: 'Gastos proyectos', type: 'currency' as const, width: 16, align: 'right' as const },
+      { field: 'balance', label: 'Balance', type: 'currency' as const, width: 14, align: 'right' as const },
+    ]
+    const columns = allColumns.map((col) => ({
+      ...col,
+      visible: selectedColumns.includes(col.field),
+    }))
+    const data = timeline.map((row) => ({
+      month: row.month,
+      income: row.income,
+      expense: row.expense,
+      overhead: row.overhead,
+      projectExpense: row.expense - row.overhead,
+      balance: row.balance,
+    }))
+    const config: ExcelConfig = {
+      title: 'Flujo de caja consolidado',
+      subtitle: `Período ${from.toLocaleDateString('es-AR')} - ${to.toLocaleDateString('es-AR')} · Exportado el ${new Date().toLocaleDateString('es-AR')}`,
+      includeCompanyHeader: true,
+      metadata: { date: new Date(), generatedBy: orgData?.legalName ?? orgData?.name ?? 'Sistema' },
+      columns,
+      data,
+      sheetName: 'Cashflow',
+      freezeHeader: true,
+      autoFilter: true,
+    }
+    const buffer = await exportToExcel(config)
+    return {
+      success: true,
+      data: buffer.toString('base64'),
+      filename: `cashflow-${params.dateFrom}-${params.dateTo}.xlsx`,
+    }
+  } catch (error) {
+    console.error('Error exporting cashflow:', error)
+    return { success: false, error: 'Error al exportar flujo de caja' }
+  }
+}
+
+export async function exportCompanyCashflowToPDF(
+  params: CashflowExportParams,
+  selectedColumns: string[]
+) {
+  const session = await getSession()
+  if (!session?.user?.id) return { success: false, error: 'Unauthorized' }
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) return { success: false, error: 'Unauthorized' }
+  const orgData = await getOrganizationData(org.orgId)
+  try {
+    const { getCompanyCashflowDetailed } = await import('./finance')
+    const from = new Date(params.dateFrom)
+    const to = new Date(params.dateTo)
+    const { timeline } = await getCompanyCashflowDetailed({ from, to })
+    const allColumns = [
+      { field: 'month', label: 'Mes', type: 'text' as const, align: 'left' as const },
+      { field: 'income', label: 'Ingresos', type: 'currency' as const, align: 'right' as const },
+      { field: 'expense', label: 'Gastos', type: 'currency' as const, align: 'right' as const },
+      { field: 'overhead', label: 'Overhead', type: 'currency' as const, align: 'right' as const },
+      { field: 'projectExpense', label: 'Gastos proyectos', type: 'currency' as const, align: 'right' as const },
+      { field: 'balance', label: 'Balance', type: 'currency' as const, align: 'right' as const },
+    ]
+    const columns = allColumns.map((col) => ({
+      ...col,
+      visible: selectedColumns.includes(col.field),
+    }))
+    const data = timeline.map((row) => ({
+      month: row.month,
+      income: row.income,
+      expense: row.expense,
+      overhead: row.overhead,
+      projectExpense: row.expense - row.overhead,
+      balance: row.balance,
+    }))
+    const config: PDFConfig = {
+      title: 'Flujo de caja consolidado',
+      subtitle: `Período ${from.toLocaleDateString('es-AR')} - ${to.toLocaleDateString('es-AR')} · Exportado el ${new Date().toLocaleDateString('es-AR')}`,
+      includeCompanyHeader: true,
+      metadata: { date: new Date(), generatedBy: orgData?.legalName ?? orgData?.name ?? 'Sistema' },
+      columns,
+      data,
+      orientation: 'landscape',
+      pageSize: 'A4',
+      showPageNumbers: true,
+    }
+    const buffer = await exportToPDF(config)
+    return {
+      success: true,
+      data: buffer.toString('base64'),
+      filename: `cashflow-${params.dateFrom}-${params.dateTo}.pdf`,
+    }
+  } catch (error) {
+    console.error('Error exporting cashflow PDF:', error)
+    return { success: false, error: 'Error al exportar PDF de flujo de caja' }
+  }
+}
+
 // ==================== Overhead con asignaciones ====================
 
 export async function exportOverheadToExcel(selectedColumns: string[]) {

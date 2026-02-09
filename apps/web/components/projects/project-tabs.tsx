@@ -50,8 +50,8 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
   ]
 
   return (
-    <div className="border-b border-slate-200 bg-white">
-      <nav className="flex space-x-8 px-6" aria-label="Tabs">
+    <div className="border-b border-border bg-card">
+      <nav className="flex flex-wrap gap-x-6 gap-y-2 px-6 py-1" aria-label="Tabs">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = tab.exact
@@ -62,14 +62,14 @@ export function ProjectTabs({ projectId }: ProjectTabsProps) {
               key={tab.name}
               href={tab.href}
               className={cn(
-                'flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors',
+                'flex items-center gap-2 border-b-2 px-1 py-3.5 text-sm font-semibold transition-colors',
                 isActive
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-foreground/90 hover:border-border hover:text-foreground'
               )}
             >
-              <Icon className="h-4 w-4" />
-              {tab.name}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="whitespace-nowrap">{tab.name}</span>
             </Link>
           )
         })}

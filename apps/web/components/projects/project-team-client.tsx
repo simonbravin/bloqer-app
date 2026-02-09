@@ -191,7 +191,7 @@ export function ProjectTeamClient({
       </Card>
 
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Agregar miembro al proyecto</DialogTitle>
             <DialogDescription>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -60,6 +61,24 @@ export function OverheadTransactionsListClient({
   const [isAllocationDialogOpen, setIsAllocationDialogOpen] = useState(false)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const [deleteAllocationId, setDeleteAllocationId] = useState<string | null>(null)
+  const [showExportDialog, setShowExportDialog] = useState(false)
+
+  useMessageBus('FINANCE_TRANSACTION.CREATED', () => {
+    router.refresh()
+    getOverheadTransactions().then(setTransactions)
+  })
+  useMessageBus('FINANCE_TRANSACTION.UPDATED', () => {
+    router.refresh()
+    getOverheadTransactions().then(setTransactions)
+  })
+  useMessageBus('OVERHEAD_ALLOCATION.UPDATED', () => {
+    router.refresh()
+    getOverheadTransactions().then(setTransactions)
+  })
+  useMessageBus('OVERHEAD_ALLOCATION.DELETED', () => {
+    router.refresh()
+    getOverheadTransactions().then(setTransactions)
+  })
 
   const filteredTransactions =
     filterStatus === 'all'
@@ -123,17 +142,27 @@ export function OverheadTransactionsListClient({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Transacciones Overhead</CardTitle>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="unallocated">Sin Asignar</SelectItem>
-              <SelectItem value="partial">Parcial</SelectItem>
-              <SelectItem value="complete">Completo</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowExportDialog(true)}
+              title="Exportar a Excel"
+            >
+              <FileDown className="h-4 w-4 mr-1" />
+              Exportar
+            </Button>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="unallocated">Sin Asignar</SelectItem>
+                <SelectItem value="partial">Parcial</SelectItem>
+                <SelectItem value="complete">Completo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -268,7 +297,7 @@ export function OverheadTransactionsListClient({
       />
 
       <AlertDialog open={!!deleteAllocationId} onOpenChange={() => setDeleteAllocationId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar asignación?</AlertDialogTitle>
             <AlertDialogDescription>

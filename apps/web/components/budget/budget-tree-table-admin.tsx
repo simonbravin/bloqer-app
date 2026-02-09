@@ -126,7 +126,7 @@ export function BudgetTreeTableAdmin({
     const incidencePct = projectTotal > 0 ? (nodeTotal / projectTotal) * 100 : 0
 
     const bgClass =
-      level === 0 ? 'bg-slate-50 dark:bg-slate-900/50' : level === 1 ? 'bg-slate-100/80 dark:bg-slate-800/50' : level === 2 ? 'bg-slate-150 dark:bg-slate-800/30' : 'bg-slate-200/60 dark:bg-slate-700/30'
+      level === 0 ? 'bg-muted/30' : level === 1 ? 'bg-muted/50' : level === 2 ? 'bg-muted/70' : 'bg-muted/80'
 
     const out: React.ReactNode[] = []
 
@@ -144,7 +144,7 @@ export function BudgetTreeTableAdmin({
               </button>
             )}
             <span className="font-mono text-xs text-slate-600 dark:text-slate-400">{node.wbsNode.code}</span>
-            <span className="text-sm text-slate-900 dark:text-slate-100">{node.wbsNode.name}</span>
+            <span className="text-sm text-foreground">{node.wbsNode.name}</span>
           </div>
         </TableCell>
         <TableCell />
@@ -153,7 +153,7 @@ export function BudgetTreeTableAdmin({
         <TableCell />
         <TableCell />
         <TableCell className="text-right">
-          <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <span className="font-mono text-sm font-semibold text-foreground">
             {formatCurrency(nodeTotal)}
           </span>
         </TableCell>
@@ -236,7 +236,7 @@ export function BudgetTreeTableAdmin({
               </span>
             </TableCell>
             <TableCell className="text-right">
-              <span className="font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+              <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
                 {formatCurrency(lineTotal)}
               </span>
             </TableCell>

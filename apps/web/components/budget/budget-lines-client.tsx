@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import { BudgetLineForm } from './budget-line-form'
 import { BudgetLineTable, type BudgetLineRow } from './budget-line-table'
 import { BudgetTreeTable } from './budget-tree-table'
@@ -50,8 +51,8 @@ function downloadCsv(
 ) {
   const headers = ['WBS Code', 'WBS Name', 'Description', 'Quantity', 'Unit', 'Unit Cost', 'Total']
   const rows = lines.map((line) => {
-    const qty = typeof line.quantity === 'number' ? line.quantity : line.quantity.toNumber()
-    const total = typeof line.directCostTotal === 'number' ? line.directCostTotal : line.directCostTotal.toNumber()
+    const qty = typeof line.quantity === 'number' ? line.quantity : 0
+    const total = typeof line.directCostTotal === 'number' ? line.directCostTotal : 0
     const unitCost = qty > 0 ? total / qty : 0
     return [
       line.wbsNode.code,
@@ -90,6 +91,13 @@ export function BudgetLinesClient({
   const router = useRouter()
   const [importingFrom, setImportingFrom] = useState<string | null>(null)
   const t = useTranslations('budget')
+
+  useMessageBus('BUDGET_LINE.CREATED', () => router.refresh())
+  useMessageBus('BUDGET_LINE.UPDATED', () => router.refresh())
+  useMessageBus('BUDGET_LINE.DELETED', () => router.refresh())
+  useMessageBus('BUDGET_RESOURCE.ADDED', () => router.refresh())
+  useMessageBus('BUDGET_VERSION.APPROVED', () => router.refresh())
+  useMessageBus('FINANCE_TRANSACTION.CREATED', () => router.refresh())
 
   async function handleAddLine(data: CreateBudgetLineInput) {
     const result = await createBudgetLine(versionId, data)
@@ -132,9 +140,9 @@ export function BudgetLinesClient({
             />
             {otherVersions.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">{t('importFrom')}:</span>
+                <span className="text-sm text-muted-foreground">{t('importFrom')}:</span>
                 <select
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
                   value=""
                   onChange={(e) => {
                     const id = e.target.value

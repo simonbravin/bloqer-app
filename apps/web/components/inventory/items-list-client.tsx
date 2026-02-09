@@ -8,6 +8,7 @@ import { Search, Grid3x3, List, Package } from 'lucide-react'
 import { ItemsTable } from './items-table'
 import { ItemsGrid } from './items-grid'
 import { Link } from '@/i18n/navigation'
+import { useMessageBus } from '@/hooks/use-message-bus'
 
 interface ItemRow {
   id: string
@@ -36,6 +37,11 @@ export function ItemsListClient({ items, categories }: ItemsListClientProps) {
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [selectedCategoryId, setSelectedCategoryId] = useState(searchParams.get('category') ?? '')
   const [stockFilter, setStockFilter] = useState(searchParams.get('stock') ?? '')
+
+  useMessageBus('INVENTORY_ITEM.CREATED', () => router.refresh())
+  useMessageBus('INVENTORY_ITEM.UPDATED', () => router.refresh())
+  useMessageBus('INVENTORY_ITEM.DELETED', () => router.refresh())
+  useMessageBus('INVENTORY_MOVEMENT.CREATED', () => router.refresh())
 
   function handleSearch() {
     const params = new URLSearchParams()

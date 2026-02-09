@@ -65,7 +65,7 @@ export function LocalSupplierForm() {
         <Label htmlFor="name">Name</Label>
         <Input id="name" {...register('name')} className="mt-1" required />
         {errors.name && (
-          <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>
         )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -101,7 +101,7 @@ export function LocalSupplierForm() {
         <Input id="website" type="url" {...register('website')} className="mt-1" />
       </div>
       {errors.root && (
-        <p className="text-sm text-red-600">{errors.root.message}</p>
+        <p className="text-sm text-destructive">{errors.root.message}</p>
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={isSubmitting}>

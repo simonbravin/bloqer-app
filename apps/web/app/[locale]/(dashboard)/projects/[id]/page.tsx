@@ -4,6 +4,7 @@ import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { hasMinimumRole } from '@/lib/rbac'
 import { getProject } from '@/app/actions/projects'
+import { getApprovedOrBaselineBudgetTotal } from '@/app/actions/budget'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
@@ -32,55 +33,62 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const t = await getTranslations('projects')
 
   const { id } = await params
-  const project = await getProject(id)
+  const [project, approvedBudgetTotal] = await Promise.all([
+    getProject(id),
+    getApprovedOrBaselineBudgetTotal(id),
+  ])
   if (!project) notFound()
 
   const canEdit = hasMinimumRole(org.role, 'EDITOR')
 
-  // Calculate budget (handle Decimal type)
-  const totalBudget = project.totalBudget
-    ? typeof project.totalBudget === 'number'
-      ? project.totalBudget
-      : Number(project.totalBudget)
-    : 0
+  // Presupuesto: mostrar total de versión aprobada/baseline si existe; si no, el campo del proyecto
+  const totalBudget =
+    approvedBudgetTotal > 0
+      ? approvedBudgetTotal
+      : project.totalBudget
+        ? typeof project.totalBudget === 'number'
+          ? project.totalBudget
+          : Number(project.totalBudget)
+        : 0
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="erp-container erp-stack py-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="erp-header-row">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               {project.name}
             </h1>
             <ProjectStatusBadge status={project.status} />
           </div>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {project.projectNumber}
           </p>
         </div>
-
-        {canEdit && (
-          <Button asChild variant="outline">
-            <Link href={`/projects/${project.id}/edit`}>
-              <Pencil className="mr-2 h-4 w-4" />
-              {t('edit')}
-            </Link>
-          </Button>
-        )}
+        <div className="erp-header-actions">
+          {canEdit && (
+            <Button asChild variant="outline">
+              <Link href={`/projects/${project.id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                {t('edit')}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Project Overview Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="erp-grid-cards">
         {/* Budget */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="erp-card-elevated p-5">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-emerald-100 p-2">
               <DollarSign className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">{t('budget')}</p>
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-sm text-muted-foreground">{t('budget')}</p>
+              <p className="text-xl font-semibold text-foreground">
                 {formatCurrency(totalBudget)}
               </p>
             </div>
@@ -88,13 +96,13 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         </div>
 
         {/* Phase */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="erp-card-elevated p-5">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-violet-100 p-2">
               <Clock className="h-5 w-5 text-violet-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">{t('phase')}</p>
+              <p className="text-sm text-muted-foreground">{t('phase')}</p>
               <div className="mt-1">
                 <ProjectPhaseBadge phase={project.phase} />
               </div>
@@ -103,14 +111,14 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         </div>
 
         {/* Client */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="erp-card-elevated p-5">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-blue-100 p-2">
               <User className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">{t('client')}</p>
-              <p className="text-lg font-medium text-slate-900 truncate">
+              <p className="text-sm text-muted-foreground">{t('client')}</p>
+              <p className="text-lg font-medium text-foreground truncate">
                 {project.clientName || '—'}
               </p>
             </div>
@@ -118,14 +126,14 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         </div>
 
         {/* Start Date */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="erp-card-elevated p-5">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-amber-100 p-2">
               <Calendar className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">{t('startDate')}</p>
-              <p className="text-lg font-medium text-slate-900">
+              <p className="text-sm text-muted-foreground">{t('startDate')}</p>
+              <p className="text-lg font-medium text-foreground">
                 {project.startDate
                   ? new Date(project.startDate).toLocaleDateString('es-AR', {
                       year: 'numeric',
@@ -140,17 +148,17 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       </div>
 
       {/* Project Details */}
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+      <div className="erp-card-elevated p-6">
+        <h2 className="erp-section-title mb-4">
           Detalles del Proyecto
         </h2>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {project.location && (
             <div className="flex items-start gap-3">
-              <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
+              <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <dt className="text-sm text-slate-500">Ubicación</dt>
-                <dd className="text-sm font-medium text-slate-900">
+                <dt className="text-sm text-muted-foreground">Ubicación</dt>
+                <dd className="text-sm font-medium text-foreground">
                   {project.location}
                 </dd>
               </div>
@@ -158,10 +166,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           )}
           {project.m2 && (
             <div className="flex items-start gap-3">
-              <FileText className="h-5 w-5 text-slate-400 mt-0.5" />
+              <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <dt className="text-sm text-slate-500">Superficie</dt>
-                <dd className="text-sm font-medium text-slate-900">
+                <dt className="text-sm text-muted-foreground">Superficie</dt>
+                <dd className="text-sm font-medium text-foreground">
                   {project.m2.toString()} m²
                 </dd>
               </div>
@@ -169,10 +177,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           )}
           {project.plannedEndDate && (
             <div className="flex items-start gap-3">
-              <Calendar className="h-5 w-5 text-slate-400 mt-0.5" />
+              <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <dt className="text-sm text-slate-500">{t('plannedEndDate')}</dt>
-                <dd className="text-sm font-medium text-slate-900">
+                <dt className="text-sm text-muted-foreground">{t('plannedEndDate')}</dt>
+                <dd className="text-sm font-medium text-foreground">
                   {new Date(project.plannedEndDate).toLocaleDateString('es-AR', {
                     year: 'numeric',
                     month: 'short',
@@ -184,10 +192,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           )}
           {project.description && (
             <div className="sm:col-span-2 lg:col-span-3 flex items-start gap-3">
-              <FileText className="h-5 w-5 text-slate-400 mt-0.5" />
+              <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <dt className="text-sm text-slate-500">Descripción</dt>
-                <dd className="text-sm text-slate-700">
+                <dt className="text-sm text-muted-foreground">Descripción</dt>
+                <dd className="text-sm text-card-foreground">
                   {project.description}
                 </dd>
               </div>
@@ -197,44 +205,44 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       </div>
 
       {/* Quick Actions */}
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+      <div className="erp-card-elevated p-6">
+        <h2 className="erp-section-title mb-4">
           Acceso Rápido
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Link
             href={`/projects/${project.id}/budget`}
-            className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 p-4 text-center transition-colors hover:bg-slate-50"
+            className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:bg-muted/50"
           >
             <DollarSign className="h-6 w-6 text-emerald-600" />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               {t('budget')}
             </span>
           </Link>
           <Link
             href={`/projects/${project.id}/certifications`}
-            className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 p-4 text-center transition-colors hover:bg-slate-50"
+            className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:bg-muted/50"
           >
             <CheckSquare className="h-6 w-6 text-blue-600" />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               {t('certifications')}
             </span>
           </Link>
           <Link
             href={`/projects/${project.id}/change-orders`}
-            className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 p-4 text-center transition-colors hover:bg-slate-50"
+            className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:bg-muted/50"
           >
             <FileText className="h-6 w-6 text-amber-600" />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               {t('changeOrders')}
             </span>
           </Link>
           <Link
             href={`/projects/${project.id}/wbs`}
-            className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 p-4 text-center transition-colors hover:bg-slate-50"
+            className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:bg-muted/50"
           >
             <FileText className="h-6 w-6 text-violet-600" />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               {t('wbs')}
             </span>
           </Link>
@@ -258,10 +266,10 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           </Link>
           <Link
             href={`/projects/${project.id}/daily-reports`}
-            className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 p-4 text-center transition-colors hover:bg-slate-50"
+            className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:bg-muted/50"
           >
             <FileText className="h-6 w-6 text-sky-600" />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-foreground">
               {t('dailyReports')}
             </span>
           </Link>

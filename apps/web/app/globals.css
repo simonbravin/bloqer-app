@@ -10,108 +10,198 @@
 
 @layer base {
   :root {
-    /* Surface Colors */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    --background: 214 32% 97%;
+    --foreground: 222 35% 12%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 35% 12%;
 
-    /* Brand Colors - Navy */
-    --navy: 222 35% 20%;
-    --navy-light: 222 35% 28%;
-    --navy-dark: 222 35% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 35% 12%;
 
-    /* Brand Colors - Orange (Cobre) */
-    --orange: 35 60% 52%;
-    --orange-light: 35 60% 62%;
-    --orange-dark: 35 60% 42%;
+    --primary: 222 36% 20%;
+    --primary-foreground: 210 22% 96%;
 
-    /* Semantic Status Colors */
-    --status-success: 150 30% 45%;
-    --status-warning: 42 50% 55%;
-    --status-danger: 10 55% 55%;
-    --status-neutral: 215 15% 65%;
-    --status-info: 210 30% 50%;
+    --secondary: 214 24% 93%;
+    --secondary-foreground: 222 35% 12%;
 
-    /* UI Component Colors */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 35 60% 52%;
+    --muted: 214 24% 94%;
+    --muted-foreground: 218 14% 48%;
 
-    --primary: 222 35% 20%;
-    --primary-foreground: 210 20% 98%;
-
-    --secondary: 210 20% 94%;
-    --secondary-foreground: 222 47% 11%;
-
-    --accent: 35 60% 52%;
+    --accent: 28 68% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --destructive: 10 55% 55%;
+    --destructive: 6 52% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Popover/Dropdown */
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --border: 214 28% 90%;
+    --input: 214 28% 88%;
+    --ring: 28 68% 50%;
 
-    /* Chart/Data Visualization */
-    --chart-1: 222 35% 25%;
-    --chart-2: 150 30% 45%;
-    --chart-3: 35 60% 52%;
-    --chart-4: 10 55% 55%;
-    --chart-5: 215 25% 40%;
+    /* Brand */
+    --navy: 222 36% 20%;
+    --navy-light: 222 32% 28%;
+    --navy-dark: 222 38% 15%;
+
+    --orange: 28 68% 50%;
+    --orange-light: 28 65% 58%;
+    --orange-dark: 28 70% 42%;
+
+    /* Status */
+    --status-success: 150 28% 44%;
+    --status-success-foreground: 150 45% 20%;
+    --status-warning: 38 60% 52%;
+    --status-warning-foreground: 38 70% 20%;
+    --status-danger: 6 52% 50%;
+    --status-danger-foreground: 6 70% 18%;
+    --status-neutral: 215 14% 62%;
+    --status-neutral-foreground: 222 35% 12%;
+    --status-info: 210 42% 50%;
+    --status-info-foreground: 210 60% 20%;
+
+    /* Sidebar */
+    --sidebar: 222 36% 20%;
+    --sidebar-foreground: 210 22% 96%;
+    --sidebar-muted: 210 18% 70%;
+    --sidebar-accent: 222 32% 26%;
+    --sidebar-border: 222 28% 26%;
+    --sidebar-ring: 28 68% 50%;
+
+    /* Table */
+    --table-head: 214 24% 92%;
+    --table-row-hover: 214 28% 95%;
+    --table-border: 214 28% 90%;
+
+    --radius: 0.5rem;
+    --chart-1: 222 36% 28%;
+    --chart-2: 152 28% 42%;
+    --chart-3: 28 68% 50%;
+    --chart-4: 6 52% 50%;
+    --chart-5: 218 24% 38%;
   }
 
   .dark {
-    /* Surface Colors - Dark */
-    --background: 222 24% 9%;
-    --foreground: 210 20% 98%;
+    --background: 222 26% 9%;
+    --foreground: 213 22% 95%;
+
     --card: 222 24% 12%;
-    --card-foreground: 210 20% 98%;
+    --card-foreground: 213 22% 95%;
 
-    /* Brand Colors - Navy (Light Oxford for sidebar) */
-    --navy: 210 20% 90%;
-    --navy-light: 210 20% 98%;
-    --navy-dark: 210 20% 80%;
-
-    /* Brand Colors - Orange (Cobre) */
-    --orange: 35 60% 52%;
-    --orange-light: 35 60% 62%;
-    --orange-dark: 35 60% 42%;
-
-    /* Semantic Status Colors - Adjusted for dark */
-    --status-success: 150 30% 55%;
-    --status-warning: 42 50% 60%;
-    --status-danger: 10 55% 60%;
-    --status-neutral: 215 15% 75%;
-    --status-info: 210 30% 65%;
-
-    /* UI Components - Dark */
-    --border: 217 19% 27%;
-    --input: 217 19% 27%;
-    --ring: 35 60% 52%;
-
-    --primary: 210 20% 98%;
-    --primary-foreground: 222 35% 20%;
-
-    --secondary: 217 19% 20%;
-    --secondary-foreground: 210 20% 98%;
-
-    --accent: 35 60% 52%;
-    --accent-foreground: 222 24% 9%;
-
-    --muted: 217 19% 20%;
-    --muted-foreground: 215 20% 65%;
-
-    --destructive: 10 40% 30%;
-    --destructive-foreground: 210 20% 98%;
-
-    /* Popover/Dropdown */
     --popover: 222 24% 12%;
-    --popover-foreground: 210 20% 98%;
+    --popover-foreground: 213 22% 95%;
+
+    --primary: 213 22% 95%;
+    --primary-foreground: 222 26% 10%;
+
+    --secondary: 217 22% 16%;
+    --secondary-foreground: 213 22% 95%;
+
+    --muted: 218 20% 16%;
+    --muted-foreground: 215 18% 64%;
+
+    --accent: 28 70% 56%;
+    --accent-foreground: 222 26% 9%;
+
+    --destructive: 8 50% 35%;
+    --destructive-foreground: 213 22% 95%;
+
+    --border: 218 22% 24%;
+    --input: 218 22% 24%;
+    --ring: 28 70% 56%;
+
+    /* Brand */
+    --navy: 217 22% 16%;
+    --navy-light: 217 22% 22%;
+    --navy-dark: 217 28% 10%;
+
+    --orange: 28 70% 56%;
+    --orange-light: 28 75% 64%;
+    --orange-dark: 28 65% 46%;
+
+    /* Status */
+    --status-success: 150 35% 50%;
+    --status-success-foreground: 210 20% 96%;
+    --status-warning: 40 70% 58%;
+    --status-warning-foreground: 210 20% 96%;
+    --status-danger: 8 65% 58%;
+    --status-danger-foreground: 210 20% 96%;
+    --status-neutral: 215 15% 70%;
+    --status-neutral-foreground: 210 20% 96%;
+    --status-info: 210 60% 60%;
+    --status-info-foreground: 210 20% 96%;
+
+    /* Sidebar */
+    --sidebar: 217 22% 16%;
+    --sidebar-foreground: 213 22% 95%;
+    --sidebar-muted: 213 18% 68%;
+    --sidebar-accent: 222 24% 22%;
+    --sidebar-border: 222 22% 22%;
+    --sidebar-ring: 28 70% 56%;
+
+    /* Table */
+    --table-head: 218 22% 17%;
+    --table-row-hover: 218 20% 20%;
+    --table-border: 218 22% 24%;
+  }
+
+  /* Theme template: midnight (cooler, deeper dark). Works best with .dark; overrides only variables below. */
+  [data-theme='midnight'] {
+    --background: 224 30% 6%;
+    --foreground: 210 25% 95%;
+    --card: 224 28% 9%;
+    --card-foreground: 210 25% 95%;
+    --sidebar: 224 28% 10%;
+    --sidebar-foreground: 210 25% 92%;
+    --sidebar-muted: 210 25% 68%;
+    --sidebar-accent: 224 28% 16%;
+    --sidebar-border: 224 26% 18%;
+    --sidebar-ring: 28 70% 58%;
+    --table-head: 220 20% 14%;
+    --table-row-hover: 220 20% 16%;
+    --table-border: 220 22% 16%;
+    --ring: 28 70% 58%;
+    --border: 220 22% 16%;
+    --input: 220 22% 16%;
+    --muted: 220 20% 14%;
+    --muted-foreground: 215 18% 62%;
+    --primary: 210 25% 92%;
+    --primary-foreground: 224 30% 8%;
+    --secondary: 220 22% 14%;
+    --secondary-foreground: 210 25% 92%;
+    --accent: 28 70% 58%;
+    --accent-foreground: 224 30% 6%;
+    --popover: 224 28% 9%;
+    --popover-foreground: 210 25% 95%;
+  }
+
+  /* Theme template: slate (neutral gray dark). Works best with .dark; overrides only variables below. */
+  [data-theme='slate'] {
+    --background: 215 20% 9%;
+    --foreground: 210 20% 95%;
+    --card: 215 18% 12%;
+    --card-foreground: 210 20% 95%;
+    --sidebar: 215 22% 14%;
+    --sidebar-foreground: 210 20% 92%;
+    --sidebar-muted: 210 20% 65%;
+    --sidebar-accent: 215 22% 20%;
+    --sidebar-border: 215 20% 22%;
+    --sidebar-ring: 28 70% 58%;
+    --table-head: 215 16% 16%;
+    --table-row-hover: 215 16% 18%;
+    --table-border: 215 18% 20%;
+    --ring: 28 70% 58%;
+    --border: 215 18% 20%;
+    --input: 215 18% 20%;
+    --muted: 215 16% 16%;
+    --muted-foreground: 215 14% 62%;
+    --primary: 210 20% 92%;
+    --primary-foreground: 215 22% 10%;
+    --secondary: 215 18% 16%;
+    --secondary-foreground: 210 20% 92%;
+    --accent: 28 70% 58%;
+    --accent-foreground: 215 20% 8%;
+    --popover: 215 18% 12%;
+    --popover-foreground: 210 20% 95%;
   }
 }
 
@@ -126,15 +216,31 @@
   --color-navy-light: hsl(var(--navy-light));
   --color-navy-dark: hsl(var(--navy-dark));
 
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-muted: hsl(var(--sidebar-muted));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --color-table-head: hsl(var(--table-head));
+  --color-table-row-hover: hsl(var(--table-row-hover));
+  --color-table-border: hsl(var(--table-border));
+
   --color-orange: hsl(var(--orange));
   --color-orange-light: hsl(var(--orange-light));
   --color-orange-dark: hsl(var(--orange-dark));
 
   --color-status-success: hsl(var(--status-success));
+  --color-status-success-foreground: hsl(var(--status-success-foreground));
   --color-status-warning: hsl(var(--status-warning));
+  --color-status-warning-foreground: hsl(var(--status-warning-foreground));
   --color-status-danger: hsl(var(--status-danger));
+  --color-status-danger-foreground: hsl(var(--status-danger-foreground));
   --color-status-neutral: hsl(var(--status-neutral));
+  --color-status-neutral-foreground: hsl(var(--status-neutral-foreground));
   --color-status-info: hsl(var(--status-info));
+  --color-status-info-foreground: hsl(var(--status-info-foreground));
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -170,16 +276,31 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  /* Shadows (token-based; no hardcoded colors) */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08);
   --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --shadow-sidebar: 2px 0 8px 0 rgb(0 0 0 / 0.1);
+  --shadow-sidebar: 2px 0 8px 0 rgb(0 0 0 / 0.08);
+  --shadow-dropdown: 0 4px 12px rgb(0 0 0 / 0.1);
 
-  /* Border Radius */
+  /* Motion (polish layer; use in transition-duration / transition-timing-function) */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Border Radius (shadcn: --radius is default) */
+  --radius: 0.5rem;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
+
+  /* Chart - expose for Tailwind/charts */
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
 }
 
 @layer base {
@@ -237,37 +358,47 @@
     @apply px-4 py-3 font-mono tabular-nums text-right text-sm;
   }
 
+  /* Compact table variant (denser ERP tables; add class to table wrapper) */
+  .erp-table-compact th,
+  .erp-table-compact td {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .erp-table-compact .tabular-nums {
+    @apply text-right;
+  }
+
   /* ========================================
      STATUS BADGES (Semantic)
      ======================================== */
 
   .badge-success {
-    background-color: hsl(var(--status-success) / 0.1);
-    color: hsl(var(--status-success));
+    background-color: hsl(var(--status-success) / 0.15);
+    color: hsl(var(--status-success-foreground));
     @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
   }
 
   .badge-warning {
-    background-color: hsl(var(--status-warning) / 0.1);
-    color: hsl(var(--status-warning));
+    background-color: hsl(var(--status-warning) / 0.2);
+    color: hsl(var(--status-warning-foreground));
     @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
   }
 
   .badge-danger {
-    background-color: hsl(var(--status-danger) / 0.1);
-    color: hsl(var(--status-danger));
+    background-color: hsl(var(--status-danger) / 0.15);
+    color: hsl(var(--status-danger-foreground));
     @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
   }
 
   .badge-neutral {
-    background-color: hsl(var(--status-neutral) / 0.1);
-    color: hsl(var(--status-neutral));
+    background-color: hsl(var(--status-neutral) / 0.2);
+    color: hsl(var(--status-neutral-foreground));
     @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
   }
 
   .badge-info {
-    background-color: hsl(var(--status-info) / 0.1);
-    color: hsl(var(--status-info));
+    background-color: hsl(var(--status-info) / 0.15);
+    color: hsl(var(--status-info-foreground));
     @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium;
   }
 
@@ -363,10 +494,115 @@
   .erp-settings-form {
     @apply w-full min-w-[400px] max-w-2xl;
   }
+
 }
 
 @layer utilities {
-  /* Custom slate-150 for budget tree hierarchy */
+  /* ========================================
+     SURFACE UTILITIES (tokens only, no hardcoded colors)
+     ======================================== */
+  .erp-page {
+    @apply bg-background text-foreground;
+  }
+
+  .erp-panel {
+    @apply rounded-lg border border-border bg-card text-card-foreground;
+  }
+
+  .erp-input-surface {
+    @apply border border-input bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .erp-page-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+
+  .erp-section-title {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  .erp-section-desc {
+    @apply text-sm text-muted-foreground;
+  }
+
+  /* Layout system (Phase 1) — container, stack, header, cards, table wrap */
+  .erp-shell {
+    @apply min-h-screen bg-background text-foreground;
+  }
+
+  .erp-container {
+    @apply mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .erp-stack {
+    @apply space-y-4 md:space-y-6;
+  }
+
+  .erp-header-row {
+    @apply flex flex-col gap-3 md:flex-row md:items-center md:justify-between;
+  }
+
+  .erp-header-actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .erp-grid-cards {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 xl:grid-cols-4;
+  }
+
+  .erp-card-elevated {
+    @apply rounded-xl border border-border bg-card shadow-[var(--shadow-card)];
+    transition: transform 0.15s var(--motion-ease), box-shadow 0.15s var(--motion-ease), border-color 0.15s var(--motion-ease);
+  }
+  .erp-card-elevated:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-card-hover);
+    @apply border-border ring-1 ring-border/60;
+  }
+  .erp-card-elevated:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .erp-card-elevated {
+      transition: box-shadow 0.15s var(--motion-ease), border-color 0.15s var(--motion-ease);
+    }
+    .erp-card-elevated:hover {
+      transform: none;
+    }
+  }
+
+  .erp-table-wrap {
+    @apply overflow-x-auto rounded-xl border border-border bg-card;
+  }
+
+  /* Transitions (polish) */
+  .erp-transition-colors {
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  /* Table: use --table-head, --table-row-hover, --table-border */
+  .erp-table-surface {
+    @apply w-full border-collapse;
+    border-color: hsl(var(--table-border));
+  }
+
+  .erp-table-surface thead {
+    background-color: hsl(var(--table-head));
+    @apply border-b text-muted-foreground;
+    border-color: hsl(var(--table-border));
+  }
+
+  .erp-table-surface tbody tr {
+    @apply border-b transition-colors;
+    border-color: hsl(var(--table-border));
+  }
+
+  .erp-table-surface tbody tr:hover {
+    background-color: hsl(var(--table-row-hover) / 0.6);
+  }
+
+  /* Custom slate-150 for budget tree hierarchy (legacy; prefer muted) */
   .bg-slate-150 {
     background-color: hsl(215 16% 92%);
   }

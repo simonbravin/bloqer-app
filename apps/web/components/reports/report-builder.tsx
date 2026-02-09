@@ -139,7 +139,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
         />
       </div>
       <div>
@@ -155,7 +155,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
               )
             )
           }}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+          className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
         >
           {ENTITY_TYPES.map((e) => (
             <option key={e.value} value={e.value}>
@@ -181,7 +181,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
                 type="checkbox"
                 checked={selectedColumns.includes(col.key)}
                 onChange={() => toggleColumn(col.key)}
-                className="rounded border-gray-300"
+                className="rounded border-border"
               />
               {col.label}
             </label>
@@ -196,7 +196,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
             id="sortKey"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+            className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="">Default</option>
             {columns.map((col) => (
@@ -212,7 +212,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
             id="sortDir"
             value={sortDir}
             onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+            className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="asc">Ascending</option>
             <option value="desc">Descending</option>
@@ -265,7 +265,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={submitting}>
           {submitting ? 'Saving…' : 'Save report'}

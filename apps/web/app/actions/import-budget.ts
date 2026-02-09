@@ -1,21 +1,11 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { getAuthContext } from '@/lib/auth-helpers'
 import { Prisma } from '@repo/database'
 import type { ParsedWbsItem } from '@/lib/types/excel-import'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
 
 async function generateProjectNumber(orgId: string): Promise<string> {
   const year = new Date().getFullYear()

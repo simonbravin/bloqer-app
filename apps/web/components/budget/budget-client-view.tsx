@@ -54,27 +54,14 @@ export function BudgetClientView({ data, projectTotal }: BudgetClientViewProps) 
   }
 
   /**
-   * Calcular precio de venta unitario aplicando markups secuencialmente
+   * Precio de venta: GG sobre costo directo → Subtotal 1; GF y Beneficio sobre Subtotal 1 → Subtotal 2; IVA sobre Subtotal 2 → Total
    */
   function calculateSalePrice(line: (BudgetTreeNode['lines'][0])): number {
     const directUnitCost =
       Number(line.directCostTotal) / Number(line.quantity)
-
-    let price = directUnitCost
-
-    const overhead = price * (Number(line.overheadPct) / 100)
-    price += overhead
-
-    const financial = price * (Number(line.financialPct) / 100)
-    price += financial
-
-    const profit = price * (Number(line.profitPct) / 100)
-    price += profit
-
-    const tax = price * (Number(line.taxPct) / 100)
-    price += tax
-
-    return price
+    const sub1 = directUnitCost * (1 + Number(line.overheadPct) / 100)
+    const sub2 = sub1 * (1 + Number(line.financialPct) / 100 + Number(line.profitPct) / 100)
+    return sub2 * (1 + Number(line.taxPct) / 100)
   }
 
   function calculateNodeTotal(node: BudgetTreeNode): number {
@@ -100,17 +87,17 @@ export function BudgetClientView({ data, projectTotal }: BudgetClientViewProps) 
       projectTotal > 0 ? (nodeTotal / projectTotal) * 100 : 0
 
     const bgColors = [
-      'bg-slate-50',
-      'bg-slate-100',
-      'bg-slate-100',
-      'bg-slate-200',
+      'bg-muted/30',
+      'bg-muted/50',
+      'bg-muted/50',
+      'bg-muted/70',
     ]
     const bgColor = bgColors[Math.min(level, bgColors.length - 1)]
 
     return (
       <>
         {/* WBS Node Row */}
-        <TableRow className={`${bgColor} h-9 hover:bg-slate-200/50`}>
+        <TableRow className={`${bgColor} h-9 hover:bg-muted/50`}>
           <TableCell
             style={{ paddingLeft: `${level * 16 + 8}px` }}
             className="py-1 px-2"
@@ -129,10 +116,10 @@ export function BudgetClientView({ data, projectTotal }: BudgetClientViewProps) 
                   )}
                 </button>
               )}
-              <span className="font-mono text-[10px] text-slate-600">
+              <span className="font-mono text-[10px] text-muted-foreground">
                 {node.wbsNode.code}
               </span>
-              <span className="text-xs font-medium text-slate-900">
+              <span className="text-xs font-medium text-foreground">
                 {node.wbsNode.name}
               </span>
             </div>
@@ -161,7 +148,7 @@ export function BudgetClientView({ data, projectTotal }: BudgetClientViewProps) 
               projectTotal > 0 ? (totalSale / projectTotal) * 100 : 0
 
             return (
-              <TableRow key={line.id} className="h-9 hover:bg-slate-50">
+              <TableRow key={line.id} className="h-9 hover:bg-muted/50">
                 <TableCell
                   style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
                   className="py-1 px-2"
@@ -217,26 +204,26 @@ export function BudgetClientView({ data, projectTotal }: BudgetClientViewProps) 
   )
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-slate-800">
+        <TableHeader className="sticky top-0 z-10 bg-table-head">
           <TableRow className="h-9">
-            <TableHead className="text-white text-xs py-1 px-2">
+            <TableHead className="text-foreground text-xs py-1 px-2">
               {t('item')}
             </TableHead>
-            <TableHead className="text-white text-xs py-1 px-2 w-[60px]">
+            <TableHead className="text-foreground text-xs py-1 px-2 w-[60px]">
               {t('unit')}
             </TableHead>
-            <TableHead className="text-white text-xs py-1 px-2 text-right w-[80px]">
+            <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[80px]">
               {t('quantity')}
             </TableHead>
-            <TableHead className="text-white text-xs py-1 px-2 text-right w-[100px]">
+            <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[100px]">
               {t('unitPrice')}
             </TableHead>
-            <TableHead className="text-white text-xs py-1 px-2 text-right w-[120px]">
+            <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[120px]">
               {t('total')}
             </TableHead>
-            <TableHead className="text-white text-xs py-1 px-2 text-right w-[70px]">
+            <TableHead className="text-foreground text-xs py-1 px-2 text-right w-[70px]">
               {t('incidence')}
             </TableHead>
           </TableRow>
@@ -245,12 +232,12 @@ export function BudgetClientView({ data, projectTotal }: BudgetClientViewProps) 
           {data.map((node) => renderNode(node))}
 
           {/* Grand Total */}
-          <TableRow className="h-9 border-t-2 border-slate-300 bg-blue-50 font-bold">
-            <TableCell colSpan={4} className="text-right text-sm py-1 px-2">
+          <TableRow className="h-9 border-t-2 border-border bg-muted font-bold">
+            <TableCell colSpan={4} className="text-right text-sm py-1 px-2 text-foreground">
               {t('totalSale')}:
             </TableCell>
             <TableCell className="text-right text-base py-1 px-2">
-              <span className="font-mono tabular-nums text-blue-900">
+              <span className="font-mono tabular-nums text-primary">
                 {formatCurrency(grandTotal)}
               </span>
             </TableCell>

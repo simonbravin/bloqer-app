@@ -1,26 +1,17 @@
 'use server'
 
-import { redirectToLogin, redirectTo } from '@/lib/i18n-redirect'
+import { redirectTo } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
-import { requirePermission } from '@/lib/auth-helpers'
+import { requirePermission, getAuthContext } from '@/lib/auth-helpers'
+import { publishOutboxEvent } from '@/lib/events/event-publisher'
 import {
   createProjectSchema,
   updateProjectSchema,
 } from '@repo/validators'
 import type { CreateProjectInput, UpdateProjectInput } from '@repo/validators'
 import { Prisma } from '@repo/database'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
 
 function generateProjectNumber(orgId: string): Promise<string> {
   const year = new Date().getFullYear()
@@ -121,6 +112,13 @@ export async function createProject(data: CreateProjectInput) {
         projectRole: 'MANAGER',
         active: true,
       },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'PROJECT.CREATED',
+      entityType: 'Project',
+      entityId: project.id,
+      payload: { projectNumber: project.projectNumber, name: project.name },
     })
   })
 
@@ -277,20 +275,29 @@ export async function updateProject(projectId: string, data: UpdateProjectInput)
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const payload: Prisma.ProjectUpdateInput = {}
-  if (parsed.data.name !== undefined) payload.name = parsed.data.name
-  if (parsed.data.clientName !== undefined) payload.clientName = parsed.data.clientName
-  if (parsed.data.description !== undefined) payload.description = parsed.data.description
-  if (parsed.data.location !== undefined) payload.location = parsed.data.location
-  if (parsed.data.m2 !== undefined) payload.m2 = parsed.data.m2
-  if (parsed.data.status !== undefined) payload.status = parsed.data.status
-  if (parsed.data.startDate !== undefined) payload.startDate = parsed.data.startDate
-  if (parsed.data.plannedEndDate !== undefined) payload.plannedEndDate = parsed.data.plannedEndDate
-  if (parsed.data.active !== undefined) payload.active = parsed.data.active
+  const updatePayload: Prisma.ProjectUpdateInput = {}
+  if (parsed.data.name !== undefined) updatePayload.name = parsed.data.name
+  if (parsed.data.clientName !== undefined) updatePayload.clientName = parsed.data.clientName
+  if (parsed.data.description !== undefined) updatePayload.description = parsed.data.description
+  if (parsed.data.location !== undefined) updatePayload.location = parsed.data.location
+  if (parsed.data.m2 !== undefined) updatePayload.m2 = parsed.data.m2
+  if (parsed.data.status !== undefined) updatePayload.status = parsed.data.status
+  if (parsed.data.startDate !== undefined) updatePayload.startDate = parsed.data.startDate
+  if (parsed.data.plannedEndDate !== undefined) updatePayload.plannedEndDate = parsed.data.plannedEndDate
+  if (parsed.data.active !== undefined) updatePayload.active = parsed.data.active
 
-  await prisma.project.update({
-    where: { id: projectId },
-    data: payload,
+  await prisma.$transaction(async (tx) => {
+    await tx.project.update({
+      where: { id: projectId },
+      data: updatePayload,
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'PROJECT.UPDATED',
+      entityType: 'Project',
+      entityId: projectId,
+      payload: { updatedFields: Object.keys(updatePayload) },
+    })
   })
 
   revalidatePath('/projects')
@@ -311,9 +318,18 @@ export async function deleteProject(projectId: string) {
     throw new Error('Project not found')
   }
 
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { active: false },
+  await prisma.$transaction(async (tx) => {
+    await tx.project.update({
+      where: { id: projectId },
+      data: { active: false },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'PROJECT.DELETED',
+      entityType: 'Project',
+      entityId: projectId,
+      payload: { projectNumber: existing.projectNumber, name: existing.name },
+    })
   })
 
   revalidatePath('/projects')

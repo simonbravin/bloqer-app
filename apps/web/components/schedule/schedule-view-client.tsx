@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import { GanttTimelineDynamic } from './gantt-timeline-dynamic'
 import { GanttDataTable } from './gantt-data-table'
 import { GanttControlPanel } from './gantt-control-panel'
@@ -47,6 +48,12 @@ export function ScheduleViewClient({
 }: ScheduleViewClientProps) {
   const t = useTranslations('schedule')
   const router = useRouter()
+
+  useMessageBus('WBS_NODE.CREATED', () => router.refresh())
+  useMessageBus('WBS_NODE.UPDATED', () => router.refresh())
+  useMessageBus('WBS_NODE.DELETED', () => router.refresh())
+  useMessageBus('WBS_NODE.REORDERED', () => router.refresh())
+  useMessageBus('PROJECT.UPDATED', () => router.refresh())
 
   const [exporting, setExporting] = useState(false)
 
@@ -455,7 +462,7 @@ export function ScheduleViewClient({
         </Card>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div>
             <p className="text-sm font-medium text-slate-600">{t('status')}:</p>
@@ -465,7 +472,7 @@ export function ScheduleViewClient({
                   ? 'bg-green-100 text-green-800'
                   : schedule.status === 'BASELINE'
                     ? 'bg-blue-100 text-blue-800'
-                    : 'bg-slate-100 text-slate-800'
+                    : 'bg-muted text-foreground'
               }
             >
               {schedule.status}
@@ -480,7 +487,7 @@ export function ScheduleViewClient({
             <p className="text-sm font-medium text-slate-600">
               {t('dateRange')}:
             </p>
-            <p className="text-sm text-slate-900">
+            <p className="text-sm text-foreground">
               {format(schedule.projectStartDate, "dd 'de' MMMM, yyyy", {
                 locale: es,
               })}{' '}
@@ -554,9 +561,9 @@ export function ScheduleViewClient({
           />
         </div>
 
-        <div className="flex h-[520px] overflow-hidden rounded-lg border border-slate-200">
+        <div className="flex h-[520px] overflow-hidden rounded-lg border border-border">
           <div className="flex min-h-0 flex-1 overflow-auto">
-            <div className="min-w-[420px] shrink-0 border-r border-slate-200">
+            <div className="min-w-[420px] shrink-0 border-r border-border">
               <GanttDataTable
                 tasks={visibleTableTasks}
                 allTasks={tableTasks}

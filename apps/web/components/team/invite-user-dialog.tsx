@@ -72,7 +72,7 @@ export function InviteUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Invitar Usuario</DialogTitle>
           <DialogDescription>
@@ -94,7 +94,7 @@ export function InviteUserDialog({
               {...form.register('email')}
             />
             {form.formState.errors.email && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {form.formState.errors.email.message}
               </p>
             )}

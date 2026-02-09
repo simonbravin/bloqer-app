@@ -67,14 +67,14 @@ export function COLineForm({ coId, wbsOptions, onSubmit }: COLineFormProps) {
           ))}
         </select>
         {errors.wbsNodeId && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.wbsNodeId.message}</p>
+          <p className="mt-1 text-xs text-destructive">{errors.wbsNodeId.message}</p>
         )}
       </div>
       <div className="min-w-[280px] flex-1">
         <Label htmlFor="col-justification">Justification</Label>
         <Input id="col-justification" {...register('justification')} className="mt-1" placeholder="Description of change" />
         {errors.justification && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.justification.message}</p>
+          <p className="mt-1 text-xs text-destructive">{errors.justification.message}</p>
         )}
       </div>
       <div className="w-28">
@@ -87,7 +87,7 @@ export function COLineForm({ coId, wbsOptions, onSubmit }: COLineFormProps) {
           className="mt-1"
         />
         {errors.deltaCost && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.deltaCost.message}</p>
+          <p className="mt-1 text-xs text-destructive">{errors.deltaCost.message}</p>
         )}
       </div>
       <Button type="submit" disabled={isSubmitting}>

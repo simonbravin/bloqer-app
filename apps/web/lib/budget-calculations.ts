@@ -4,20 +4,18 @@ import { Prisma } from '@repo/database'
  * Cálculo secuencial correcto de markups
  *
  * Flujo:
- * 1. Costo Directo (Material + MO + Subcontratos)
+ * 1. Costo Directo (Material + MO + Equipos)
  * 2. + Gastos Generales (% sobre costo directo) = Subtotal 1
- * 3. + Gastos Financieros (% sobre subtotal 1) = Subtotal 2
- * 4. + Beneficio (% sobre subtotal 2) = Subtotal 3
- * 5. + IVA (% sobre subtotal 3) = TOTAL FINAL
+ * 3. + Gastos Financieros (% sobre subtotal 1) + Beneficio (% sobre subtotal 1) = Subtotal 2
+ * 4. + IVA (% sobre subtotal 2) = TOTAL VENTA
  */
 export interface BudgetCalculation {
   directCost: Prisma.Decimal
   overheadAmount: Prisma.Decimal
   subtotal1: Prisma.Decimal
   financialAmount: Prisma.Decimal
-  subtotal2: Prisma.Decimal
   profitAmount: Prisma.Decimal
-  subtotal3: Prisma.Decimal
+  subtotal2: Prisma.Decimal
   taxAmount: Prisma.Decimal
   totalPrice: Prisma.Decimal
 }
@@ -39,20 +37,18 @@ export function calculateBudgetLine(
   const overheadAmount = directCostDecimal.mul(oh)
   const subtotal1 = directCostDecimal.add(overheadAmount)
   const financialAmount = subtotal1.mul(fin)
-  const subtotal2 = subtotal1.add(financialAmount)
-  const profitAmount = subtotal2.mul(prof)
-  const subtotal3 = subtotal2.add(profitAmount)
-  const taxAmount = subtotal3.mul(tax)
-  const totalPrice = subtotal3.add(taxAmount)
+  const profitAmount = subtotal1.mul(prof)
+  const subtotal2 = subtotal1.add(financialAmount).add(profitAmount)
+  const taxAmount = subtotal2.mul(tax)
+  const totalPrice = subtotal2.add(taxAmount)
 
   return {
     directCost: directCostDecimal,
     overheadAmount,
     subtotal1,
     financialAmount,
-    subtotal2,
     profitAmount,
-    subtotal3,
+    subtotal2,
     taxAmount,
     totalPrice,
   }
@@ -107,9 +103,8 @@ export function calculateBudgetLineTotal(
     overheadAmount: unitCalc.overheadAmount.mul(qty),
     subtotal1: unitCalc.subtotal1.mul(qty),
     financialAmount: unitCalc.financialAmount.mul(qty),
-    subtotal2: unitCalc.subtotal2.mul(qty),
     profitAmount: unitCalc.profitAmount.mul(qty),
-    subtotal3: unitCalc.subtotal3.mul(qty),
+    subtotal2: unitCalc.subtotal2.mul(qty),
     taxAmount: unitCalc.taxAmount.mul(qty),
     totalPrice: unitCalc.totalPrice.mul(qty),
   }

@@ -40,17 +40,17 @@ export function AlertsWidget({ alerts }: AlertsWidgetProps) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <h3 className="text-lg font-semibold text-foreground">
         {t('alertsTitle')}
       </h3>
 
       {alerts.length === 0 ? (
         <div className="mt-4 flex flex-col items-center justify-center py-8">
-          <div className="rounded-full bg-green-50 p-3">
+          <div className="rounded-full bg-muted p-3">
             <CheckCircle className="h-8 w-8 text-green-500" />
           </div>
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-muted-foreground">
             {t('noAlerts')}
           </p>
         </div>
@@ -62,14 +62,14 @@ export function AlertsWidget({ alerts }: AlertsWidgetProps) {
 
             const content = (
               <div className="flex gap-3">
-                <div className={`rounded-lg p-2 ${colors.bg}`}>
+                <div className={`rounded-lg p-2 bg-muted`}>
                   <Icon className={`h-5 w-5 ${colors.text}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-medium text-foreground">
                     {alert.title}
                   </p>
-                  <p className="mt-1 truncate text-sm text-slate-600">
+                  <p className="mt-1 truncate text-sm text-muted-foreground">
                     {alert.message}
                   </p>
                 </div>
@@ -81,7 +81,7 @@ export function AlertsWidget({ alerts }: AlertsWidgetProps) {
                 <Link
                   key={alert.id}
                   href={alert.link}
-                  className={`block rounded-lg border p-4 transition-colors hover:bg-slate-50 ${colors.border}`}
+                  className="block rounded-lg border border-border p-4 transition-colors hover:bg-muted"
                 >
                   {content}
                 </Link>
@@ -91,7 +91,7 @@ export function AlertsWidget({ alerts }: AlertsWidgetProps) {
             return (
               <div
                 key={alert.id}
-                className={`rounded-lg border p-4 ${colors.border}`}
+                className="rounded-lg border border-border p-4"
               >
                 {content}
               </div>

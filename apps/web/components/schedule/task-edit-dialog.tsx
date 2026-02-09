@@ -254,13 +254,13 @@ export function TaskEditDialog({
             />
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="rounded-lg border border-border bg-muted/50 p-3">
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <span className="font-medium text-slate-600">
+                <span className="font-medium text-muted-foreground">
                   {t('calculatedStart')}:
                 </span>
-                <p className="text-slate-900">
+                <p className="text-foreground">
                   {format(
                     new Date(startDate),
                     "EEEE, dd 'de' MMMM yyyy",
@@ -269,10 +269,10 @@ export function TaskEditDialog({
                 </p>
               </div>
               <div>
-                <span className="font-medium text-slate-600">
+                <span className="font-medium text-muted-foreground">
                   {t('calculatedEnd')}:
                 </span>
-                <p className="text-slate-900">
+                <p className="text-foreground">
                   {format(
                     new Date(endDate),
                     "EEEE, dd 'de' MMMM yyyy",
@@ -311,12 +311,12 @@ export function TaskEditDialog({
                     <span className="truncate">{dep.predecessorName}</span>
                     <span className="text-slate-400">→</span>
                     <span className="truncate">{dep.successorName}</span>
-                    <span className="rounded bg-slate-100 px-1 text-xs">{dep.type}</span>
+                    <span className="rounded bg-muted px-1 text-xs">{dep.type}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="rounded border border-dashed border-slate-200 p-2 text-xs text-slate-500">
+              <p className="rounded border border-dashed border-border p-2 text-xs text-muted-foreground">
                 {t('noDependenciesYet')}
               </p>
             )}

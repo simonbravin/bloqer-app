@@ -18,7 +18,7 @@ export async function ScheduleView({
     return (
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
-          <p className="text-lg font-medium text-slate-900">
+          <p className="text-lg font-medium text-foreground">
             No se pudo cargar el cronograma
           </p>
           <p className="mt-1 text-sm text-slate-500">

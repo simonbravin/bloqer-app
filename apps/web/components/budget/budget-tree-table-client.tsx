@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import { formatCurrency, formatNumber } from '@/lib/format-utils'
 import {
   Table,
@@ -27,7 +29,15 @@ function toNum(v: unknown): number {
 
 export function BudgetTreeTableClient({ data, versionId }: BudgetTreeTableClientProps) {
   const t = useTranslations('budget')
+  const router = useRouter()
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
+
+  useMessageBus('BUDGET_LINE.CREATED', () => router.refresh())
+  useMessageBus('BUDGET_LINE.UPDATED', () => router.refresh())
+  useMessageBus('BUDGET_LINE.DELETED', () => router.refresh())
+  useMessageBus('BUDGET_RESOURCE.ADDED', () => router.refresh())
+  useMessageBus('BUDGET_VERSION.APPROVED', () => router.refresh())
+  useMessageBus('FINANCE_TRANSACTION.CREATED', () => router.refresh())
 
   function toggleNode(nodeId: string) {
     setExpandedNodes((prev) => {
@@ -50,7 +60,7 @@ export function BudgetTreeTableClient({ data, versionId }: BudgetTreeTableClient
     const nodeTotal = calculateNodeTotal(node)
 
     const bgClass =
-      level === 0 ? 'bg-slate-50 dark:bg-slate-900/50' : level === 1 ? 'bg-slate-100/80 dark:bg-slate-800/50' : 'bg-slate-150 dark:bg-slate-800/30'
+      level === 0 ? 'bg-muted/30' : level === 1 ? 'bg-muted/50' : 'bg-muted/70'
 
     const out: React.ReactNode[] = []
 
@@ -74,7 +84,7 @@ export function BudgetTreeTableClient({ data, versionId }: BudgetTreeTableClient
         <TableCell />
         <TableCell />
         <TableCell className="text-right">
-          <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <span className="font-mono text-sm font-semibold text-foreground">
             {formatCurrency(nodeTotal)}
           </span>
         </TableCell>
@@ -93,7 +103,7 @@ export function BudgetTreeTableClient({ data, versionId }: BudgetTreeTableClient
               {formatNumber(toNum(line.quantity))} {line.unit}
             </TableCell>
             <TableCell className="text-right">
-              <span className="font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+              <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
                 {formatCurrency(lineTotal)}
               </span>
             </TableCell>
@@ -116,11 +126,11 @@ export function BudgetTreeTableClient({ data, versionId }: BudgetTreeTableClient
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-slate-800 dark:bg-slate-900">
-          <TableRow className="border-slate-600 hover:bg-slate-800 dark:hover:bg-slate-900">
-            <TableHead className="w-[400px] text-white">{t('item', { defaultValue: 'Item' })}</TableHead>
-            <TableHead className="w-[120px] text-white">{t('quantity')}</TableHead>
-            <TableHead className="w-[140px] text-right text-white">{t('total')}</TableHead>
+        <TableHeader className="sticky top-0 z-10 bg-muted">
+          <TableRow className="border-border hover:bg-muted/80">
+            <TableHead className="w-[400px] text-muted-foreground">{t('item', { defaultValue: 'Item' })}</TableHead>
+            <TableHead className="w-[120px] text-muted-foreground">{t('quantity')}</TableHead>
+            <TableHead className="w-[140px] text-right text-muted-foreground">{t('total')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

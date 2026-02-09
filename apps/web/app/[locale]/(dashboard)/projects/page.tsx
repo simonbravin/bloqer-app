@@ -29,14 +29,14 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const canEdit = hasMinimumRole(org.role, 'EDITOR')
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 bg-background p-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             {t('title')}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t('subtitle')}
           </p>
         </div>

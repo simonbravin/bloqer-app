@@ -6,24 +6,14 @@
  * updateWbsProgressOnSubmit, updateBudgetLineActuals, generateAlertsForReport are called from approveDailyReport.
  */
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
-import { getSession } from '@/lib/session'
-import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
+import { getAuthContext } from '@/lib/auth-helpers'
 import {
   submitDailyReportTier2Schema,
   type SubmitDailyReportTier2Input,
 } from '@repo/validators'
-
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
 
 /** Determines WBS health from progress, dates and hours. */
 function calculateWbsHealthStatus(

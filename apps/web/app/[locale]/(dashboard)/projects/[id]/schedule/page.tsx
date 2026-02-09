@@ -68,11 +68,11 @@ export default async function ProjectSchedulePage({
           </Link>
         </Button>
 
-        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 p-12">
-          <h2 className="text-2xl font-semibold text-slate-900">
+        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12">
+          <h2 className="erp-page-title">
             No hay cronogramas aún
           </h2>
-          <p className="mt-2 text-center text-slate-500">
+          <p className="mt-2 text-center erp-section-desc">
             Crea el primer cronograma para este proyecto basado en la estructura
             WBS
           </p>
@@ -122,7 +122,7 @@ export default async function ProjectSchedulePage({
             </Link>
           </Button>
 
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="erp-page-title">
             {project.name}
           </h1>
           <p className="mt-1 text-sm text-slate-500">

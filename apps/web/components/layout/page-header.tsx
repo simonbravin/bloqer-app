@@ -18,13 +18,13 @@ export function PageHeader({
   filters,
 }: PageHeaderProps) {
   return (
-    <div className="border-b border-slate-200 bg-white px-6 py-4">
+    <div className="border-b border-border bg-card px-6 py-4">
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav className="mb-2 text-sm text-slate-500">
+        <nav className="mb-2 text-sm text-muted-foreground">
           {breadcrumbs.map((crumb, i) => (
             <span key={i}>
               {crumb.href ? (
-                <Link href={crumb.href} className="hover:text-slate-900">
+                <Link href={crumb.href} className="hover:text-foreground transition-colors">
                   {crumb.label}
                 </Link>
               ) : (
@@ -37,9 +37,9 @@ export function PageHeader({
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
+          <h1 className="erp-page-title">{title}</h1>
           {subtitle && (
-            <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+            <p className="mt-1 erp-section-desc">{subtitle}</p>
           )}
         </div>
         {actions && (

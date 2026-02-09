@@ -1,12 +1,11 @@
 'use server'
 
-import { redirectToLogin } from '@/lib/i18n-redirect'
 import { revalidatePath } from 'next/cache'
 import { prisma, Prisma } from '@repo/database'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
-import { requirePermission } from '@/lib/auth-helpers'
+import { requirePermission, getAuthContext } from '@/lib/auth-helpers'
 import {
   createBudgetVersionSchema,
   updateBudgetVersionSchema,
@@ -22,13 +21,8 @@ import type {
 import { calculateLineTotal, calculateBudgetLineTotal } from '@/lib/budget-utils'
 import { calculateBudgetLine } from '@/lib/budget-calculations'
 import { createAuditLog } from '@/lib/audit-log'
-async function getAuthContext() {
-  const session = await getSession()
-  if (!session?.user?.id) return redirectToLogin()
-  const org = await getOrgContext(session.user.id)
-  if (!org) return redirectToLogin()
-  return { session, org }
-}
+import { publishOutboxEvent } from '@/lib/events/event-publisher'
+import { serializeForClient } from '@/lib/utils/serialization'
 
 function ensureProjectInOrg(projectId: string, orgId: string) {
   return prisma.project.findFirst({
@@ -274,13 +268,22 @@ export async function approveBudgetVersion(versionId: string) {
   })
   if (!version) return { error: 'Version not found' }
 
-  await prisma.budgetVersion.update({
-    where: { id: versionId },
-    data: {
-      status: 'APPROVED',
-      approvedAt: new Date(),
-      approvedByOrgMemberId: org.memberId,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.budgetVersion.update({
+      where: { id: versionId },
+      data: {
+        status: 'APPROVED',
+        approvedAt: new Date(),
+        approvedByOrgMemberId: org.memberId,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'BUDGET_VERSION.APPROVED',
+      entityType: 'BudgetVersion',
+      entityId: versionId,
+      payload: { projectId: version.projectId },
+    })
   })
 
   revalidatePath(`/projects/${version.projectId}/budget`)
@@ -622,23 +625,32 @@ export async function createBudgetLine(versionId: string, data: CreateBudgetLine
     _max: { sortOrder: true },
   })
 
-  await prisma.budgetLine.create({
-    data: {
+  await prisma.$transaction(async (tx) => {
+    const line = await tx.budgetLine.create({
+      data: {
+        orgId: org.orgId,
+        budgetVersionId: versionId,
+        wbsNodeId: parsed.data.wbsNodeId,
+        description: parsed.data.description,
+        unit: parsed.data.unit,
+        quantity: new Prisma.Decimal(parsed.data.quantity),
+        directCostTotal,
+        salePriceTotal: totalCost,
+        overheadPct: 0,
+        financialPct: 0,
+        profitPct: 0,
+        taxPct: 0,
+        retentionPct: 0,
+        sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      budgetVersionId: versionId,
-      wbsNodeId: parsed.data.wbsNodeId,
-      description: parsed.data.description,
-      unit: parsed.data.unit,
-      quantity: new Prisma.Decimal(parsed.data.quantity),
-      directCostTotal,
-      salePriceTotal: totalCost,
-      overheadPct: 0,
-      financialPct: 0,
-      profitPct: 0,
-      taxPct: 0,
-      retentionPct: 0,
-      sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
-    },
+      eventType: 'BUDGET_LINE.CREATED',
+      entityType: 'BudgetLine',
+      entityId: line.id,
+      payload: { budgetVersionId: versionId, projectId: version.projectId },
+    })
   })
 
   revalidatePath(`/projects/${version.projectId}/budget/${versionId}`)
@@ -667,16 +679,25 @@ export async function updateBudgetLine(lineId: string, data: UpdateBudgetLineInp
   const indirectPct = parsed.data.indirectCostPct ?? (lineIndirect != null ? Number(lineIndirect) : 0)
   const { directCost, totalCost } = calculateBudgetLineTotal(quantity, unitCost, indirectPct)
 
-  await prisma.budgetLine.update({
-    where: { id: lineId },
-    data: {
-      ...(parsed.data.description !== undefined && { description: parsed.data.description }),
-      ...(parsed.data.unit !== undefined && { unit: parsed.data.unit }),
-      ...(parsed.data.quantity !== undefined && { quantity: new Prisma.Decimal(parsed.data.quantity) }),
-      ...(parsed.data.indirectCostPct !== undefined && { indirectCostPct: new Prisma.Decimal(parsed.data.indirectCostPct) }),
-      directCostTotal: directCost,
-      salePriceTotal: totalCost,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.budgetLine.update({
+      where: { id: lineId },
+      data: {
+        ...(parsed.data.description !== undefined && { description: parsed.data.description }),
+        ...(parsed.data.unit !== undefined && { unit: parsed.data.unit }),
+        ...(parsed.data.quantity !== undefined && { quantity: new Prisma.Decimal(parsed.data.quantity) }),
+        ...(parsed.data.indirectCostPct !== undefined && { indirectCostPct: new Prisma.Decimal(parsed.data.indirectCostPct) }),
+        directCostTotal: directCost,
+        salePriceTotal: totalCost,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'BUDGET_LINE.UPDATED',
+      entityType: 'BudgetLine',
+      entityId: lineId,
+      payload: { budgetVersionId: line.budgetVersionId, projectId: line.budgetVersion.projectId },
+    })
   })
 
   revalidatePath(`/projects/${line.budgetVersion.projectId}/budget/${line.budgetVersionId}`)
@@ -697,7 +718,16 @@ export async function deleteBudgetLine(lineId: string) {
     throw new Error('Cannot delete lines in locked/approved version.')
   }
 
-  await prisma.budgetLine.delete({ where: { id: lineId } })
+  await prisma.$transaction(async (tx) => {
+    await tx.budgetLine.delete({ where: { id: lineId } })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'BUDGET_LINE.DELETED',
+      entityType: 'BudgetLine',
+      entityId: lineId,
+      payload: { budgetVersionId: line.budgetVersionId, projectId: line.budgetVersion.projectId },
+    })
+  })
 
   revalidatePath(`/projects/${line.budgetVersion.projectId}/budget/${line.budgetVersionId}`)
   return { success: true }
@@ -786,7 +816,7 @@ export async function listBudgetLines(versionId: string) {
     const c = a.wbsNode.code.localeCompare(b.wbsNode.code)
     return c !== 0 ? c : a.sortOrder - b.sortOrder
   })
-  return lines
+  return lines.map((line) => serializeForClient(line))
 }
 
 /** Copy all lines from source version into target version (target must be DRAFT). */
@@ -1056,23 +1086,33 @@ export async function addBudgetResource(
     _max: { sortOrder: true },
   })
 
-  const created = await prisma.budgetResource.create({
-    data: {
+  const created = await prisma.$transaction(async (tx) => {
+    const resource = await tx.budgetResource.create({
+      data: {
+        orgId: org.orgId,
+        budgetLineId,
+        resourceType: data.type,
+        description: data.name.trim() || 'Recurso',
+        unit: data.unit,
+        quantity: new Prisma.Decimal(data.quantity),
+        unitCost: new Prisma.Decimal(data.unitCost),
+        totalCost,
+        attributes: data.supplierName
+          ? { supplierName: data.supplierName, description: data.description ?? null }
+          : data.description
+            ? { description: data.description }
+            : {},
+        sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+      },
+    })
+    await publishOutboxEvent(tx, {
       orgId: org.orgId,
-      budgetLineId,
-      resourceType: data.type,
-      description: data.name.trim() || 'Recurso',
-      unit: data.unit,
-      quantity: new Prisma.Decimal(data.quantity),
-      unitCost: new Prisma.Decimal(data.unitCost),
-      totalCost,
-      attributes: data.supplierName
-        ? { supplierName: data.supplierName, description: data.description ?? null }
-        : data.description
-          ? { description: data.description }
-          : {},
-      sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
-    },
+      eventType: 'BUDGET_RESOURCE.ADDED',
+      entityType: 'BudgetResource',
+      entityId: resource.id,
+      payload: { budgetLineId, projectId: line.budgetVersion.projectId, versionId: line.budgetVersionId },
+    })
+    return resource
   })
 
   await recalcBudgetLineFromResources(budgetLineId)
@@ -1186,16 +1226,70 @@ export async function updateBudgetLineQuantity(
   const newDirectCostTotal = new Prisma.Decimal(unitDirect * newQuantity)
   const newSalePriceTotal = new Prisma.Decimal(unitSale * newQuantity)
 
-  await prisma.budgetLine.update({
-    where: { id: budgetLineId },
-    data: {
-      quantity: new Prisma.Decimal(newQuantity),
-      directCostTotal: newDirectCostTotal,
-      salePriceTotal: newSalePriceTotal,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.budgetLine.update({
+      where: { id: budgetLineId },
+      data: {
+        quantity: new Prisma.Decimal(newQuantity),
+        directCostTotal: newDirectCostTotal,
+        salePriceTotal: newSalePriceTotal,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'BUDGET_LINE.UPDATED',
+      entityType: 'BudgetLine',
+      entityId: budgetLineId,
+      payload: { budgetVersionId: line.budgetVersionId, projectId: line.budgetVersion.projectId },
+    })
   })
 
   revalidatePath(`/projects/${line.budgetVersion.projectId}/budget`)
   revalidatePath(`/projects/${line.budgetVersion.projectId}/budget/${line.budgetVersionId}`)
   return { success: true }
+}
+
+/**
+ * Total de venta (con márgenes e IVA) de la versión APPROVED o BASELINE del proyecto.
+ * Se usa en el resumen del proyecto para mostrar el presupuesto aprobado.
+ */
+export async function getApprovedOrBaselineBudgetTotal(projectId: string): Promise<number> {
+  try {
+    const { org } = await getAuthContext()
+    const version = await prisma.budgetVersion.findFirst({
+      where: {
+        projectId,
+        orgId: org.orgId,
+        status: { in: ['APPROVED', 'BASELINE'] },
+      },
+      orderBy: [{ status: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        budgetLines: {
+          select: {
+            directCostTotal: true,
+            quantity: true,
+            overheadPct: true,
+            financialPct: true,
+            profitPct: true,
+            taxPct: true,
+          },
+        },
+      },
+    })
+    if (!version?.budgetLines?.length) return 0
+    let total = 0
+    for (const line of version.budgetLines) {
+      const qty = Number(line.quantity) || 1
+      const unitDirect = qty > 0 ? Number(line.directCostTotal) / qty : 0
+      const oh = Number(line.overheadPct ?? 0)
+      const fin = Number(line.financialPct ?? 0)
+      const prof = Number(line.profitPct ?? 0)
+      const tax = Number(line.taxPct ?? 21)
+      const calc = calculateBudgetLine(unitDirect, oh, fin, prof, tax)
+      total += Number(calc.totalPrice) * qty
+    }
+    return total
+  } catch {
+    return 0
+  }
 }

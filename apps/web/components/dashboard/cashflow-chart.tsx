@@ -49,8 +49,8 @@ export function CashflowChart({ data }: CashflowChartProps) {
   }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
-          <p className="mb-2 font-medium text-slate-900">{label}</p>
+        <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
+          <p className="mb-2 font-medium text-foreground">{label}</p>
           {payload.map((entry) => (
             <p key={entry.name} className="text-sm" style={{ color: entry.color }}>
               {entry.name}: {formatCurrency(entry.value)}
@@ -63,11 +63,11 @@ export function CashflowChart({ data }: CashflowChartProps) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <h3 className="text-lg font-semibold text-foreground">
         {t('cashflowTitle')}
       </h3>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         {t('cashflowSubtitle')}
       </p>
 
@@ -75,22 +75,24 @@ export function CashflowChart({ data }: CashflowChartProps) {
         {formattedData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
             <LineChart data={formattedData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-[var(--color-border)]" stroke="var(--color-border)" />
               <XAxis
                 dataKey="monthLabel"
-                stroke="#64748b"
+                stroke="var(--color-muted-foreground)"
                 fontSize={12}
                 tickLine={false}
+                tick={{ fill: 'var(--color-muted-foreground)' }}
               />
               <YAxis
-                stroke="#64748b"
+                stroke="var(--color-muted-foreground)"
                 fontSize={12}
                 tickLine={false}
+                tick={{ fill: 'var(--color-muted-foreground)' }}
                 tickFormatter={(value: number) => formatCurrencyCompact(value)}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend
-                wrapperStyle={{ paddingTop: '1rem' }}
+                wrapperStyle={{ paddingTop: '1rem', color: 'var(--color-foreground)' }}
               />
               <Line
                 type="monotone"
@@ -124,7 +126,7 @@ export function CashflowChart({ data }: CashflowChartProps) {
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-slate-500">{t('noDataAvailable')}</p>
+            <p className="text-sm text-muted-foreground">{t('noDataAvailable')}</p>
           </div>
         )}
       </div>

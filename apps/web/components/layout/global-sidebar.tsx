@@ -59,9 +59,9 @@ export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: Glob
       : allNav.filter((item) => canView(item.module))
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r bg-slate-900">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       {/* Logo or org name */}
-      <Link href="/dashboard" className="flex h-14 items-center border-b border-slate-800 px-2 py-0.5">
+      <Link href="/dashboard" className="flex h-14 items-center border-b border-sidebar-border px-2 py-0.5">
         {orgLogoUrl ? (
           <img
             src={orgLogoUrl}
@@ -69,7 +69,7 @@ export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: Glob
             className="h-[3.25rem] w-auto max-w-[180px] object-contain"
           />
         ) : (
-          <span className="truncate text-lg font-bold text-white" title={orgName}>
+          <span className="truncate text-lg font-bold text-sidebar-foreground" title={orgName}>
             {orgName}
           </span>
         )}
@@ -89,8 +89,8 @@ export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: Glob
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive 
-                  ? 'bg-slate-800 text-white' 
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-sidebar-accent text-sidebar-foreground' 
+                  : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground'
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
@@ -101,8 +101,8 @@ export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: Glob
       </nav>
       
       {/* Footer */}
-      <div className="border-t border-slate-800 p-4">
-        <p className="text-xs text-slate-400">
+      <div className="border-t border-sidebar-border p-4">
+        <p className="text-xs text-sidebar-muted">
           © 2025 Construction ERP
         </p>
       </div>

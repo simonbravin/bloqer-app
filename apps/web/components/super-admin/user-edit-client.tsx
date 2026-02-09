@@ -329,7 +329,7 @@ export function UserEditClient({ user }: UserEditClientProps) {
       ))}
 
       <Dialog open={showResetPassword} onOpenChange={setShowResetPassword}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Resetear contraseña</DialogTitle>
             <DialogDescription>

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import {
   AreaChart,
   Area,
@@ -46,8 +48,13 @@ interface Props {
 }
 
 export function ProjectDashboardClient({ project, data }: Props) {
+  const router = useRouter()
   const [isExporting, setIsExporting] = useState(false)
   const { captureChart } = useChartExport()
+
+  useMessageBus('FINANCE_TRANSACTION.CREATED', () => router.refresh())
+  useMessageBus('FINANCE_TRANSACTION.UPDATED', () => router.refresh())
+  useMessageBus('INVENTORY_MOVEMENT.CREATED', () => router.refresh())
 
   const handleExportPDF = useCallback(async () => {
     setIsExporting(true)

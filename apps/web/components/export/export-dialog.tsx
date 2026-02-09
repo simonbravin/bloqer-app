@@ -119,7 +119,7 @@ export function ExportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl min-w-[min(28rem,95vw)]">
         <DialogHeader>
           <DialogTitle>{t('exportTitle')}</DialogTitle>
           <DialogDescription>{title}</DialogDescription>
@@ -170,7 +170,7 @@ export function ExportDialog({
             </div>
           </div>
 
-          <div className="grid max-h-64 grid-cols-2 gap-3 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+          <div className="grid max-h-64 grid-cols-2 gap-3 overflow-y-auto rounded-lg border border-border bg-muted/50 p-4">
             {columns.map((column) => (
               <div key={column.field} className="flex items-center space-x-2">
                 <Checkbox

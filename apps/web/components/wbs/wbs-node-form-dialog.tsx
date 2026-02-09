@@ -162,7 +162,7 @@ export function WbsNodeFormDialog({
                 className="mt-1"
               />
               {form.formState.errors.code && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-destructive">
                   {form.formState.errors.code.message}
                 </p>
               )}
@@ -197,7 +197,7 @@ export function WbsNodeFormDialog({
               className="mt-1"
             />
             {form.formState.errors.name && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {form.formState.errors.name.message}
               </p>
             )}

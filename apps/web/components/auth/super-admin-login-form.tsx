@@ -42,11 +42,11 @@ export function SuperAdminLoginForm() {
           type="text"
           autoComplete="username"
           placeholder="Usuario"
-          className="h-12 rounded-lg border-slate-200 text-base dark:border-slate-600"
+          className="h-12 rounded-lg border-border bg-background text-foreground text-base"
           {...register('username', { required: 'Ingresá el usuario' })}
         />
         {errors.username && (
-          <p className="text-base text-red-600 dark:text-red-400">{errors.username.message}</p>
+          <p className="text-base text-destructive">{errors.username.message}</p>
         )}
       </div>
       <div className="space-y-3">
@@ -59,7 +59,7 @@ export function SuperAdminLoginForm() {
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             placeholder="Contraseña"
-            className="h-12 rounded-lg border-slate-200 pr-12 text-base dark:border-slate-600"
+            className="h-12 rounded-lg border-border bg-background pr-12 text-base text-foreground"
             {...register('password', { required: 'Ingresá la contraseña' })}
           />
           <button
@@ -72,11 +72,11 @@ export function SuperAdminLoginForm() {
           </button>
         </div>
         {errors.password && (
-          <p className="text-base text-red-600 dark:text-red-400">{errors.password.message}</p>
+          <p className="text-base text-destructive">{errors.password.message}</p>
         )}
       </div>
       {errors.root && (
-        <p className="text-base text-red-600 dark:text-red-400" role="alert">
+        <p className="text-base text-destructive" role="alert">
           {errors.root.message}
         </p>
       )}
@@ -89,7 +89,7 @@ export function SuperAdminLoginForm() {
       </Button>
       <Link
         href="/login"
-        className="text-center text-base text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        className="text-center text-base text-muted-foreground hover:text-foreground"
       >
         ← Volver al login normal
       </Link>

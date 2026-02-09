@@ -121,7 +121,7 @@ export function DailyReportForm({
               className="h-10 w-full"
             />
             {errors.reportDate && (
-              <p className="text-sm text-red-600 dark:text-red-400">{errors.reportDate.message}</p>
+              <p className="text-sm text-destructive">{errors.reportDate.message}</p>
             )}
           </div>
           <div className="space-y-2">
@@ -151,7 +151,7 @@ export function DailyReportForm({
             className="h-10 w-full"
           />
           {errors.summary && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.summary.message}</p>
+            <p className="text-sm text-destructive">{errors.summary.message}</p>
           )}
         </div>
 
@@ -165,7 +165,7 @@ export function DailyReportForm({
             className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900"
           />
           {errors.workAccomplished && (
-            <p className="text-sm text-red-600 dark:text-red-400">{errors.workAccomplished.message}</p>
+            <p className="text-sm text-destructive">{errors.workAccomplished.message}</p>
           )}
         </div>
 
@@ -225,7 +225,7 @@ export function DailyReportForm({
       </div>
 
       {errors.root && (
-        <p className="text-sm text-red-600 dark:text-red-400">{errors.root.message}</p>
+        <p className="text-sm text-destructive">{errors.root.message}</p>
       )}
 
       <div className="flex gap-3">

@@ -150,7 +150,7 @@ export function TransactionEditClient({
             <Label htmlFor="edit-desc">Description</Label>
             <Input id="edit-desc" {...register('description')} className="mt-0.5" />
             {errors.description && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.description.message}</p>
+              <p className="mt-1 text-sm text-destructive">{errors.description.message}</p>
             )}
           </div>
           <div>

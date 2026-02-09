@@ -91,13 +91,13 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                 {...register('email')}
               />
               {errors.email && (
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p className="text-sm text-destructive">
                   {errors.email.message}
                 </p>
               )}
             </div>
             {status === 'error' && errorMessage && (
-              <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              <p className="text-sm text-destructive" role="alert">
                 {errorMessage}
               </p>
             )}

@@ -31,11 +31,10 @@ export function BudgetTotalsFooter({
   const overheadAmount = directCostTotal * (overheadPct / 100)
   const subtotal1 = directCostTotal + overheadAmount
   const financialAmount = subtotal1 * (financialPct / 100)
-  const subtotal2 = subtotal1 + financialAmount
-  const profitAmount = subtotal2 * (profitPct / 100)
-  const subtotal3 = subtotal2 + profitAmount
-  const taxAmount = subtotal3 * (taxPct / 100)
-  const totalSale = subtotal3 + taxAmount
+  const profitAmount = subtotal1 * (profitPct / 100)
+  const subtotal2 = subtotal1 + financialAmount + profitAmount
+  const taxAmount = subtotal2 * (taxPct / 100)
+  const totalSale = subtotal2 + taxAmount
 
   return (
     <Card className="mt-6">
@@ -93,10 +92,6 @@ export function BudgetTotalsFooter({
                   {formatCurrency(financialAmount)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm font-medium">
-                <span className="text-slate-700 dark:text-slate-300">{t('subtotal', { defaultValue: 'Subtotal' })} 2</span>
-                <span className="font-mono tabular-nums">{formatCurrency(subtotal2)}</span>
-              </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400">
                   + {t('profit', { defaultValue: 'Beneficio' })} ({profitPct}%)
@@ -106,8 +101,8 @@ export function BudgetTotalsFooter({
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm font-medium">
-                <span className="text-slate-700 dark:text-slate-300">{t('subtotal', { defaultValue: 'Subtotal' })} 3</span>
-                <span className="font-mono tabular-nums">{formatCurrency(subtotal3)}</span>
+                <span className="text-slate-700 dark:text-slate-300">{t('subtotal', { defaultValue: 'Subtotal' })} 2</span>
+                <span className="font-mono tabular-nums">{formatCurrency(subtotal2)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400">

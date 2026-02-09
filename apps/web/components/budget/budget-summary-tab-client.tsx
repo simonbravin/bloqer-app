@@ -45,11 +45,11 @@ export function BudgetSummaryTabClient({
   const [viewMode, setViewMode] = useState<'admin' | 'client'>('admin')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {canSeeAdmin && (
-        <div className="flex items-center justify-end gap-2 rounded-lg border border-slate-200 bg-white p-3">
-          <span className="text-sm text-slate-600">{t('viewModeTitle')}:</span>
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
+        <div className="flex items-center justify-end gap-2 rounded-lg border border-border bg-card p-3">
+          <span className="text-sm text-muted-foreground">{t('viewModeTitle')}:</span>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-1">
             <Button
               type="button"
               variant={viewMode === 'admin' ? 'secondary' : 'ghost'}

@@ -14,7 +14,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
         'rounded-lg border p-4 text-sm',
         variant === 'destructive'
           ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200'
-          : 'border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-100',
+          : 'border-border bg-muted text-foreground',
         className
       )}
       {...props}

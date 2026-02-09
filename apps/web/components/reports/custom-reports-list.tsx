@@ -22,7 +22,7 @@ export function CustomReportsList({ reports }: CustomReportsListProps) {
     MATERIALS: 'bg-green-100 text-green-800',
     FINANCE: 'bg-purple-100 text-purple-800',
     CERTIFICATIONS: 'bg-orange-100 text-orange-800',
-    CUSTOM: 'bg-slate-100 text-slate-800',
+    CUSTOM: 'bg-muted text-foreground',
   }
 
   return (
@@ -33,7 +33,7 @@ export function CustomReportsList({ reports }: CustomReportsListProps) {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-slate-400" />
-                <h3 className="font-semibold text-slate-900 dark:text-white">{report.name}</h3>
+                <h3 className="font-semibold text-foreground">{report.name}</h3>
               </div>
               <Badge className={categoryColors[report.category] ?? categoryColors.CUSTOM}>
                 {report.category}

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMessageBus } from '@/hooks/use-message-bus'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -52,10 +54,10 @@ export type ProjectTransactionRow = {
   issueDate: Date
   description: string
   dueDate?: Date | null
-  subtotal?: { toNumber?: () => number } | number
-  taxTotal?: { toNumber?: () => number } | number
-  total: { toNumber?: () => number } | number
-  amountBaseCurrency?: number
+  subtotal?: number
+  taxTotal?: number
+  total: number
+  amountBaseCurrency: number
   currency: string
   reference?: string | null
   party: { id: string; name: string } | null
@@ -74,6 +76,7 @@ export function ProjectTransactionsListClient({
   projectId,
   initialTransactions,
 }: Props) {
+  const router = useRouter()
   const [transactions, setTransactions] = useState(initialTransactions)
   const [filter, setFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState<string>('')
@@ -86,6 +89,9 @@ export function ProjectTransactionsListClient({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoadingFilters, setIsLoadingFilters] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
+
+  useMessageBus('FINANCE_TRANSACTION.CREATED', () => router.refresh())
+  useMessageBus('FINANCE_TRANSACTION.UPDATED', () => router.refresh())
 
   useEffect(() => {
     getPartiesForProjectFilter(projectId).then(setParties)
@@ -219,7 +225,7 @@ export function ProjectTransactionsListClient({
         }}
       />
 
-      <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-hidden">
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

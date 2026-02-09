@@ -110,7 +110,7 @@ export function SubmittalForm({
           required
         />
         {errors.dueDate && (
-          <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.dueDate.message}</p>
         )}
       </div>
 
@@ -147,7 +147,7 @@ export function SubmittalForm({
       </div>
 
       {errors.root && (
-        <p className="text-sm text-red-600">{errors.root.message}</p>
+        <p className="text-sm text-destructive">{errors.root.message}</p>
       )}
 
       <div className="flex gap-2">

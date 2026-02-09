@@ -19,7 +19,7 @@ export function DashboardLayout({ children, orgName, orgLogoUrl, userName }: Das
   const user = { name: userName, email: null }
   
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-background">
       {/* Sidebar - changes based on context */}
       <DynamicSidebar orgName={orgName} orgLogoUrl={orgLogoUrl} />
       

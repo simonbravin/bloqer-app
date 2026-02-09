@@ -109,7 +109,7 @@ export function AcceptInvitationClient({
               {...form.register('fullName')}
             />
             {form.formState.errors.fullName && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {form.formState.errors.fullName.message}
               </p>
             )}
@@ -124,7 +124,7 @@ export function AcceptInvitationClient({
               {...form.register('password')}
             />
             {form.formState.errors.password && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {form.formState.errors.password.message}
               </p>
             )}
@@ -139,7 +139,7 @@ export function AcceptInvitationClient({
               {...form.register('confirmPassword')}
             />
             {form.formState.errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm text-destructive">
                 {form.formState.errors.confirmPassword.message}
               </p>
             )}

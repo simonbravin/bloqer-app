@@ -83,7 +83,7 @@ export function LocationForm({ projects }: LocationFormProps) {
         <Label htmlFor="address">Address</Label>
         <Input id="address" name="address" className="mt-1" />
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={submitting}>
           {submitting ? 'Creating…' : 'Create location'}

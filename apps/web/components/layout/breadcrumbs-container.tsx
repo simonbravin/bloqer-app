@@ -20,7 +20,7 @@ export function BreadcrumbsContainer() {
   }
   
   return (
-    <div className="border-b border-slate-200 bg-white px-6 py-2.5">
+    <div className="border-b border-border bg-background px-6 py-2.5">
       <DynamicBreadcrumbs />
     </div>
   )

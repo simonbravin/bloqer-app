@@ -174,7 +174,7 @@ export function DependencyManager({
                   return (
                     <div
                       key={dep.id}
-                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3"
+                      className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3"
                     >
                       <div className="flex items-center gap-3">
                         <Badge

@@ -135,7 +135,7 @@ export function OverheadAllocationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Asignar Overhead a Proyectos</DialogTitle>
           <DialogDescription>

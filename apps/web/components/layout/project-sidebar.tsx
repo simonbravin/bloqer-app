@@ -155,9 +155,9 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
   }, [pathname])
   
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r bg-slate-900">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       {/* Logo/org name + back to projects */}
-      <div className="flex h-14 items-center justify-between gap-2 border-b border-slate-800 px-2 py-0.5">
+      <div className="flex h-14 items-center justify-between gap-2 border-b border-sidebar-border px-2 py-0.5">
         <Link href="/dashboard" className="min-w-0 flex-1">
           {orgLogoUrl ? (
             <img
@@ -166,14 +166,14 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
               className="h-[3.25rem] w-auto max-w-[140px] object-contain"
             />
           ) : (
-            <span className="truncate text-base font-bold text-white" title={orgName}>
+            <span className="truncate text-base font-bold text-sidebar-foreground" title={orgName}>
               {orgName}
             </span>
           )}
         </Link>
         <Link
           href="/projects"
-          className="flex shrink-0 items-center gap-1.5 text-xs text-slate-400 transition-colors hover:text-white"
+          className="flex shrink-0 items-center gap-1.5 text-xs text-sidebar-muted transition-colors hover:text-sidebar-foreground"
           title={t('backToProjects')}
         >
           <ArrowLeft className="h-4 w-4" />
@@ -181,8 +181,8 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
       </div>
       
       {/* Project name */}
-      <div className="border-b border-slate-800 px-6 py-4">
-        <h2 className="truncate text-lg font-semibold text-white" title={projectName}>
+      <div className="border-b border-border px-6 py-4">
+        <h2 className="truncate text-lg font-semibold text-sidebar-foreground" title={projectName}>
           {projectName}
         </h2>
       </div>
@@ -205,8 +205,8 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
                   className={cn(
                     'flex flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                     isActive 
-                      ? 'bg-slate-800 text-white' 
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-sidebar-accent text-sidebar-foreground' 
+                      : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground'
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
@@ -217,7 +217,7 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
                 {hasChildren && (
                   <button
                     onClick={() => toggleSection(item.href)}
-                    className="ml-1 rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+                    className="ml-1 rounded p-1 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     aria-label={isExpanded ? 'Contraer' : 'Expandir'}
                   >
                     {isExpanded ? (
@@ -241,8 +241,8 @@ export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLog
                         className={cn(
                           'block rounded-lg px-3 py-1.5 text-sm transition-colors',
                           childActive
-                            ? 'font-medium text-white'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'font-medium text-sidebar-foreground'
+                            : 'text-sidebar-muted hover:text-sidebar-foreground'
                         )}
                       >
                         {child.name}
