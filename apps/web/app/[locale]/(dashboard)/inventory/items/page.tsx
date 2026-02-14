@@ -69,8 +69,8 @@ export default async function InventoryItemsListPage({
     }),
   ])
 
-  const itemIds = items.map((i) => i.id)
-  const movementsByItem = movements.filter((m) => itemIds.includes(m.itemId))
+  const itemIds = items.map((i: any) => i.id)
+  const movementsByItem = movements.filter((m: any) => itemIds.includes(m.itemId))
 
   const currentStockByItem = new Map<string, number>()
   const lastPurchaseByItem = new Map<string, { unitCost: number; createdAt: Date }>()
@@ -110,7 +110,7 @@ export default async function InventoryItemsListPage({
     last_movement_date: Date | null
   }
 
-  const itemsWithComputed: ItemWithComputed[] = items.map((item) => ({
+  const itemsWithComputed: ItemWithComputed[] = items.map((item: any) => ({
     ...item,
     current_stock: currentStockByItem.get(item.id) ?? 0,
     last_purchase_cost: lastPurchaseByItem.get(item.id)?.unitCost ?? null,
@@ -120,21 +120,21 @@ export default async function InventoryItemsListPage({
   let filteredItems = itemsWithComputed
   if (params.stock === 'low') {
     filteredItems = itemsWithComputed.filter(
-      (item) => item.minStockQty != null && item.current_stock < (typeof item.minStockQty === 'number' ? item.minStockQty : item.minStockQty?.toNumber?.() ?? 0)
+      (item: any) => item.minStockQty != null && item.current_stock < (typeof item.minStockQty === 'number' ? item.minStockQty : item.minStockQty?.toNumber?.() ?? 0)
     )
   } else if (params.stock === 'zero') {
-    filteredItems = itemsWithComputed.filter((item) => item.current_stock === 0)
+    filteredItems = itemsWithComputed.filter((item: any) => item.current_stock === 0)
   } else if (params.stock === 'ok') {
-    filteredItems = itemsWithComputed.filter((item) => {
+    filteredItems = itemsWithComputed.filter((item: any) => {
       if (item.minStockQty == null) return true
       const min = typeof item.minStockQty === 'number' ? item.minStockQty : item.minStockQty?.toNumber?.() ?? 0
       return item.current_stock >= min
     })
   }
 
-  const categoryOptions = categories.map((c) => ({ id: c.id, name: c.name }))
+  const categoryOptions = categories.map((c: any) => ({ id: c.id, name: c.name }))
 
-  const itemsPlain = filteredItems.map((item) => serializeForClient(item))
+  const itemsPlain = filteredItems.map((item: any) => serializeForClient(item))
 
   return (
     <div className="h-full">

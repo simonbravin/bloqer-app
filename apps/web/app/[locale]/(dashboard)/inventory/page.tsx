@@ -138,12 +138,12 @@ export default async function InventoryDashboardPage() {
     }
   }
 
-  lowStockRows.sort((a, b) => a.current_stock - (a.minStockQty ?? 0) - (b.current_stock - (b.minStockQty ?? 0)))
+  lowStockRows.sort((a: any, b: any) => a.current_stock - (a.minStockQty ?? 0) - (b.current_stock - (b.minStockQty ?? 0)))
   const lowStockItems = lowStockRows.slice(0, 10)
 
   const toNumMov = (v: unknown): number =>
     v == null ? 0 : typeof v === 'number' ? v : (v as { toNumber?: () => number })?.toNumber?.() ?? 0
-  const recentMovementsPlain = recentMovements.map((m) => ({
+  const recentMovementsPlain = recentMovements.map((m: any) => ({
     ...m,
     quantity: toNumMov(m.quantity),
     totalCost: toNumMov(m.totalCost),

@@ -85,7 +85,7 @@ export default async function LocationsPage() {
           </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {locationsWithStats.map((location) => {
+            {locationsWithStats.map((location: any) => {
               const Icon = typeIcons[location.type] ?? Warehouse
               const typeLabel = typeLabels[location.type] ?? location.type
               const itemsCount = Number(location.items_count)
