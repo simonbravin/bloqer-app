@@ -7,7 +7,6 @@ import { MovementsListClient } from '@/components/inventory/movements-list-clien
 import { Button } from '@/components/ui/button'
 import { Plus, Download } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
-import type { Prisma } from '@repo/database'
 
 type PageProps = {
   searchParams: Promise<{
@@ -28,7 +27,7 @@ export default async function MovementsListPage({ searchParams }: PageProps) {
 
   const params = await searchParams
 
-  const where: Prisma.InventoryMovementWhereInput = { orgId: org.orgId }
+  const where: any = { orgId: org.orgId }
 
   if (params.type) {
     where.movementType = params.type
@@ -48,12 +47,12 @@ export default async function MovementsListPage({ searchParams }: PageProps) {
   if (params.from || params.to) {
     where.createdAt = {}
     if (params.from) {
-      (where.createdAt as Prisma.DateTimeFilter).gte = new Date(params.from)
+      where.createdAt.gte = new Date(params.from)
     }
     if (params.to) {
       const toDate = new Date(params.to)
       toDate.setHours(23, 59, 59, 999)
-      ;(where.createdAt as Prisma.DateTimeFilter).lte = toDate
+      where.createdAt.lte = toDate
     }
   }
 
