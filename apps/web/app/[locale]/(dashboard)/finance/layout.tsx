@@ -11,17 +11,16 @@ export default async function FinanceLayout({
 }) {
   const session = await getSession()
   const locale = await getLocale()
-  if (!session?.user?.id) redirect({ href: '/login', locale })
-  const org = await getOrgContext(session.user.id)
+  const userId = session?.user?.id
+  if (!userId) redirect({ href: '/login', locale })
+  const org = await getOrgContext(userId)
   if (!org) redirect({ href: '/login', locale })
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Finanzas de Empresa
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+    <div className="erp-view-container space-y-6">
+      <div className="erp-section-header">
+        <h1 className="erp-page-title">Finanzas de Empresa</h1>
+        <p className="erp-section-desc">
           Gestión financiera consolidada de toda la organización
         </p>
       </div>
