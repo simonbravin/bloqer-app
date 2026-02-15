@@ -1,4 +1,4 @@
-# Construction ERP — Documentación
+# Bloqer — Documentación
 
 Índice de la documentación del proyecto. Estructura alineada con el [resumen ejecutivo](00-overview/final-summary.md) y los próximos pasos inmediatos.
 

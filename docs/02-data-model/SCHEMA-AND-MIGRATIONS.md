@@ -68,7 +68,7 @@ significa que en la base hay un registro en `_prisma_migrations` para una migrac
 
 **Solución recomendada (una sola vez por base afectada):**
 
-1. Conectar a la base (misma que usa la app, p. ej. `construction_erp`).
+1. Conectar a la base (misma que usa la app, p. ej. `bloqer`).
 2. Eliminar **solo** la fila de la migración fantasma:
 
 ```sql

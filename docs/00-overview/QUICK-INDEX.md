@@ -1,4 +1,4 @@
-# 📑 Índice Rápido - Construction ERP Docs
+# 📑 Índice Rápido - Bloqer Docs
 
 ### 🔥 EMPEZAR AQUÍ
 1. **README.md** - Guía maestra de todos los documentos

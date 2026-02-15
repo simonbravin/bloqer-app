@@ -19,7 +19,7 @@ export function DashboardHeader({ user, orgName }: DashboardHeaderProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-6">
-        <span className="text-sm font-semibold text-foreground">Construction ERP</span>
+        <span className="text-sm font-semibold text-foreground">Bloqer</span>
         <span className="text-muted-foreground/70">|</span>
         <p className="text-sm text-muted-foreground">{orgName}</p>
       </div>

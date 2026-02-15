@@ -80,7 +80,7 @@ Esto levanta el Inngest Dev Server (por defecto en `http://localhost:8288`). Las
 |---------|-----|
 | `lib/events/event-publisher.ts` | Escribe en `OutboxEvent` dentro de un `tx` de Prisma. |
 | `lib/events/README.md` | Esta guía. |
-| `inngest/client.ts` | Cliente Inngest (id: `construction-erp`). |
+| `inngest/client.ts` | Cliente Inngest (id: `bloqer`). |
 | `inngest/functions/event-dispatcher.ts` | Cron que consume PENDING → PROCESSING → COMPLETED. |
 | `app/api/inngest/route.ts` | Handler `serve()` que expone las funciones a Inngest. |
 | `hooks/use-message-bus.ts` | Hook y `emitMessageBusEvent` para suscripciones y pruebas en el cliente. |

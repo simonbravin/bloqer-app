@@ -36,7 +36,7 @@ interface GlobalSidebarProps {
  * Shows logo/org name, then: Dashboard, Projects, Team, Inventory, Suppliers, Documents, Settings
  * Items are filtered by RBAC (canView).
  */
-export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: GlobalSidebarProps) {
+export function GlobalSidebar({ orgName = 'Bloqer', orgLogoUrl }: GlobalSidebarProps) {
   const t = useTranslations('nav')
   const pathname = usePathname()
   const { canView, status, loading } = usePermissions()
@@ -103,7 +103,7 @@ export function GlobalSidebar({ orgName = 'Construction ERP', orgLogoUrl }: Glob
       {/* Footer */}
       <div className="border-t border-sidebar-border p-4">
         <p className="text-xs text-sidebar-muted">
-          © 2025 Construction ERP
+          © 2025 Bloqer
         </p>
       </div>
     </aside>

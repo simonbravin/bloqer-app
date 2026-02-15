@@ -21,7 +21,7 @@ interface DynamicSidebarProps {
  * - URL matches /projects/[uuid] or /projects/[uuid]/*
  * - The ID is a valid UUID (not 'new' or other route names)
  */
-export function DynamicSidebar({ orgName = 'Construction ERP', orgLogoUrl }: DynamicSidebarProps) {
+export function DynamicSidebar({ orgName = 'Bloqer', orgLogoUrl }: DynamicSidebarProps) {
   const pathname = usePathname()
   
   // Extract project ID from path

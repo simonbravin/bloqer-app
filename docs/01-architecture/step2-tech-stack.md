@@ -82,7 +82,7 @@ Jobs: Inngest Cloud
 ### Opción Recomendada: Turborepo Simple
 
 ```
-construction-erp/
+bloqer-app/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
@@ -152,7 +152,7 @@ construction-erp/
 
 ```json
 {
-  "name": "construction-erp",
+  "name": "bloqer-app",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
@@ -383,7 +383,7 @@ GOOGLE_CLIENT_SECRET=""
 R2_ACCOUNT_ID=""
 R2_ACCESS_KEY_ID=""
 R2_SECRET_ACCESS_KEY=""
-R2_BUCKET_NAME="construction-erp-dev"
+R2_BUCKET_NAME="bloqer-dev"
 R2_PUBLIC_URL="https://pub-xyz.r2.dev"
 
 # Jobs

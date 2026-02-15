@@ -36,7 +36,7 @@ export function LoginPageCard({ initialTab = 'login' }: LoginPageCardProps) {
       <div className="flex flex-col justify-center px-10 py-12 text-primary-foreground bg-auth-primary md:w-[45%] md:min-w-[280px] md:px-12 md:py-14">
         <div className="mx-auto w-full max-w-[20rem] text-left">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Construction ERP
+            Bloqer
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-primary-foreground/90 md:text-base">
             La plataforma profesional para gestión de presupuestos y seguimiento

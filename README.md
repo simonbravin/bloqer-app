@@ -1,6 +1,6 @@
-# Construction ERP
+# Bloqer
 
-Multi-tenant Construction ERP SaaS — Turborepo monorepo.
+Bloqer — SaaS multi-tenant para gestión de construcción. Turborepo monorepo.
 
 ## Quick start
 

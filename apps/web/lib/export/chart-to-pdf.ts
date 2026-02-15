@@ -51,7 +51,7 @@ export async function exportDashboardToPDF(config: ChartExportConfig): Promise<B
 
   doc.setFontSize(10)
   doc.setTextColor(100)
-  doc.text('Construction ERP', margin, currentY)
+  doc.text('Bloqer', margin, currentY)
   currentY += 10
 
   doc.setDrawColor(200)

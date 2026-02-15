@@ -1,4 +1,4 @@
-# Code Review & Debugging Report — Construction ERP
+# Code Review & Debugging Report — Bloqer
 
 **Date:** 2026-02-03  
 **Scope:** Full codebase (apps/web, packages/database, packages/validators)
@@ -9,7 +9,7 @@
 
 ## 1. System Overview
 
-- **Purpose:** Construction ERP-Lite SaaS: projects, WBS, budgets, daily reports, materials, finance, certifications, inventory, quality (RFI, submittals, inspections), global supplier directory, documents, exports.
+- **Purpose:** Bloqer SaaS: projects, WBS, budgets, daily reports, materials, finance, certifications, inventory, quality (RFI, submittals, inspections), global supplier directory, documents, exports.
 - **Stack:** Next.js 15 (App Router), NextAuth 5 (JWT + Credentials), Prisma (PostgreSQL, multi-schema), TanStack Query, React Hook Form + Zod, next-intl.
 - **Architecture:** Monorepo (Turbo); single web app; org-scoped data via `getOrgContext(userId)` (first org by `createdAt`); server actions with `getAuthContext()` → session + org; no org switcher (single-org UX).
 

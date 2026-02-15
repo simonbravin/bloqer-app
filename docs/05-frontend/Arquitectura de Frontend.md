@@ -1,4 +1,4 @@
-# Arquitectura de Frontend - Construction ERP
+# Arquitectura de Frontend - Bloqer
 
 ## Navegación Dual
 

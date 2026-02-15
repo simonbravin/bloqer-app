@@ -1,4 +1,4 @@
-# Guía: Usar Cursor para Desarrollar el Construction ERP
+# Guía: Usar Cursor para Desarrollar Bloqer
 
 ## 🎯 Objetivo
 
@@ -38,7 +38,7 @@ Crea este archivo en la raíz del repo:
 
 ```bash
 # .cursorrules
-# Construction ERP-Lite - Cursor AI Rules
+# Bloqer - Cursor AI Rules
 
 ## Project Context
 This is a multi-tenant SaaS platform for construction project management.
@@ -190,7 +190,7 @@ and total is a valid Decimal
 
 **NO hacer:**
 ```
-❌ "Create the entire Construction ERP app"
+❌ "Create the entire Bloqer app"
 ❌ "Build everything from the ERD"
 ❌ "Implement all features"
 ```
@@ -566,7 +566,7 @@ Cuando estés listo, usa este prompt en Composer (⌘ + I):
 
 **Context:**
 Following the architecture defined in @docs/step2-tech-stack.md, 
-initialize a Turborepo monorepo for the Construction ERP project.
+initialize a Turborepo monorepo for the Bloqer project.
 
 **Requirements:**
 

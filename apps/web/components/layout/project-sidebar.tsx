@@ -38,7 +38,7 @@ interface NavItem {
  * Project-specific sidebar
  * Shows: Project Dashboard, Budget, Schedule, Finance, Quality, etc.
  */
-export function ProjectSidebar({ projectId, orgName = 'Construction ERP', orgLogoUrl }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectId, orgName = 'Bloqer', orgLogoUrl }: ProjectSidebarProps) {
   const t = useTranslations('nav')
   const pathname = usePathname()
   const [projectName, setProjectName] = useState('Proyecto')

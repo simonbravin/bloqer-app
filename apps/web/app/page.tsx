@@ -8,7 +8,7 @@ export default function HomePage() {
       <main className="flex flex-1 flex-col items-center justify-center px-4 text-center">
         <div className="max-w-3xl space-y-6">
           <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
-            Construction ERP
+            Bloqer
           </h1>
           <p className="text-xl text-muted-foreground">
             Sistema de gestión integral para proyectos de construcción
@@ -28,7 +28,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-border py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          © 2025 Construction ERP. Todos los derechos reservados.
+          © 2025 Bloqer. Todos los derechos reservados.
         </div>
       </footer>
     </div>

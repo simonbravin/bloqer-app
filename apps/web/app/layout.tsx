@@ -18,8 +18,8 @@ const robotoMono = Roboto_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Construction ERP',
-  description: 'Multi-tenant Construction ERP SaaS',
+  title: 'Bloqer',
+  description: 'Bloqer — SaaS multi-tenant para gestión de construcción',
   icons: { icon: '/icon' },
 }
 

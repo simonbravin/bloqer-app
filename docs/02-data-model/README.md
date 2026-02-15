@@ -1,4 +1,4 @@
-# Modelo de datos — Construction ERP
+# Modelo de datos — Bloqer
 
 ## Schema fuente de verdad
 

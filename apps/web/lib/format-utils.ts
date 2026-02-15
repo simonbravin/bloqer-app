@@ -1,6 +1,6 @@
 /**
  * Format utilities for Argentine Spanish (es-AR) locale.
- * Used across the Construction ERP for currency, numbers, and dates.
+ * Used across Bloqer for currency, numbers, and dates.
  */
 
 /** Símbolo por moneda: ARS = $, USD = US$, resto = código */

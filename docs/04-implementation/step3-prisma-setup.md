@@ -137,7 +137,7 @@ pnpm add -D prisma
 
 ```bash
 # 1. Crear cuenta en Neon: https://neon.tech
-# 2. Crear nuevo proyecto: "construction-erp-dev"
+# 2. Crear nuevo proyecto: "bloqer-dev"
 # 3. Copiar connection string
 ```
 

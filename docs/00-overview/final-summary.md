@@ -1,4 +1,4 @@
-# 📦 Resumen Final: Construction ERP-Lite
+# 📦 Resumen Final: Bloqer
 
 ## ✅ Lo Que Tienes Ahora
 
@@ -252,7 +252,7 @@ Ver: docs/03-business-requirements/supplier-directory-design.md
 ### 5. Crear README.md Principal (10 min)
 
 ```markdown
-# Construction ERP-Lite
+# Bloqer
 
 Multi-tenant SaaS for construction project management.
 

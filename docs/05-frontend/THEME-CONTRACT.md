@@ -1,6 +1,6 @@
 # Theme Contract — Design System Tokens
 
-This document defines the **canonical CSS variable tokens** for the Construction ERP frontend. All UI color usage must reference these tokens only. No hardcoded Tailwind color utilities (e.g. `bg-white`, `text-gray-900`, `bg-blue-600`) or arbitrary values (e.g. `bg-[#...]`, `style={{ color: '...' }}`) are allowed in components.
+This document defines the **canonical CSS variable tokens** for the Bloqer frontend. All UI color usage must reference these tokens only. No hardcoded Tailwind color utilities (e.g. `bg-white`, `text-gray-900`, `bg-blue-600`) or arbitrary values (e.g. `bg-[#...]`, `style={{ color: '...' }}`) are allowed in components.
 
 ---
 

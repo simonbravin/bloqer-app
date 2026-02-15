@@ -1,6 +1,6 @@
-# 📦 Construction ERP - Documentación Completa
+# 📦 Bloqer - Documentación Completa
 
-Este paquete contiene toda la documentación técnica y de diseño del sistema Construction ERP-Lite SaaS.
+Este paquete contiene toda la documentación técnica y de diseño del sistema Bloqer SaaS.
 
 ---
 
@@ -377,7 +377,7 @@ Estos archivos debes crearlos tú:
 
 ## ✨ Resumen Ultra-Corto
 
-**Tienes:** 17 documentos que definen completamente un Construction ERP SaaS
+**Tienes:** 17 documentos que definen completamente Bloqer SaaS
 
 **Incluye:**
 - ✅ Stack tecnológico moderno y simplificado
@@ -396,7 +396,7 @@ Estos archivos debes crearlos tú:
 
 ## 🎊 Conclusión
 
-Este paquete de documentación representa un diseño completo y profesional de un sistema Construction ERP-Lite competitivo con soluciones enterprise como Procore, pero optimizado para:
+Este paquete de documentación representa un diseño completo y profesional de Bloqer competitivo con soluciones enterprise como Procore, pero optimizado para:
 - 🎯 Pequeñas y medianas constructoras (10-100 empleados)
 - 🎯 Mercado LATAM (multi-currency, español)
 - 🎯 Precio accesible ($50-100/usuario/mes)
