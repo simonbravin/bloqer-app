@@ -109,7 +109,7 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
               >
                 {t('cancel')}
               </Button>
-              <Button type="submit" variant="accent" disabled={isSubmitting}>
+              <Button type="submit" variant="default" disabled={isSubmitting}>
                 {isSubmitting ? t('sendingResetLink') : t('sendResetLink')}
               </Button>
             </div>

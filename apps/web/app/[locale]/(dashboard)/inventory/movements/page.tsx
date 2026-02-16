@@ -112,7 +112,7 @@ export default async function MovementsListPage({ searchParams }: PageProps) {
               <Download className="mr-2 h-4 w-4" />
               Exportar
             </Button>
-            <Button asChild variant="accent">
+            <Button asChild variant="default">
               <Link href="/inventory/movements/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Movimiento

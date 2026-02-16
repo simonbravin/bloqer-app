@@ -164,7 +164,7 @@ export function ProjectForm({
             id="description"
             {...register('description')}
             rows={3}
-            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+            className="flex w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
             placeholder="Brief description"
           />
           {errors.description && (
@@ -218,7 +218,7 @@ export function ProjectForm({
                     onChange={(e) => field.onChange(e.target.value)}
                     onBlur={field.onBlur}
                     ref={field.ref}
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    className="h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
                   >
                     <option value="PRE_CONSTRUCTION">Pre-construcción</option>
                     <option value="CONSTRUCTION">En construcción</option>
@@ -240,7 +240,7 @@ export function ProjectForm({
                     onChange={(e) => field.onChange(e.target.value)}
                     onBlur={field.onBlur}
                     ref={field.ref}
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    className="h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
                   >
                     <option value="DRAFT">Borrador</option>
                     <option value="ACTIVE">Activo</option>

@@ -3,6 +3,7 @@ import { getOrgContext } from '@/lib/org-context'
 import { redirectToLogin } from '@/lib/i18n-redirect'
 import { notFound } from 'next/navigation'
 import { prisma } from '@repo/database'
+import { serializeForClient } from '@/lib/utils/serialization'
 import { PageHeader } from '@/components/layout/page-header'
 import { ItemForm } from '@/components/inventory/item-form'
 import { getInventoryCategories, getInventorySubcategories } from '@/app/actions/inventory'
@@ -31,6 +32,8 @@ export default async function EditItemPage({ params }: PageProps) {
 
   if (!item) notFound()
 
+  const itemPlain = serializeForClient(item)
+
   return (
     <div className="h-full">
       <PageHeader
@@ -46,7 +49,7 @@ export default async function EditItemPage({ params }: PageProps) {
 
       <div className="p-6">
         <div className="mx-auto max-w-5xl">
-          <ItemForm item={item} categories={categories} subcategories={subcategories} />
+          <ItemForm item={itemPlain} categories={categories} subcategories={subcategories} />
         </div>
       </div>
     </div>

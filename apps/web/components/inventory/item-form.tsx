@@ -176,7 +176,7 @@ export function ItemForm({ item, categories, subcategories }: ItemFormProps) {
                   setValue('subcategoryId', '')
                 },
               })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Seleccionar categoría</option>
               {categories.map((c) => (
@@ -209,7 +209,7 @@ export function ItemForm({ item, categories, subcategories }: ItemFormProps) {
             <select
               id="subcategoryId"
               {...register('subcategoryId')}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Ninguna</option>
               {subcategoriesForCategory.map((s) => (
@@ -274,7 +274,7 @@ export function ItemForm({ item, categories, subcategories }: ItemFormProps) {
             <select
               id="unit"
               {...register('unit')}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               {UNITS.map((u) => (
                 <option key={u.value} value={u.value}>
@@ -339,7 +339,7 @@ export function ItemForm({ item, categories, subcategories }: ItemFormProps) {
         >
           Cancelar
         </Button>
-        <Button type="submit" variant="accent" disabled={isSubmitting}>
+        <Button type="submit" variant="default" disabled={isSubmitting}>
           {isSubmitting
             ? 'Guardando...'
             : item

@@ -142,12 +142,17 @@ export default async function InventoryItemsListPage({
         title="Items de Inventario"
         subtitle={`${itemsPlain.length} items encontrados`}
         actions={
-          <Button asChild variant="default">
-            <Link href="/inventory/items/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Item
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/inventory/movements/new">Nuevo Movimiento</Link>
+            </Button>
+            <Button asChild variant="default">
+              <Link href="/inventory/items/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Item
+              </Link>
+            </Button>
+          </div>
         }
       />
 

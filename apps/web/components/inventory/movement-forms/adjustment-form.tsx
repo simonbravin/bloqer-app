@@ -133,7 +133,7 @@ export function AdjustmentForm({
                 const item = items.find((i) => i.id === e.target.value)
                 setSelectedItem(item)
               }}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Seleccionar item...</option>
               {items.map((item) => (
@@ -152,7 +152,7 @@ export function AdjustmentForm({
             <select
               id="locationId"
               {...register('locationId')}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Seleccionar ubicación...</option>
               {locations.map((loc) => (
@@ -229,7 +229,7 @@ export function AdjustmentForm({
               {...register('notes')}
               rows={3}
               placeholder="Ej: Inventario físico - diferencia detectada, Material dañado, Error de registro..."
-              className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             />
             {errors.notes && (
               <p className="mt-1 text-xs text-destructive">{errors.notes.message}</p>
@@ -247,7 +247,7 @@ export function AdjustmentForm({
         </Button>
         <Button
           type="submit"
-          variant="accent"
+          variant="default"
           disabled={isSubmitting || hasInvalidNegative || qty === 0}
         >
           {isSubmitting ? 'Registrando...' : 'Registrar Ajuste'}

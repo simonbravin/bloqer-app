@@ -126,7 +126,7 @@ export function MovementsListClient({
               <select
                 value={filters.type}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
               >
                 <option value="">Todos</option>
                 <option value="PURCHASE">Compra</option>
@@ -143,7 +143,7 @@ export function MovementsListClient({
                 onChange={(e) =>
                   setFilters({ ...filters, itemId: e.target.value })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
               >
                 <option value="">Todos</option>
                 {items.map((item) => (
@@ -163,7 +163,7 @@ export function MovementsListClient({
                 onChange={(e) =>
                   setFilters({ ...filters, locationId: e.target.value })
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
               >
                 <option value="">Todas</option>
                 {locations.map((loc) => (

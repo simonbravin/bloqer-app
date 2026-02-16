@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency } from '@/lib/format-utils'
+import { formatCurrency, formatCurrencyForDisplay } from '@/lib/format-utils'
 import { DollarSign, CheckCircle, AlertCircle, Percent } from 'lucide-react'
 
 export type OverheadDashboardData = {
@@ -29,25 +29,29 @@ export function OverheadDashboardCards({ data }: Props) {
   const kpis = [
     {
       title: 'Total Overhead',
-      value: formatCurrency(data.totalOverhead, 'ARS'),
+      value: data.totalOverhead,
+      format: 'currency' as const,
       description: 'Gastos generales del período',
       icon: DollarSign,
     },
     {
       title: 'Asignado',
-      value: formatCurrency(data.totalAllocated, 'ARS'),
+      value: data.totalAllocated,
+      format: 'currency' as const,
       description: `${allocationPct.toFixed(1)}% del total`,
       icon: CheckCircle,
     },
     {
       title: 'Sin Asignar',
-      value: formatCurrency(data.unallocated, 'ARS'),
+      value: data.unallocated,
+      format: 'currency' as const,
       description: `${data.unallocatedTransactions + data.partiallyAllocated} transacción(es)`,
       icon: AlertCircle,
     },
     {
       title: '% Asignado',
-      value: `${allocationPct.toFixed(1)}%`,
+      value: allocationPct.toFixed(1),
+      format: 'percent' as const,
       description: 'Del overhead total',
       icon: Percent,
     },
@@ -65,7 +69,9 @@ export function OverheadDashboardCards({ data }: Props) {
               <kpi.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg font-semibold tabular-nums">{kpi.value}</div>
+              <div className="text-lg font-semibold tabular-nums erp-kpi-value min-w-0">
+                {kpi.format === 'currency' ? formatCurrencyForDisplay(kpi.value, 'ARS') : `${kpi.value}%`}
+              </div>
               <p className="text-xs text-muted-foreground">{kpi.description}</p>
             </CardContent>
           </Card>
@@ -90,8 +96,8 @@ export function OverheadDashboardCards({ data }: Props) {
                       {project.projectNumber}
                     </span>
                   </div>
-                  <div className="text-right tabular-nums">
-                    <span className="font-semibold">{formatCurrency(project.totalOverhead, 'ARS')}</span>
+                  <div className="text-right tabular-nums erp-kpi-value min-w-0">
+                    <span className="font-semibold">{formatCurrencyForDisplay(project.totalOverhead, 'ARS')}</span>
                     <span className="ml-2 text-sm text-muted-foreground">
                       {data.totalAllocated > 0
                         ? `${((project.totalOverhead / data.totalAllocated) * 100).toFixed(1)}%`

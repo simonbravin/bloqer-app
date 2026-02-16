@@ -247,7 +247,7 @@ export function WbsPageClient({
         </div>
         {canEdit && (
           <div className="flex gap-2">
-            <Button type="button" variant="accent" onClick={() => openCreate(null)}>
+            <Button type="button" variant="default" onClick={() => openCreate(null)}>
               {t('addPhase')}
             </Button>
             <Button type="button" variant="outline" disabled>

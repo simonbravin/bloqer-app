@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Card } from '@/components/ui/card'
 import { createInventoryLocation } from '@/app/actions/inventory'
 
 type Project = { id: string; name: string; projectNumber: string }
@@ -12,6 +13,12 @@ type Project = { id: string; name: string; projectNumber: string }
 type LocationFormProps = {
   projects: Project[]
 }
+
+const LOCATION_TYPES = [
+  { value: 'CENTRAL_WAREHOUSE', label: 'Almacén central' },
+  { value: 'PROJECT_SITE', label: 'Obra / Sitio de proyecto' },
+  { value: 'SUPPLIER', label: 'Proveedor' },
+] as const
 
 export function LocationForm({ projects }: LocationFormProps) {
   const router = useRouter()
@@ -35,65 +42,77 @@ export function LocationForm({ projects }: LocationFormProps) {
       router.push('/inventory/locations')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create location')
+      setError(err instanceof Error ? err.message : 'No se pudo crear la ubicación')
     } finally {
       setSubmitting(false)
     }
   }
 
+  const selectClassName =
+    'mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
+
   return (
-    <form onSubmit={handleSubmit} className="erp-form-page space-y-4">
-      <div>
-        <Label htmlFor="type">Type</Label>
-        <select
-          id="type"
-          name="type"
-          value={locType}
-          onChange={(e) => setLocType(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-        >
-          <option value="CENTRAL_WAREHOUSE">Central warehouse</option>
-          <option value="PROJECT_SITE">Project site</option>
-          <option value="SUPPLIER">Supplier</option>
-        </select>
-      </div>
-      <div>
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" required className="mt-1" />
-      </div>
-      {locType === 'PROJECT_SITE' && (
-        <div>
-          <Label htmlFor="projectId">Project</Label>
-          <select
-            id="projectId"
-            name="projectId"
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-          >
-            <option value="">Select project</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.projectNumber})
-              </option>
-            ))}
-          </select>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <Card className="rounded-lg border border-border bg-card p-6 shadow-[var(--shadow-card)]">
+        <h2 className="mb-4 text-base font-semibold text-foreground">Información básica</h2>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="type">Tipo</Label>
+            <select
+              id="type"
+              name="type"
+              value={locType}
+              onChange={(e) => setLocType(e.target.value)}
+              className={selectClassName}
+            >
+              {LOCATION_TYPES.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="name">Nombre *</Label>
+            <Input id="name" name="name" required className="mt-1" />
+          </div>
+          {locType === 'PROJECT_SITE' && (
+            <div>
+              <Label htmlFor="projectId">Proyecto *</Label>
+              <select
+                id="projectId"
+                name="projectId"
+                required
+                className={selectClassName}
+              >
+                <option value="">Seleccionar proyecto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.projectNumber})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <Label htmlFor="address">Dirección</Label>
+            <Input id="address" name="address" className="mt-1" placeholder="Dirección opcional" />
+          </div>
         </div>
-      )}
-      <div>
-        <Label htmlFor="address">Address</Label>
-        <Input id="address" name="address" className="mt-1" />
-      </div>
+      </Card>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create location'}
-        </Button>
+
+      <div className="flex justify-end gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={() => router.push('/inventory/locations')}
         >
-          Cancel
+          Cancelar
+        </Button>
+        <Button type="submit" variant="default" disabled={submitting}>
+          {submitting ? 'Guardando…' : 'Crear ubicación'}
         </Button>
       </div>
     </form>

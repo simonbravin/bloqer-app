@@ -141,7 +141,7 @@ export function TransferForm({
                 const item = items.find((i) => i.id === e.target.value)
                 setSelectedItem(item)
               }}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Seleccionar item...</option>
               {items.map((item) => (
@@ -163,7 +163,7 @@ export function TransferForm({
               <select
                 id="fromLocationId"
                 {...register('fromLocationId')}
-                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
               >
                 <option value="">Seleccionar ubicación...</option>
                 {locations.map((loc) => (
@@ -184,7 +184,7 @@ export function TransferForm({
               <select
                 id="toLocationId"
                 {...register('toLocationId')}
-                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
               >
                 <option value="">Seleccionar ubicación...</option>
                 {locations.map((loc) => (
@@ -249,7 +249,7 @@ export function TransferForm({
               {...register('notes')}
               rows={3}
               placeholder="Motivo o información adicional..."
-              className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             />
           </div>
         </div>
@@ -265,7 +265,7 @@ export function TransferForm({
         </Button>
         <Button
           type="submit"
-          variant="accent"
+          variant="default"
           disabled={isSubmitting || hasInsufficientStock}
         >
           {isSubmitting ? 'Registrando...' : 'Registrar Transferencia'}

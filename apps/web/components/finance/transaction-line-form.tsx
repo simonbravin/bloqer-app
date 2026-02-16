@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -63,15 +64,12 @@ export function TransactionLineForm({
           className="mt-0.5"
         />
       </div>
-      <div className="min-w-[100px]">
+      <div className="min-w-[120px]">
         <Label htmlFor="line-amount">Amount</Label>
-        <Input
+        <CurrencyInput
           id="line-amount"
-          type="number"
-          min={0}
-          step={0.01}
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={setAmount}
           disabled={disabled}
           className="mt-0.5"
         />
@@ -95,7 +93,7 @@ export function TransactionLineForm({
           </select>
         </div>
       )}
-      <Button type="submit" disabled={disabled || !description.trim() || !amount}>
+      <Button type="submit" disabled={disabled || !description.trim() || amount == null}>
         Add line
       </Button>
     </form>

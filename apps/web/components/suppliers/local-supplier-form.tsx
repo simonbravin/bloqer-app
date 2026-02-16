@@ -2,7 +2,7 @@
 
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,26 @@ const schema = z.object({
   address: z.string().max(500).optional(),
   city: z.string().max(100).optional(),
   country: z.string().max(100).optional(),
-  website: z.string().url().max(255).optional().or(z.literal('')),
+  website: z
+    .string()
+    .max(255)
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (val) => {
+        if (!val || val.trim() === '') return true
+        if (/^https?:\/\//i.test(val)) {
+          try {
+            new URL(val)
+            return true
+          } catch {
+            return false
+          }
+        }
+        return /^[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z0-9.-]+$/i.test(val.trim())
+      },
+      { message: 'Ingrese una URL o un dominio (ej: ejemplo.com)' }
+    ),
 })
 type FormData = z.infer<typeof schema>
 
@@ -98,7 +117,7 @@ export function LocalSupplierForm() {
       </div>
       <div>
         <Label htmlFor="website">Website</Label>
-        <Input id="website" type="url" {...register('website')} className="mt-1" />
+        <Input id="website" type="text" {...register('website')} className="mt-1" placeholder="ejemplo.com" />
       </div>
       {errors.root && (
         <p className="text-sm text-destructive">{errors.root.message}</p>
@@ -107,7 +126,7 @@ export function LocalSupplierForm() {
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Creating…' : 'Create supplier'}
         </Button>
-        <Link href="/suppliers">
+        <Link href="/suppliers/list?tab=local">
           <Button type="button" variant="outline">
             Cancel
           </Button>

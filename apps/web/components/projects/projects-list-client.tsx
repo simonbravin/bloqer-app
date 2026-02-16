@@ -274,16 +274,9 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
   return (
     <>
     <div className="w-full space-y-4">
-      {showExport && (
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setShowExportDialog(true)}>
-            <FileDown className="mr-2 h-4 w-4" />
-            {tCommon('export')} Lista
-          </Button>
-        </div>
-      )}
-      <div className="flex w-full flex-col gap-4">
-        <div className="erp-search-row">
+      {/* Fila 1: Buscadora + Exportar Lista en la misma línea */}
+      <div className="flex w-full flex-wrap items-center gap-3">
+        <div className="erp-search-row flex-1 min-w-0">
           <div className="erp-search-input-wrap">
             <Input
               placeholder={t('searchPlaceholder')}
@@ -296,9 +289,17 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
             />
           </div>
         </div>
+        {showExport && (
+          <Button variant="outline" size="sm" onClick={() => setShowExportDialog(true)} className="shrink-0">
+            <FileDown className="mr-2 h-4 w-4" />
+            {tCommon('export')} Lista
+          </Button>
+        )}
+      </div>
 
-        {/* Fila 2: Filtro por estado */}
-        <div className="flex flex-wrap items-center gap-2">
+      {/* Fila 2: Estado + Fase + Vista en la misma línea */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">{t('status')}:</span>
           <Select
             value={statusFilter}
@@ -319,9 +320,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
             </SelectContent>
           </Select>
         </div>
-
-        {/* Fila 3: Filtro por fase */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">{t('phase')}:</span>
           <Select
             value={phaseFilter}
@@ -345,9 +344,7 @@ export function ProjectsListClient({ projects, canEdit, showExport = false }: Pr
             </SelectContent>
           </Select>
         </div>
-
-        {/* Fila 4: Vista tabla / cuadrícula */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">Vista:</span>
           <div className="flex items-center gap-1 rounded-lg border border-border p-1">
             <Button

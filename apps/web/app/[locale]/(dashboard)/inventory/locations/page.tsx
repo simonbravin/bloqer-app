@@ -69,7 +69,7 @@ export default async function LocationsPage() {
           { label: 'Ubicaciones', href: '/inventory/locations' },
         ]}
         actions={
-          <Button asChild variant="accent">
+          <Button asChild variant="default">
             <Link href="/inventory/locations/new">
               <Plus className="mr-2 h-4 w-4" />
               Nueva Ubicación

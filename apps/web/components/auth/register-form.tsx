@@ -250,7 +250,7 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
           )}
         </div>
       </div>
-      <Button type="submit" className="w-full" variant="accent" disabled={isSubmitting}>
+      <Button type="submit" className="w-full" variant="default" disabled={isSubmitting}>
         {isSubmitting ? t('creatingAccount') : t('createAccountButton')}
       </Button>
       <p className="text-center text-sm text-gray-600 dark:text-gray-400">

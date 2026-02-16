@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { formatCurrency } from '@/lib/format-utils'
+import { formatCurrency, formatCurrencyForDisplay } from '@/lib/format-utils'
 import { calculateBudgetLine } from '@/lib/budget-calculations'
 import { useTranslations } from 'next-intl'
 
@@ -182,14 +182,14 @@ export function BudgetLineTable({
                         const b = calculateLineBreakdown(line)
                         return (
                           <>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.directCost)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.overheadAmount)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.subtotal1)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.financialAmount)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.profitAmount)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.subtotal2)}</td>
-                            <td className="text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(b.taxAmount)}</td>
-                            <td className="text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(b.totalPrice)}</td>
+                            <td className="erp-table-cell-currency text-gray-700 dark:text-gray-300">{formatCurrencyForDisplay(b.directCost)}</td>
+                            <td className="erp-table-cell-currency text-gray-700 dark:text-gray-300">{formatCurrencyForDisplay(b.overheadAmount)}</td>
+                            <td className="erp-table-cell-currency text-gray-700 dark:text-gray-300">{formatCurrencyForDisplay(b.subtotal1)}</td>
+                            <td className="erp-table-cell-currency text-gray-700 dark:text-gray-300">{formatCurrencyForDisplay(b.financialAmount)}</td>
+                            <td className="erp-table-cell-currency text-gray-700 dark:text-gray-300">{formatCurrencyForDisplay(b.profitAmount)}</td>
+                            <td className="erp-table-cell-currency text-gray-700 dark:text-gray-300">{formatCurrencyForDisplay(b.subtotal2)}</td>
+                            <td className="erp-table-cell-currency text-gray-700 dark:text-gray-300">{formatCurrencyForDisplay(b.taxAmount)}</td>
+                            <td className="erp-table-cell-currency font-medium text-gray-900 dark:text-white">{formatCurrencyForDisplay(b.totalPrice)}</td>
                           </>
                         )
                       })()
@@ -228,16 +228,16 @@ export function BudgetLineTable({
             <td colSpan={showAdmin ? 12 : 5} className="px-3 py-2 text-right">
               {t('grandTotal', { defaultValue: 'TOTAL GENERAL' })}:
             </td>
-            <td className="px-3 py-2 text-right text-lg tabular-nums text-foreground">
-              {formatCurrency(grandTotal)}
+            <td className="erp-table-cell-currency px-3 py-2 text-right text-lg text-foreground">
+              {formatCurrencyForDisplay(grandTotal)}
             </td>
             {canEdit && <td />}
           </tr>
         </tfoot>
       </table>
       </div>
-      <div className="border-t border-border bg-muted px-3 py-2 text-right font-medium tabular-nums text-foreground">
-        {t('versionTotal')}: {formatCurrency(versionTotal)}
+      <div className="border-t border-border bg-muted px-3 py-2 text-right font-medium tabular-nums text-foreground erp-kpi-value">
+        {t('versionTotal')}: {formatCurrencyForDisplay(versionTotal)}
       </div>
     </div>
   )

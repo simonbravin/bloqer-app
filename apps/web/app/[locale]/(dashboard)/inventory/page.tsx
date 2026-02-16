@@ -2,6 +2,7 @@ import { redirectToLogin } from '@/lib/i18n-redirect'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { prisma } from '@repo/database'
+import { serializeForClient } from '@/lib/utils/serialization'
 import { PageHeader } from '@/components/layout/page-header'
 import { InventoryKPICards } from '@/components/inventory/inventory-kpi-cards'
 import { LowStockAlerts } from '@/components/inventory/low-stock-alerts'
@@ -141,13 +142,7 @@ export default async function InventoryDashboardPage() {
   lowStockRows.sort((a: any, b: any) => a.current_stock - (a.minStockQty ?? 0) - (b.current_stock - (b.minStockQty ?? 0)))
   const lowStockItems = lowStockRows.slice(0, 10)
 
-  const toNumMov = (v: unknown): number =>
-    v == null ? 0 : typeof v === 'number' ? v : (v as { toNumber?: () => number })?.toNumber?.() ?? 0
-  const recentMovementsPlain = recentMovements.map((m: any) => ({
-    ...m,
-    quantity: toNumMov(m.quantity),
-    totalCost: toNumMov(m.totalCost),
-  }))
+  const recentMovementsPlain = recentMovements.map((m) => serializeForClient(m))
 
   return (
     <div className="h-full">

@@ -1,96 +1,70 @@
 import { redirectToLogin } from '@/lib/i18n-redirect'
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { hasMinimumRole } from '@/lib/rbac'
 import { prisma } from '@repo/database'
-import { SupplierSearch } from '@/components/suppliers/supplier-search'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SuppliersPageClient } from '@/components/suppliers/suppliers-page-client'
+import { PageHeader } from '@/components/layout/page-header'
+import { SuppliersKPICards } from '@/components/suppliers/suppliers-kpi-cards'
+import { Button } from '@/components/ui/button'
+import { Building2, Plus } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 
-type PageProps = {
-  searchParams: Promise<{ q?: string; category?: string; tab?: string }>
-}
-
-export default async function SuppliersPage({ searchParams }: PageProps) {
+export default async function SuppliersDashboardPage() {
   const session = await getSession()
   if (!session?.user?.id) return redirectToLogin()
 
   const org = await getOrgContext(session.user.id)
   if (!org) return redirectToLogin()
 
-  const { q, category, tab } = await searchParams
+  const t = await getTranslations('suppliers')
 
-  const linkedSuppliers = await prisma.orgPartyLink.findMany({
-    where: { orgId: org.orgId, status: 'ACTIVE' },
-    include: {
-      globalParty: {
-        select: {
-          id: true,
-          name: true,
-          category: true,
-          verified: true,
-          avgRating: true,
-          countries: true,
-        },
-      },
-    },
-  })
-
-  const localSuppliers = await prisma.party.findMany({
-    where: { orgId: org.orgId, partyType: 'SUPPLIER', active: true },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      city: true,
-    },
-  })
-
-  const globalSearch = q
-    ? await prisma.globalParty.findMany({
-        where: {
-          active: true,
-          OR: [
-            { name: { contains: q, mode: 'insensitive' } },
-            { category: { contains: q, mode: 'insensitive' } },
-          ],
-          ...(category && { category }),
-        },
-        take: 20,
-      })
-    : await prisma.globalParty.findMany({
-        where: { active: true },
-        take: 20,
-        orderBy: [{ verified: 'desc' }, { orgCount: 'desc' }],
-      })
+  const [linkedCount, localCount] = await Promise.all([
+    prisma.orgPartyLink.count({
+      where: { orgId: org.orgId, status: 'ACTIVE' },
+    }),
+    prisma.party.count({
+      where: { orgId: org.orgId, partyType: 'SUPPLIER', active: true },
+    }),
+  ])
 
   const canAddLocal = hasMinimumRole(org.role, 'EDITOR')
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Suppliers
-        </h1>
-        {canAddLocal && (
-          <Link
-            href="/suppliers/local/new"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-          >
-            Add Local Supplier
-          </Link>
-        )}
-      </div>
-
-      <SuppliersPageClient
-        defaultTab={tab || 'linked'}
-        linkedSuppliers={linkedSuppliers}
-        localSuppliers={localSuppliers}
-        globalSearchResults={globalSearch}
-        canAddLocal={canAddLocal}
+    <div className="h-full">
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        actions={
+          <div className="flex gap-2">
+            {canAddLocal && (
+              <Button asChild variant="default">
+                <Link href="/suppliers/local/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('addLocalSupplier')}
+                </Link>
+              </Button>
+            )}
+          </div>
+        }
       />
+
+      <div className="space-y-6 p-6">
+        <SuppliersKPICards totalLinked={linkedCount} totalLocal={localCount} />
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Link
+            href="/suppliers/list"
+            className="flex items-center gap-4 rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/50"
+          >
+            <Building2 className="h-8 w-8 text-primary" />
+            <div>
+              <h3 className="font-semibold">{t('viewSuppliers')}</h3>
+              <p className="text-sm text-muted-foreground">{t('viewSuppliersDesc')}</p>
+            </div>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

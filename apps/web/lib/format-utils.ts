@@ -84,6 +84,27 @@ export function formatCurrencyCompact(
   }).format(amount)
 }
 
+/** Threshold above which we use compact format in KPIs/cards to avoid layout overflow */
+const DISPLAY_CURRENCY_COMPACT_THRESHOLD = 1_000_000
+
+/**
+ * Currency for display in KPIs and cards. Uses compact notation (e.g. $1,75M) when
+ * |amount| >= threshold to avoid very long numbers breaking layout. Use formatCurrency
+ * for exports and when full value is required.
+ */
+export function formatCurrencyForDisplay(
+  amount: number,
+  currency: string = 'ARS',
+  locale: string = 'es-AR',
+  options?: { compactThreshold?: number; forceCompact?: boolean }
+): string {
+  const threshold = options?.compactThreshold ?? DISPLAY_CURRENCY_COMPACT_THRESHOLD
+  if (options?.forceCompact || Math.abs(amount) >= threshold) {
+    return formatCurrencyCompact(amount, locale, currency)
+  }
+  return formatCurrency(amount, currency, locale)
+}
+
 /**
  * Date formatting
  */
@@ -115,4 +136,22 @@ export function formatDateTime(date: Date | string | null, locale = 'es-AR'): st
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(d)
+}
+
+/**
+ * Relative time for notifications (e.g. "Hace 5 min", "Ayer", "14/02")
+ */
+export function formatRelativeTime(date: Date | string, locale = 'es-AR'): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMins = Math.floor(diffMs / 60_000)
+  const diffHours = Math.floor(diffMs / 3600_000)
+  const diffDays = Math.floor(diffMs / 86400_000)
+  if (diffMins < 1) return locale.startsWith('es') ? 'Ahora' : 'Now'
+  if (diffMins < 60) return locale.startsWith('es') ? `Hace ${diffMins} min` : `${diffMins} min ago`
+  if (diffHours < 24) return locale.startsWith('es') ? `Hace ${diffHours} h` : `${diffHours}h ago`
+  if (diffDays === 1) return locale.startsWith('es') ? 'Ayer' : 'Yesterday'
+  if (diffDays < 7) return locale.startsWith('es') ? `Hace ${diffDays} días` : `${diffDays} days ago`
+  return new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit' }).format(d)
 }

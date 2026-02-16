@@ -142,7 +142,7 @@ export function BudgetLinesClient({
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{t('importFrom')}:</span>
                 <select
-                  className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                  className="rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
                   value=""
                   onChange={(e) => {
                     const id = e.target.value

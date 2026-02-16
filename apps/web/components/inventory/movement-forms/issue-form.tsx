@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
@@ -58,6 +59,7 @@ export function IssueForm({
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     setValue,
@@ -175,7 +177,7 @@ export function IssueForm({
                 const item = items.find((i) => i.id === e.target.value)
                 setSelectedItem(item)
               }}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Seleccionar item...</option>
               {items.map((item) => (
@@ -194,7 +196,7 @@ export function IssueForm({
             <select
               id="fromLocationId"
               {...register('fromLocationId')}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Seleccionar ubicación...</option>
               {locations.map((loc) => (
@@ -250,13 +252,17 @@ export function IssueForm({
 
             <div>
               <Label htmlFor="unitCost">Costo unitario (ARS) *</Label>
-              <Input
-                id="unitCost"
-                type="number"
-                step="0.01"
-                placeholder="1500.00"
-                {...register('unitCost', { valueAsNumber: true })}
-                className="mt-1"
+              <Controller
+                name="unitCost"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="unitCost"
+                    value={field.value ?? null}
+                    onChange={field.onChange}
+                    className="mt-1"
+                  />
+                )}
               />
               {errors.unitCost && (
                 <p className="mt-1 text-xs text-destructive">{errors.unitCost.message}</p>
@@ -278,7 +284,7 @@ export function IssueForm({
             <select
               id="projectId"
               {...register('projectId')}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             >
               <option value="">Seleccionar proyecto...</option>
               {projects.map((project) => (
@@ -302,7 +308,7 @@ export function IssueForm({
                   const node = wbsNodes.find((n) => n.id === e.target.value)
                   setSelectedWBS(node)
                 }}
-                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
                 disabled={isLoadingWBS}
               >
                 <option value="">Seleccionar partida...</option>
@@ -328,7 +334,7 @@ export function IssueForm({
               {...register('notes')}
               rows={3}
               placeholder="Motivo del consumo, actividad..."
-              className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1 flex w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
             />
           </div>
         </div>
@@ -375,7 +381,7 @@ export function IssueForm({
         </Button>
         <Button
           type="submit"
-          variant="accent"
+          variant="default"
           disabled={isSubmitting || hasInsufficientStock}
         >
           {isSubmitting ? 'Registrando...' : 'Registrar Consumo'}

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createResourceSchema,
@@ -140,12 +140,17 @@ export function ResourceForm({
         </div>
         <div>
           <Label htmlFor="unitCost">Unit cost</Label>
-          <Input
-            id="unitCost"
-            type="number"
-            step="0.01"
-            {...register('unitCost')}
-            className="mt-1"
+          <Controller
+            name="unitCost"
+            control={control}
+            render={({ field }) => (
+              <CurrencyInput
+                id="unitCost"
+                value={field.value ?? null}
+                onChange={field.onChange}
+                className="mt-1"
+              />
+            )}
           />
           {errors.unitCost && (
             <p className="mt-1 text-sm text-destructive">{errors.unitCost.message}</p>

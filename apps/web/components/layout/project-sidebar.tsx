@@ -18,6 +18,8 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
+  Building2,
+  Package,
 } from 'lucide-react'
 
 interface ProjectSidebarProps {
@@ -91,6 +93,11 @@ export function ProjectSidebar({ projectId, orgName = 'Bloqer', orgLogoUrl }: Pr
       ],
     },
     {
+      name: t('inventory', { defaultValue: 'Inventario' }),
+      href: `/projects/${projectId}/inventory`,
+      icon: Package,
+    },
+    {
       name: t('certifications'),
       href: `/projects/${projectId}/certifications`,
       icon: FileCheck,
@@ -129,6 +136,11 @@ export function ProjectSidebar({ projectId, orgName = 'Bloqer', orgLogoUrl }: Pr
       name: t('documents'),
       href: `/projects/${projectId}/documents`,
       icon: FileText,
+    },
+    {
+      name: t('projectSuppliers'),
+      href: `/projects/${projectId}/suppliers`,
+      icon: Building2,
     },
   ], [projectId, t])
 

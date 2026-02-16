@@ -41,10 +41,10 @@ export default async function GlobalSupplierDetailPage({ params }: PageProps) {
     <div className="p-6">
       <div className="mb-6 flex items-center gap-4">
         <Link
-          href="/suppliers"
-          className="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          href="/suppliers/list"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          ← Suppliers
+          ← Proveedores
         </Link>
       </div>
 

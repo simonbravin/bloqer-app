@@ -452,6 +452,16 @@
     @apply px-4 py-3 font-mono tabular-nums text-right text-sm;
   }
 
+  /* Currency columns: no wrap, min width so long numbers stay on one line */
+  .erp-table-cell-currency {
+    @apply px-4 py-3 font-mono tabular-nums text-right text-sm whitespace-nowrap min-w-[120px];
+  }
+
+  /* KPI value container: allow shrink and single line so long numbers don't break layout */
+  .erp-kpi-value {
+    @apply min-w-0 overflow-hidden whitespace-nowrap;
+  }
+
   /* Compact table variant (denser ERP tables; add class to table wrapper) */
   .erp-table-compact th,
   .erp-table-compact td {
@@ -640,7 +650,7 @@
   }
 
   .erp-input-surface {
-    @apply border border-input bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply border border-input bg-card dark:bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 
   .erp-page-title {

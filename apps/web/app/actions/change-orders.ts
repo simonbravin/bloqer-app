@@ -437,12 +437,12 @@ export async function updateChangeOrder(coId: string, data: UpdateChangeOrderInp
 }
 
 export async function submitForApproval(coId: string) {
-  const { org } = await getAuthContext()
+  const { session, org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
   const co = await prisma.changeOrder.findFirst({
     where: { id: coId, orgId: org.orgId },
-    select: { id: true, projectId: true, status: true },
+    select: { id: true, projectId: true, status: true, number: true, title: true },
   })
   if (!co) return { error: 'Change order not found' }
   if (co.status !== 'DRAFT' && co.status !== 'CHANGES_REQUESTED') {
@@ -453,6 +453,23 @@ export async function submitForApproval(coId: string) {
     where: { id: coId },
     data: { status: 'SUBMITTED' },
   })
+
+  const admins = await prisma.orgMember.findMany({
+    where: { orgId: org.orgId, active: true, role: { in: ['ADMIN', 'OWNER'] } },
+    select: { userId: true },
+  })
+  const adminUserIds = admins.map((a) => a.userId).filter((id) => id !== session.user.id)
+  if (adminUserIds.length > 0) {
+    const { createInAppNotificationsForUsers } = await import('@/app/actions/notifications')
+    await createInAppNotificationsForUsers(adminUserIds, {
+      orgId: org.orgId,
+      actorUserId: session.user.id,
+      category: 'APPROVAL_REQUEST',
+      title: 'Orden de cambio pendiente de aprobación',
+      message: `Orden de cambio #${co.number}: ${co.title ?? 'Sin título'}`,
+      metadata: { link: `/projects/${co.projectId}/change-orders/${coId}` },
+    })
+  }
 
   revalidatePath(`/projects/${co.projectId}/change-orders`)
   revalidatePath(`/projects/${co.projectId}/change-orders/${coId}`)

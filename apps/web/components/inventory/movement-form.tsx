@@ -226,15 +226,18 @@ export function MovementForm({
         </div>
         <div>
           <Label htmlFor="unitCost">Unit cost</Label>
-          <Input
-            id="unitCost"
-            name="unitCost"
-            type="number"
-            min={0}
-            step="0.01"
-            required
-            className="mt-1"
-          />
+          <div className="mt-1 flex items-center rounded-md border border-input bg-card dark:bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+            <span className="pl-3 text-muted-foreground">$</span>
+            <Input
+              id="unitCost"
+              name="unitCost"
+              type="number"
+              min={0}
+              step="0.01"
+              required
+              className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+          </div>
         </div>
       </div>
 

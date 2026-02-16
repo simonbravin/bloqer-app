@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { formatCurrency } from '@/lib/format-utils'
+import { formatCurrencyForDisplay } from '@/lib/format-utils'
 import { Package, AlertTriangle, DollarSign, Activity } from 'lucide-react'
 
 interface InventoryKPICardsProps {
@@ -52,9 +52,9 @@ export function InventoryKPICards({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <DollarSign className="h-5 w-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground">Valor inventario</p>
-            <p className="text-2xl font-semibold tabular-nums">{formatCurrency(totalValue)}</p>
+            <p className="text-2xl font-semibold tabular-nums erp-kpi-value">{formatCurrencyForDisplay(totalValue)}</p>
           </div>
         </CardContent>
       </Card>

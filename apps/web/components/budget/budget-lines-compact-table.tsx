@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { formatCurrency, formatNumber } from '@/lib/format-utils'
+import { formatCurrency, formatCurrencyForDisplay, formatNumber } from '@/lib/format-utils'
 import {
   Table,
   TableBody,
@@ -228,9 +228,9 @@ export function BudgetLinesCompactTable({
           </TableCell>
           <TableCell className="px-2 py-1" />
           <TableCell className="px-2 py-1" />
-          <TableCell className="px-2 py-1 text-right">
-            <span className="font-mono text-xs font-semibold tabular-nums">
-              {formatCurrency(nodeTotal)}
+          <TableCell className="erp-table-cell-currency px-2 py-1">
+            <span className="font-mono text-xs font-semibold">
+              {formatCurrencyForDisplay(nodeTotal)}
             </span>
           </TableCell>
           <TableCell className="px-2 py-1">
@@ -374,8 +374,8 @@ export function BudgetLinesCompactTable({
                   <TableCell colSpan={3} className="px-2 py-1 text-right text-xs">
                     {t('grandTotal')}:
                   </TableCell>
-                  <TableCell className="px-2 py-1 text-right text-sm">
-                    {formatCurrency(grandTotal)}
+                  <TableCell className="erp-table-cell-currency px-2 py-1 text-sm">
+                    {formatCurrencyForDisplay(grandTotal)}
                   </TableCell>
                   <TableCell className="px-2 py-1" />
                 </TableRow>

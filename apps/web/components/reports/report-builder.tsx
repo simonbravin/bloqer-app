@@ -139,7 +139,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+          className="mt-1 block w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
         />
       </div>
       <div>
@@ -155,7 +155,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
               )
             )
           }}
-          className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+          className="mt-1 block h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
         >
           {ENTITY_TYPES.map((e) => (
             <option key={e.value} value={e.value}>
@@ -196,7 +196,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
             id="sortKey"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value)}
-            className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+            className="mt-1 block h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="">Default</option>
             {columns.map((col) => (
@@ -212,7 +212,7 @@ export function ReportBuilder({ projects = [] }: ReportBuilderProps) {
             id="sortDir"
             value={sortDir}
             onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-            className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+            className="mt-1 block h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="asc">Ascending</option>
             <option value="desc">Descending</option>

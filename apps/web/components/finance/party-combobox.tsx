@@ -56,7 +56,7 @@ export function PartyCombobox({
     <div className="space-y-2" ref={containerRef}>
       <Label htmlFor={id}>{label}</Label>
       <div className="relative">
-        <div className="flex rounded-md border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+        <div className="flex rounded-md border border-input bg-card dark:bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
           <Input
             id={id}
             value={open ? search : (selected?.name ?? '')}

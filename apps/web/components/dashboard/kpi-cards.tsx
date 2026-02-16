@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { formatCurrency } from '@/lib/format-utils'
+import { formatCurrency, formatCurrencyForDisplay } from '@/lib/format-utils'
 import { FolderKanban, DollarSign, FileCheck, TrendingDown } from 'lucide-react'
 import type { KPIs } from '@/app/actions/dashboard'
 
@@ -51,11 +51,11 @@ export function KPICards({ kpis }: KPICardsProps) {
       {cards.map((card) => (
         <div key={card.title} className="erp-card p-6 erp-transition-colors hover:shadow-[var(--shadow-card-hover)]">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
-              <p className="mt-2 text-3xl font-semibold text-foreground">
+              <p className="mt-2 text-3xl font-semibold text-foreground erp-kpi-value">
                 {card.format === 'currency'
-                  ? formatCurrency(card.value)
+                  ? formatCurrencyForDisplay(card.value)
                   : card.value.toLocaleString('es-AR')}
               </p>
             </div>

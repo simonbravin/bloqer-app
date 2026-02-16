@@ -21,7 +21,7 @@ export default async function NewItemPage() {
     <div className="h-full">
       <PageHeader
         title="Nuevo Item de Inventario"
-        subtitle="Registra un nuevo material, equipo o insumo"
+        subtitle="Registra un nuevo material, equipo o insumo. Después de crear el item podrás registrar compras o ajustes para dar de alta el stock."
         breadcrumbs={[
           { label: 'Inventario', href: '/inventory' },
           { label: 'Items', href: '/inventory/items' },

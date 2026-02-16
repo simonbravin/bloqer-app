@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency } from '@/lib/format-utils'
+import { formatCurrency, formatCurrencyForDisplay } from '@/lib/format-utils'
 import { TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from 'lucide-react'
 
 interface CompanyFinanceKPICardsProps {
@@ -66,8 +66,8 @@ export function CompanyFinanceKPICards({ data }: CompanyFinanceKPICardsProps) {
             <card.icon className={`h-4 w-4 ${variantClasses[card.variant]}`} />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${card.value >= 0 ? variantClasses.success : variantClasses.destructive}`}>
-              {formatCurrency(card.value, 'ARS')}
+            <div className={`text-2xl font-bold erp-kpi-value min-w-0 ${card.value >= 0 ? variantClasses.success : variantClasses.destructive}`}>
+              {formatCurrencyForDisplay(card.value, 'ARS')}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {card.description}

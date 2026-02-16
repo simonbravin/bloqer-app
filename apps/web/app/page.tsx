@@ -15,7 +15,7 @@ export default function HomePage() {
           </p>
 
           <div className="flex justify-center gap-4 pt-6">
-            <Button asChild size="lg" variant="accent">
+            <Button asChild size="lg" variant="default">
               <Link href="/login">Iniciar Sesión</Link>
             </Button>
             <Button asChild size="lg" variant="secondary">

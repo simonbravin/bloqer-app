@@ -231,5 +231,48 @@ export async function createLocalSupplier(data: {
   })
 
   revalidatePath('/suppliers')
+  revalidatePath('/suppliers/list')
   return { success: true, partyId: party.id }
+}
+
+export async function updateLocalSupplier(
+  partyId: string,
+  data: {
+    name?: string
+    taxId?: string
+    email?: string
+    phone?: string
+    address?: string
+    city?: string
+    country?: string
+    website?: string
+  }
+) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'EDITOR')
+
+  const party = await prisma.party.findFirst({
+    where: { id: partyId, orgId: org.orgId, partyType: 'SUPPLIER' },
+  })
+  if (!party) throw new Error('Supplier not found')
+
+  await prisma.party.update({
+    where: { id: partyId },
+    data: {
+      ...(data.name != null && { name: data.name }),
+      ...(data.taxId !== undefined && { taxId: data.taxId || null }),
+      ...(data.email !== undefined && { email: data.email || null }),
+      ...(data.phone !== undefined && { phone: data.phone || null }),
+      ...(data.address !== undefined && { address: data.address || null }),
+      ...(data.city !== undefined && { city: data.city || null }),
+      ...(data.country !== undefined && { country: data.country || null }),
+      ...(data.website !== undefined && { website: data.website || null }),
+    },
+  })
+
+  revalidatePath('/suppliers')
+  revalidatePath('/suppliers/list')
+  revalidatePath(`/suppliers/local/${partyId}`)
+  revalidatePath(`/suppliers/local/${partyId}/edit`)
+  return { success: true }
 }

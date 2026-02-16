@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency } from '@/lib/format-utils'
+import { formatCurrency, formatCurrencyForDisplay } from '@/lib/format-utils'
 import { ArrowUpIcon, ArrowDownIcon, TrendingUpIcon, AlertCircleIcon } from 'lucide-react'
 
 export interface CashflowKPIs {
@@ -71,7 +71,7 @@ export function CashflowKPICards({ kpis }: Props) {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold tabular-nums ${
+              className={`text-2xl font-bold tabular-nums erp-kpi-value min-w-0 ${
                 card.variant === 'success'
                   ? 'text-green-600 dark:text-green-500'
                   : card.variant === 'destructive'
@@ -79,7 +79,7 @@ export function CashflowKPICards({ kpis }: Props) {
                     : ''
               }`}
             >
-              {formatCurrency(card.value)}
+              {formatCurrencyForDisplay(card.value)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{card.description}</p>
           </CardContent>

@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -37,7 +38,7 @@ import {
   getBudgetLineWithResources,
 } from '@/app/actions/budget'
 import { toast } from 'sonner'
-import { formatCurrency, formatNumber } from '@/lib/format-utils'
+import { formatCurrency, formatCurrencyForDisplay, formatNumber } from '@/lib/format-utils'
 import { RESOURCE_TYPES } from '@/lib/constants/budget'
 import { Plus, Trash2, Save, Loader2 } from 'lucide-react'
 
@@ -239,29 +240,29 @@ export function APUEditorDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-4 gap-4 rounded-lg border border-border bg-muted/30 p-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground">{t('materials', { defaultValue: 'Materiales' })}</p>
-            <p className="mt-1 text-xl font-semibold text-blue-600 dark:text-blue-400">
-              {formatCurrency(totals.materials)}
+            <p className="mt-1 text-xl font-semibold text-blue-600 dark:text-blue-400 erp-kpi-value">
+              {formatCurrencyForDisplay(totals.materials)}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground">{t('labor', { defaultValue: 'Mano de obra' })}</p>
-            <p className="mt-1 text-xl font-semibold text-green-600 dark:text-green-400">
-              {formatCurrency(totals.labor)}
+            <p className="mt-1 text-xl font-semibold text-green-600 dark:text-green-400 erp-kpi-value">
+              {formatCurrencyForDisplay(totals.labor)}
             </p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground">{t('equipment', { defaultValue: 'Equipos' })}</p>
-            <p className="mt-1 text-xl font-semibold text-orange-600 dark:text-orange-400">
-              {formatCurrency(totals.equipment)}
+            <p className="mt-1 text-xl font-semibold text-orange-600 dark:text-orange-400 erp-kpi-value">
+              {formatCurrencyForDisplay(totals.equipment)}
             </p>
           </div>
-          <div className="border-l-2 border-border pl-4">
+          <div className="min-w-0 border-l-2 border-border pl-4">
             <p className="text-sm font-medium text-muted-foreground">{t('directCostUnit', { defaultValue: 'Costo directo/u' })}</p>
-            <p className="mt-1 text-xl font-bold">{formatCurrency(totals.total)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t('projectTotal', { defaultValue: 'Total proyecto' })}: {formatCurrency(projectTotal)}{' '}
+            <p className="mt-1 text-xl font-bold erp-kpi-value">{formatCurrencyForDisplay(totals.total)}</p>
+            <p className="mt-1 text-xs text-muted-foreground erp-kpi-value">
+              {t('projectTotal', { defaultValue: 'Total proyecto' })}: {formatCurrencyForDisplay(projectTotal)}{' '}
               <span className="ml-1">
                 ({formatNumber(budgetLine.quantity)} {budgetLine.unit})
               </span>
@@ -558,12 +559,9 @@ function AddResourceForm({
           />
         </div>
         <div className="col-span-2">
-          <Input
-            type="number"
-            step="0.01"
-            placeholder={t('unitCost', { defaultValue: 'Costo u.' })}
-            value={resource.unitCost}
-            onChange={(e) => onChange({ ...resource, unitCost: e.target.value })}
+          <CurrencyInput
+            value={resource.unitCost === '' ? null : parseFloat(resource.unitCost) || 0}
+            onChange={(v) => onChange({ ...resource, unitCost: v != null ? String(v) : '0' })}
             disabled={isPending}
           />
         </div>

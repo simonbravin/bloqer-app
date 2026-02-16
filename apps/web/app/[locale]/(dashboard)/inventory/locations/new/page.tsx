@@ -1,9 +1,9 @@
 import { redirectToLogin } from '@/lib/i18n-redirect'
-import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
 import { prisma } from '@repo/database'
+import { PageHeader } from '@/components/layout/page-header'
 import { LocationForm } from '@/components/inventory/location-form'
 
 export default async function NewLocationPage() {
@@ -22,19 +22,22 @@ export default async function NewLocationPage() {
   })
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <Link
-          href="/inventory/locations"
-          className="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-        >
-          ← Locations
-        </Link>
+    <div className="h-full">
+      <PageHeader
+        title="Nueva Ubicación"
+        subtitle="Registra un almacén, obra o punto de entrega"
+        breadcrumbs={[
+          { label: 'Inventario', href: '/inventory' },
+          { label: 'Ubicaciones', href: '/inventory/locations' },
+          { label: 'Nueva' },
+        ]}
+      />
+
+      <div className="p-6">
+        <div className="mx-auto max-w-5xl">
+          <LocationForm projects={projects} />
+        </div>
       </div>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-        New location
-      </h1>
-      <LocationForm projects={projects} />
     </div>
   )
 }

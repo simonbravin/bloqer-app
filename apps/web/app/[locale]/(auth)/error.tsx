@@ -30,7 +30,7 @@ export default function AuthError({
           <Button variant="outline" onClick={reset}>
             Reintentar
           </Button>
-          <Button variant="accent" onClick={() => router.push('/login')}>
+          <Button variant="default" onClick={() => router.push('/login')}>
             Ir a Iniciar sesión
           </Button>
         </div>

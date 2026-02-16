@@ -3,6 +3,7 @@ import { getOrgContext } from '@/lib/org-context'
 import { redirectToLogin } from '@/lib/i18n-redirect'
 import { notFound } from 'next/navigation'
 import { prisma } from '@repo/database'
+import { serializeForClient } from '@/lib/utils/serialization'
 import { PageHeader } from '@/components/layout/page-header'
 import { ItemDetailInfo } from '@/components/inventory/item-detail-info'
 import { ItemStockByLocation } from '@/components/inventory/item-stock-by-location'
@@ -65,11 +66,13 @@ export default async function ItemDetailPage({ params }: PageProps) {
     stock: Number(s.balance.toString()),
   }))
 
+  const itemPlain = serializeForClient(item)
   const itemWithStock = {
-    ...item,
+    ...itemPlain,
     current_stock: currentStock,
-    last_purchase_cost: lastPurchase?.unitCost ?? null,
+    last_purchase_cost: lastPurchase?.unitCost != null ? Number(lastPurchase.unitCost.toString()) : null,
   }
+  const movementsPlain = movements.map((m) => serializeForClient(m))
 
   return (
     <div className="h-full">
@@ -90,19 +93,25 @@ export default async function ItemDetailPage({ params }: PageProps) {
               </Link>
             </Button>
 
-            <Button variant="outline" size="sm">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Comprar
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/inventory/movements/new?type=PURCHASE&itemId=${id}`}>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Comprar
+              </Link>
             </Button>
 
-            <Button variant="outline" size="sm">
-              <ArrowRightLeft className="mr-2 h-4 w-4" />
-              Transferir
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/inventory/movements/new?type=TRANSFER&itemId=${id}`}>
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                Transferir
+              </Link>
             </Button>
 
-            <Button variant="outline" size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Ajustar
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/inventory/movements/new?type=ADJUSTMENT&itemId=${id}`}>
+                <Plus className="mr-2 h-4 w-4" />
+                Ajustar
+              </Link>
             </Button>
           </div>
         }
@@ -117,7 +126,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
           unit={item.unit}
         />
 
-        <ItemMovementsHistory movements={movements} unit={item.unit} />
+        <ItemMovementsHistory movements={movementsPlain} unit={item.unit} />
       </div>
     </div>
   )

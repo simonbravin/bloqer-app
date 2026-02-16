@@ -520,6 +520,102 @@ export async function exportMaterialsBySupplierToExcel(
 }
 
 /**
+ * Exportar todos los materiales agrupados por proveedor (totalidad) a Excel
+ */
+export async function exportAllMaterialsBySupplierToExcel(
+  budgetVersionId: string,
+  selectedColumns: string[]
+) {
+  const session = await getSession()
+  if (!session?.user?.id) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) return { success: false, error: 'Unauthorized' }
+
+  const orgData = await getOrganizationData(org.orgId)
+
+  try {
+    const { getMaterialsBySupplier } = await import('./materials')
+    const bySupplier = await getMaterialsBySupplier(budgetVersionId)
+
+    const version = await prisma.budgetVersion.findFirst({
+      where: { id: budgetVersionId, orgId: org.orgId },
+      include: { project: true },
+    })
+    if (!version) return { success: false, error: 'Versión no encontrada' }
+
+    const data: Array<{
+      supplier: string
+      name: string
+      unit: string
+      quantity: number
+      unitCost: number
+      totalCost: number
+    }> = []
+    for (const s of bySupplier) {
+      for (const m of s.materials) {
+        data.push({
+          supplier: s.supplierName,
+          name: m.name,
+          unit: m.unit,
+          quantity: m.quantity,
+          unitCost: m.unitCost,
+          totalCost: m.totalCost,
+        })
+      }
+    }
+
+    const allColumns = [
+      { field: 'supplier', label: 'Proveedor', type: 'text' as const, width: 28 },
+      { field: 'name', label: 'Material', type: 'text' as const, width: 30 },
+      { field: 'unit', label: 'Unidad', type: 'text' as const, width: 10 },
+      { field: 'quantity', label: 'Cantidad', type: 'number' as const, width: 15, align: 'right' as const },
+      { field: 'unitCost', label: 'Costo Unitario', type: 'currency' as const, width: 18, align: 'right' as const },
+      { field: 'totalCost', label: 'Costo Total', type: 'currency' as const, width: 18, align: 'right' as const },
+    ]
+
+    const columns = allColumns.map((col) => ({
+      ...col,
+      visible: selectedColumns.includes(col.field),
+    }))
+
+    const config: ExcelConfig = {
+      title: 'MATERIALES AGRUPADOS POR PROVEEDOR',
+      subtitle: `${version.project.name} - Totalidad`,
+      includeCompanyHeader: true,
+      project: {
+        name: version.project.name,
+        number: version.project.projectNumber,
+        client: version.project.clientName ?? undefined,
+      },
+      metadata: {
+        date: new Date(),
+        generatedBy: orgData?.legalName ?? orgData?.name ?? 'Sistema',
+      },
+      columns,
+      data,
+      sheetName: 'Materiales por proveedor',
+      freezeHeader: true,
+      autoFilter: true,
+    }
+
+    const buffer = await exportToExcel(config)
+    const base64 = buffer.toString('base64')
+
+    return {
+      success: true,
+      data: base64,
+      filename: `materiales_por_proveedor_total_${Date.now()}.xlsx`,
+    }
+  } catch (error) {
+    console.error('Error exporting all materials by supplier:', error)
+    return { success: false, error: 'Error al exportar materiales por proveedor' }
+  }
+}
+
+/**
  * Exportar lista de proyectos
  */
 export async function exportProjectsToExcel(selectedColumns: string[]) {

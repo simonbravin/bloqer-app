@@ -1,12 +1,13 @@
 'use client'
 
-import { useForm, FormProvider } from 'react-hook-form'
+import { useForm, FormProvider, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createBudgetLineSchema,
   type CreateBudgetLineInput,
 } from '@repo/validators'
 import { Button } from '@/components/ui/button'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ResourceSelector } from '@/components/resources/resource-selector'
@@ -121,7 +122,18 @@ export function BudgetLineForm({
         </div>
         <div className="w-28">
           <Label htmlFor="line-unitcost">Unit cost</Label>
-          <Input id="line-unitcost" type="number" step="0.01" {...register('unitCost')} className="mt-1" />
+          <Controller
+            name="unitCost"
+            control={control}
+            render={({ field }) => (
+              <CurrencyInput
+                id="line-unitcost"
+                value={field.value ?? null}
+                onChange={field.onChange}
+                className="mt-1"
+              />
+            )}
+          />
           {errors.unitCost && (
             <p className="mt-1 text-xs text-destructive">{errors.unitCost.message}</p>
           )}

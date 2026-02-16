@@ -150,7 +150,8 @@ export function MovementWizard({
       {selectedType === 'PURCHASE' && (
         <PurchaseForm
           items={items}
-          locations={locations.filter((l) => l.type === 'CENTRAL_WAREHOUSE')}
+          locations={locations}
+          projects={projects}
           suppliers={suppliers}
           initialItemId={initialItemId}
         />

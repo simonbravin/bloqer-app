@@ -259,12 +259,12 @@ export async function setBudgetBaseline(versionId: string) {
 /** Mark version as APPROVED (read-only). */
 export async function approveBudgetVersion(versionId: string) {
   await requirePermission('BUDGET', 'approve')
-  const { org } = await getAuthContext()
+  const { session, org } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
   const version = await prisma.budgetVersion.findFirst({
     where: { id: versionId, orgId: org.orgId },
-    select: { id: true, projectId: true },
+    select: { id: true, projectId: true, versionCode: true, createdByOrgMemberId: true },
   })
   if (!version) return { error: 'Version not found' }
 
@@ -285,6 +285,25 @@ export async function approveBudgetVersion(versionId: string) {
       payload: { projectId: version.projectId },
     })
   })
+
+  if (version.createdByOrgMemberId && version.createdByOrgMemberId !== org.memberId) {
+    const creator = await prisma.orgMember.findUnique({
+      where: { id: version.createdByOrgMemberId },
+      select: { userId: true },
+    })
+    if (creator) {
+      const { createInAppNotification } = await import('@/app/actions/notifications')
+      await createInAppNotification({
+        orgId: org.orgId,
+        userId: creator.userId,
+        actorUserId: session.user.id,
+        category: 'BUDGET_APPROVED',
+        title: 'Presupuesto aprobado',
+        message: `Versión ${version.versionCode} fue aprobada.`,
+        metadata: { link: `/projects/${version.projectId}/budget/${versionId}` },
+      })
+    }
+  }
 
   revalidatePath(`/projects/${version.projectId}/budget`)
   revalidatePath(`/projects/${version.projectId}/budget/${versionId}`)

@@ -80,7 +80,7 @@ export function ItemsListClient({ items, categories }: ItemsListClientProps) {
           <select
             value={selectedCategoryId}
             onChange={(e) => setSelectedCategoryId(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
           >
             <option value="">Todas</option>
             {categories.map((cat) => (
@@ -96,7 +96,7 @@ export function ItemsListClient({ items, categories }: ItemsListClientProps) {
           <select
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="flex h-10 w-full rounded-md border border-input bg-card dark:bg-background px-3 py-2 text-sm"
           >
             <option value="">Todos</option>
             <option value="ok">Stock OK</option>

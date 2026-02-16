@@ -92,6 +92,7 @@ export function OrganizationSettingsForm({
       const result = await updateOrganization(data)
       if (result.success) {
         toast.success(t('organizationUpdated'))
+        router.refresh()
       } else {
         toast.error(result.error || t('errorUpdating'))
       }
@@ -252,11 +253,14 @@ export function OrganizationSettingsForm({
             <Label htmlFor="website">{t('website')}</Label>
             <Input
               id="website"
-              type="url"
+              type="text"
               {...register('website')}
-              placeholder="https://ejemplo.com"
+              placeholder="ejemplo.com o https://ejemplo.com"
               className="mt-1 w-full"
             />
+            {errors.website && (
+              <p className="mt-1 text-sm text-destructive">{errors.website.message}</p>
+            )}
           </div>
         </div>
         <div>

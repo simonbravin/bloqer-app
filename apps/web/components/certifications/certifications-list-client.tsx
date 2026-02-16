@@ -113,7 +113,7 @@ export function CertificationsListClient({
               id="status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              className="rounded-md border border-input bg-card dark:bg-background px-2 py-1 text-sm"
             >
               <option value="">{tCommon('all')}</option>
               {STATUS_OPTIONS.filter(Boolean).map((s) => (
@@ -131,7 +131,7 @@ export function CertificationsListClient({
               id="period-year"
               value={periodYearFilter}
               onChange={(e) => setPeriodYearFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              className="rounded-md border border-input bg-card dark:bg-background px-2 py-1 text-sm"
             >
               <option value="">Todos</option>
               {years.map((y) => (
@@ -147,7 +147,7 @@ export function CertificationsListClient({
               id="period-month"
               value={periodMonthFilter}
               onChange={(e) => setPeriodMonthFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              className="rounded-md border border-input bg-card dark:bg-background px-2 py-1 text-sm"
             >
               {months.map((m) => (
                 <option key={m.value || 'all'} value={m.value}>{m.label}</option>
@@ -162,7 +162,7 @@ export function CertificationsListClient({
               id="sort-order"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              className="rounded-md border border-input bg-card dark:bg-background px-2 py-1 text-sm"
             >
               <option value="period-desc">Período (más reciente primero)</option>
               <option value="period-asc">Período (más antiguo primero)</option>

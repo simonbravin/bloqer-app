@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/rbac'
 import { requirePermission, getAuthContext } from '@/lib/auth-helpers'
 import { publishOutboxEvent } from '@/lib/events/event-publisher'
 import { calculateTotalStock, calculateStockBalance } from '@/lib/inventory-utils'
+import { createInAppNotificationsForUsers } from '@/app/actions/notifications'
 
 /** List all inventory categories (for dropdowns). */
 export async function getInventoryCategories() {
@@ -319,6 +320,101 @@ export async function createInventoryMovement(data: {
 
   const totalCost = new Prisma.Decimal(data.quantity).mul(data.unitCost)
 
+  // PURCHASE: always create FinanceTransaction (company expense; projectId optional for project allocation)
+  if (data.movementType === 'PURCHASE') {
+    const purchaseMovement = await prisma.$transaction(async (tx) => {
+      const mov = await tx.inventoryMovement.create({
+        data: {
+          orgId: org.orgId,
+          itemId: data.itemId,
+          movementType: data.movementType,
+          fromLocationId: undefined,
+          toLocationId: data.toLocationId ?? undefined,
+          projectId: data.projectId ?? undefined,
+          wbsNodeId: data.wbsNodeId ?? undefined,
+          quantity: new Prisma.Decimal(data.quantity),
+          unitCost: new Prisma.Decimal(data.unitCost),
+          totalCost,
+          notes: data.notes,
+          idempotencyKey: data.idempotencyKey,
+          createdByOrgMemberId: org.memberId,
+        },
+      })
+
+      const year = new Date().getFullYear()
+      const yearStart = new Date(year, 0, 1)
+      const yearEnd = new Date(year + 1, 0, 1)
+      const count = await tx.financeTransaction.count({
+        where: {
+          orgId: org.orgId,
+          type: 'PURCHASE',
+          issueDate: { gte: yearStart, lt: yearEnd },
+          deleted: false,
+        },
+      })
+      const transactionNumber = `PUR-${year}-${(count + 1).toString().padStart(3, '0')}`
+
+      const totalAmount = Number(totalCost.toString())
+      const financeTx = await tx.financeTransaction.create({
+        data: {
+          orgId: org.orgId,
+          projectId: data.projectId ?? undefined,
+          type: 'PURCHASE',
+          status: 'POSTED',
+          transactionNumber,
+          issueDate: new Date(),
+          currency: 'USD',
+          subtotal: new Prisma.Decimal(totalAmount),
+          taxTotal: new Prisma.Decimal(0),
+          total: new Prisma.Decimal(totalAmount),
+          amountBaseCurrency: new Prisma.Decimal(totalAmount),
+          description: `Compra inventario: ${item.name}`,
+          reference: mov.id,
+          createdByOrgMemberId: org.memberId,
+        },
+      })
+
+      await tx.financeLine.create({
+        data: {
+          orgId: org.orgId,
+          transactionId: financeTx.id,
+          wbsNodeId: data.wbsNodeId ?? undefined,
+          description: item.name,
+          unit: item.unit ?? undefined,
+          quantity: new Prisma.Decimal(data.quantity),
+          unitPrice: new Prisma.Decimal(data.unitCost),
+          lineTotal: totalCost,
+          sortOrder: 0,
+        },
+      })
+
+      await tx.inventoryMovement.update({
+        where: { id: mov.id },
+        data: { transactionId: financeTx.id },
+      })
+
+      await publishOutboxEvent(tx, {
+        orgId: org.orgId,
+        eventType: 'INVENTORY_MOVEMENT.CREATED',
+        entityType: 'InventoryMovement',
+        entityId: mov.id,
+        payload: { movementType: data.movementType, itemId: data.itemId },
+      })
+
+      return mov
+    })
+
+    revalidatePath('/inventory')
+    revalidatePath('/inventory/movements')
+    revalidatePath(`/inventory/items/${data.itemId}`)
+    revalidatePath('/finance/transactions')
+    if (data.projectId) revalidatePath(`/projects/${data.projectId}`)
+    if (data.projectId) revalidatePath(`/projects/${data.projectId}/finance`)
+    if (data.projectId) revalidatePath(`/projects/${data.projectId}/finance/transactions`)
+    await notifyLowStockIfNeeded(org.orgId, data.itemId, item, org.memberId)
+    return { success: true, movementId: purchaseMovement.id, duplicate: false }
+  }
+
   if (
     data.movementType === 'ISSUE' &&
     data.projectId &&
@@ -409,6 +505,7 @@ export async function createInventoryMovement(data: {
     revalidatePath('/inventory/movements')
     revalidatePath(`/inventory/items/${data.itemId}`)
     if (data.projectId) revalidatePath(`/projects/${data.projectId}`)
+    await notifyLowStockIfNeeded(org.orgId, data.itemId, item, org.memberId)
     return { success: true, movementId: movement.id, duplicate: false }
   }
 
@@ -444,7 +541,37 @@ export async function createInventoryMovement(data: {
   revalidatePath('/inventory/movements')
   revalidatePath(`/inventory/items/${data.itemId}`)
   if (data.projectId) revalidatePath(`/projects/${data.projectId}`)
+  await notifyLowStockIfNeeded(org.orgId, data.itemId, item, org.memberId)
   return { success: true, movementId: movement.id, duplicate: false }
+}
+
+async function notifyLowStockIfNeeded(
+  orgId: string,
+  itemId: string,
+  item: { name: string; minStockQty: Prisma.Decimal | null },
+  actorOrgMemberId: string
+) {
+  if (item.minStockQty == null) return
+  const total = await calculateTotalStock(itemId, orgId)
+  if (total.gte(item.minStockQty)) return
+  const members = await prisma.orgMember.findMany({
+    where: { orgId, active: true },
+    select: { userId: true },
+  })
+  const userIds = members.map((m) => m.userId)
+  if (userIds.length === 0) return
+  const actor = await prisma.orgMember.findUnique({
+    where: { id: actorOrgMemberId },
+    select: { userId: true },
+  })
+  await createInAppNotificationsForUsers(userIds, {
+    orgId,
+    actorUserId: actor?.userId ?? undefined,
+    category: 'LOW_STOCK',
+    title: 'Stock bajo',
+    message: `${item.name} está por debajo del stock mínimo.`,
+    metadata: { link: '/inventory' },
+  })
 }
 
 export async function getItemStockByLocation(itemId: string, locationId: string) {

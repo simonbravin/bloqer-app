@@ -167,7 +167,7 @@ export function COForm({
       <div className="space-y-4">
         <div>
           <Label htmlFor="co-title">{t('title_field')} *</Label>
-          <Input id="co-title" {...register('title')} className="mt-1 border-input bg-background" />
+          <Input id="co-title" {...register('title')} className="mt-1 border-input bg-card dark:bg-background" />
           {errors.title && (
             <p className="mt-1 text-sm text-destructive">{errors.title.message}</p>
           )}
@@ -244,7 +244,7 @@ export function COForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="co-costImpact">{t('costImpact')}</Label>
-            <div className="mt-1 flex items-center rounded-md border border-input bg-background">
+            <div className="mt-1 flex items-center rounded-md border border-input bg-card dark:bg-background">
               <span className="pl-3 text-sm text-muted-foreground">$</span>
               <Input
                 id="co-costImpact"
@@ -266,7 +266,7 @@ export function COForm({
               type="number"
               min={0}
               {...register('timeImpactDays', { valueAsNumber: true })}
-              className="mt-1 border-input bg-background"
+              className="mt-1 border-input bg-card dark:bg-background"
             />
           </div>
         </div>
@@ -279,7 +279,7 @@ export function COForm({
               {...register('requestDate')}
               value={toDateInputValue(watch('requestDate' as any))}
               onChange={(e) => setValue('requestDate' as any, e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined)}
-              className="mt-1 border-input bg-background"
+              className="mt-1 border-input bg-card dark:bg-background"
             />
           </div>
           <div>
@@ -290,7 +290,7 @@ export function COForm({
               {...register('implementedDate')}
               value={toDateInputValue(watch('implementedDate' as any))}
               onChange={(e) => setValue('implementedDate' as any, e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined)}
-              className="mt-1 border-input bg-background"
+              className="mt-1 border-input bg-card dark:bg-background"
             />
           </div>
         </div>
@@ -300,7 +300,7 @@ export function COForm({
             id="co-reason"
             {...register('reason')}
             rows={3}
-            className="mt-1 border-input bg-background text-foreground"
+            className="mt-1 border-input bg-card dark:bg-background text-foreground"
           />
           {errors.reason && (
             <p className="mt-1 text-sm text-destructive">{errors.reason.message}</p>
@@ -312,7 +312,7 @@ export function COForm({
             id="co-justification"
             {...register('justification')}
             rows={2}
-            className="mt-1 border-input bg-background text-foreground"
+            className="mt-1 border-input bg-card dark:bg-background text-foreground"
           />
         </div>
       </div>
@@ -359,7 +359,7 @@ export function COForm({
                             value={watch(`lines.${idx}.wbsNodeId`)}
                             onValueChange={(v) => setValue(`lines.${idx}.wbsNodeId`, v)}
                           >
-                            <SelectTrigger className="h-9 border-input bg-background">
+                            <SelectTrigger className="h-9 border-input bg-card dark:bg-background">
                               <SelectValue placeholder={t('wbsNode')} />
                             </SelectTrigger>
                             <SelectContent>
@@ -378,7 +378,7 @@ export function COForm({
                               setValue(`lines.${idx}.changeType`, v)
                             }
                           >
-                            <SelectTrigger className="h-9 border-input bg-background">
+                            <SelectTrigger className="h-9 border-input bg-card dark:bg-background">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -393,12 +393,12 @@ export function COForm({
                         <td className="px-3 py-2">
                           <Input
                             {...register(`lines.${idx}.justification`)}
-                            className="h-9 border-input bg-background"
+                            className="h-9 border-input bg-card dark:bg-background"
                             placeholder={t('justification')}
                           />
                         </td>
                         <td className="px-3 py-2 text-right">
-                          <div className="flex items-center justify-end gap-1 rounded-md border border-input bg-background">
+                          <div className="flex items-center justify-end gap-1 rounded-md border border-input bg-card dark:bg-background">
                             <span className="pl-2 text-xs text-muted-foreground">$</span>
                             <Input
                               type="number"
