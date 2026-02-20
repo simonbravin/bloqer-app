@@ -245,7 +245,7 @@ export async function exportBudgetToExcel(
         project: true,
         budgetLines: {
           include: { wbsNode: true },
-          orderBy: { wbsNode: { code: 'asc' } },
+          orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }],
         },
       },
     })
@@ -347,7 +347,7 @@ export async function exportBudgetToPDF(
         project: true,
         budgetLines: {
           include: { wbsNode: true },
-          orderBy: { wbsNode: { code: 'asc' } },
+          orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }],
         },
       },
     })
@@ -872,7 +872,7 @@ export async function exportCompanyTransactionsToExcel(
       issueDate: t.issueDate,
       transactionNumber: t.transactionNumber,
       type: t.type,
-      projectName: (t.project as { name?: string })?.name ?? 'Overhead',
+      projectName: (t.project as { name?: string })?.name ?? 'Generales',
       description: t.description,
       partyName: (t.party as { name?: string })?.name ?? '—',
       total: typeof t.total === 'number' ? t.total : Number(t.total ?? 0),
@@ -931,7 +931,7 @@ export async function exportCompanyTransactionsToPDF(
       issueDate: t.issueDate,
       transactionNumber: t.transactionNumber,
       type: t.type,
-      projectName: (t.project as { name?: string })?.name ?? 'Overhead',
+      projectName: (t.project as { name?: string })?.name ?? 'Generales',
       description: t.description,
       partyName: (t.party as { name?: string })?.name ?? '—',
       total: typeof t.total === 'number' ? t.total : Number(t.total ?? 0),
@@ -985,7 +985,7 @@ export async function exportCompanyCashflowToExcel(
       { field: 'month', label: 'Mes', type: 'text' as const, width: 12 },
       { field: 'income', label: 'Ingresos', type: 'currency' as const, width: 14, align: 'right' as const },
       { field: 'expense', label: 'Gastos', type: 'currency' as const, width: 14, align: 'right' as const },
-      { field: 'overhead', label: 'Overhead', type: 'currency' as const, width: 14, align: 'right' as const },
+      { field: 'overhead', label: 'Generales', type: 'currency' as const, width: 14, align: 'right' as const },
       { field: 'projectExpense', label: 'Gastos proyectos', type: 'currency' as const, width: 16, align: 'right' as const },
       { field: 'balance', label: 'Balance', type: 'currency' as const, width: 14, align: 'right' as const },
     ]
@@ -1042,7 +1042,7 @@ export async function exportCompanyCashflowToPDF(
       { field: 'month', label: 'Mes', type: 'text' as const, align: 'left' as const },
       { field: 'income', label: 'Ingresos', type: 'currency' as const, align: 'right' as const },
       { field: 'expense', label: 'Gastos', type: 'currency' as const, align: 'right' as const },
-      { field: 'overhead', label: 'Overhead', type: 'currency' as const, align: 'right' as const },
+      { field: 'overhead', label: 'Generales', type: 'currency' as const, align: 'right' as const },
       { field: 'projectExpense', label: 'Gastos proyectos', type: 'currency' as const, align: 'right' as const },
       { field: 'balance', label: 'Balance', type: 'currency' as const, align: 'right' as const },
     ]
@@ -1081,6 +1081,63 @@ export async function exportCompanyCashflowToPDF(
   }
 }
 
+export type ProjectCashflowExportParams = CashflowExportParams & { projectId: string }
+
+export async function exportProjectCashflowToExcel(
+  params: ProjectCashflowExportParams,
+  selectedColumns: string[]
+) {
+  const session = await getSession()
+  if (!session?.user?.id) return { success: false, error: 'Unauthorized' }
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) return { success: false, error: 'Unauthorized' }
+  try {
+    const { getProjectCashflow } = await import('./finance')
+    const from = new Date(params.dateFrom)
+    const to = new Date(params.dateTo)
+    const timeline = await getProjectCashflow(params.projectId, { from, to })
+    const project = await getProject(params.projectId)
+    const allColumns = [
+      { field: 'month', label: 'Mes', type: 'text' as const, width: 12 },
+      { field: 'income', label: 'Ingresos', type: 'currency' as const, width: 14, align: 'right' as const },
+      { field: 'expense', label: 'Gastos', type: 'currency' as const, width: 14, align: 'right' as const },
+      { field: 'net', label: 'Neto', type: 'currency' as const, width: 14, align: 'right' as const },
+      { field: 'balance', label: 'Balance', type: 'currency' as const, width: 14, align: 'right' as const },
+    ]
+    const columns = allColumns.map((col) => ({
+      ...col,
+      visible: selectedColumns.includes(col.field),
+    }))
+    const data = timeline.map((row) => ({
+      month: row.month,
+      income: row.income,
+      expense: row.expense,
+      net: row.income - row.expense,
+      balance: row.balance,
+    }))
+    const config: ExcelConfig = {
+      title: `Flujo de caja — ${project?.name ?? params.projectId}`,
+      subtitle: `Período ${from.toLocaleDateString('es-AR')} - ${to.toLocaleDateString('es-AR')} · Exportado el ${new Date().toLocaleDateString('es-AR')}`,
+      includeCompanyHeader: false,
+      metadata: { date: new Date(), generatedBy: 'Sistema' },
+      columns,
+      data,
+      sheetName: 'Cashflow',
+      freezeHeader: true,
+      autoFilter: true,
+    }
+    const buffer = await exportToExcel(config)
+    return {
+      success: true,
+      data: buffer.toString('base64'),
+      filename: `cashflow-proyecto-${params.dateFrom}-${params.dateTo}.xlsx`,
+    }
+  } catch (error) {
+    console.error('Error exporting project cashflow:', error)
+    return { success: false, error: 'Error al exportar flujo de caja del proyecto' }
+  }
+}
+
 // ==================== Overhead con asignaciones ====================
 
 export async function exportOverheadToExcel(selectedColumns: string[]) {
@@ -1115,7 +1172,7 @@ export async function exportOverheadToExcel(selectedColumns: string[]) {
       status: tx.status === 'complete' ? 'Completo' : tx.status === 'partial' ? 'Parcial' : 'Sin Asignar',
     }))
     const config: ExcelConfig = {
-      title: 'Overhead - Gastos Generales',
+      title: 'Gastos generales',
       subtitle: `Exportado el ${new Date().toLocaleDateString('es-AR')}`,
       includeCompanyHeader: true,
       metadata: { date: new Date(), generatedBy: orgData?.legalName ?? orgData?.name ?? 'Sistema' },
@@ -1129,11 +1186,11 @@ export async function exportOverheadToExcel(selectedColumns: string[]) {
     return {
       success: true,
       data: buffer.toString('base64'),
-      filename: `overhead-${new Date().toISOString().split('T')[0]}.xlsx`,
+      filename: `gastos-generales-${new Date().toISOString().split('T')[0]}.xlsx`,
     }
   } catch (error) {
     console.error('Error exporting overhead:', error)
-    return { success: false, error: 'Error al exportar overhead' }
+    return { success: false, error: 'Error al exportar gastos generales' }
   }
 }
 

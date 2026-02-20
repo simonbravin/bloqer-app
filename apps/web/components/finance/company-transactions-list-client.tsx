@@ -24,7 +24,7 @@ import {
 } from '@/app/actions/export'
 import { ExportDialog } from '@/components/export/export-dialog'
 import { TransactionFormDialog } from './transaction-form-dialog'
-import { DOCUMENT_TYPE_LABELS, TYPE_LABELS } from '@/lib/finance-labels'
+import { DOCUMENT_TYPE_LABELS, TYPE_LABELS, getStatusLabel } from '@/lib/finance-labels'
 import { FileDown } from 'lucide-react'
 
 export type CompanyTransactionRow = {
@@ -185,7 +185,7 @@ export function CompanyTransactionsListClient({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('allProjects')}</SelectItem>
-            <SelectItem value="overhead">Solo Overhead</SelectItem>
+            <SelectItem value="overhead">Solo Generales</SelectItem>
             {filterOptions.projects.map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 {p.projectNumber} – {p.name}
@@ -316,7 +316,7 @@ export function CompanyTransactionsListClient({
                     {tx.project ? (
                       <span title={tx.project.name}>{tx.project.projectNumber}</span>
                     ) : (
-                      <span className="italic">Overhead</span>
+                      <span className="italic">Generales</span>
                     )}
                   </td>
                   <td className="max-w-[200px] truncate px-4 py-2 text-foreground" title={tx.description}>
@@ -328,7 +328,7 @@ export function CompanyTransactionsListClient({
                   </td>
                   <td className="px-4 py-2">
                     <Badge variant={STATUS_VARIANT[tx.status] ?? 'secondary'}>
-                      {t(`statuses.${tx.status}`)}
+                      {getStatusLabel(tx.status, tx.type)}
                     </Badge>
                   </td>
                   <td className="px-4 py-2">

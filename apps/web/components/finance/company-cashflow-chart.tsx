@@ -49,7 +49,7 @@ export function CompanyCashflowChart({ initialData }: CompanyCashflowChartProps)
   return (
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="h-80 min-h-[200px] w-full min-w-0">
-        <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+        <ResponsiveContainer width="100%" height={200}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-700" />
             <XAxis dataKey="monthLabel" stroke="#64748b" fontSize={12} tickLine={false} />

@@ -222,7 +222,7 @@ export function ProjectDashboardClient({ project, data }: Props) {
             description="WBS con mayor gasto real"
           >
             <div className="h-[280px] min-h-[280px] w-full min-w-0" style={{ minHeight: 280 }}>
-            <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart
                 data={wbsChartData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -255,7 +255,7 @@ export function ProjectDashboardClient({ project, data }: Props) {
             description="Ingresos vs gastos por mes"
           >
             <div className="h-[280px] min-h-[280px] w-full min-w-0" style={{ minHeight: 280 }}>
-            <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
+            <ResponsiveContainer width="100%" height={280}>
               <AreaChart
                 data={cashflowChartData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -303,7 +303,7 @@ export function ProjectDashboardClient({ project, data }: Props) {
           description="Monto por certificación"
         >
           <div className="h-[280px] min-h-[280px] w-full min-w-0" style={{ minHeight: 280 }}>
-            <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart
                 data={certChartData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}

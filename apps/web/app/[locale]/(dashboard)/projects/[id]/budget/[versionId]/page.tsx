@@ -8,8 +8,10 @@ import { listWbsTemplatesForLibrary } from '@/app/actions/wbs'
 import { BudgetVersionStatusDropdown } from '@/components/budget/budget-version-status-dropdown'
 import { BudgetVersionTabsWithSearch } from '@/components/budget/budget-version-tabs-with-search'
 import { BudgetVersionExport } from '@/components/budget/budget-version-export'
+import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
+import { ProjectTabsWrapper } from '@/components/projects/project-tabs-wrapper'
 import { Button } from '@/components/ui/button'
-import { Package } from 'lucide-react'
+import { Package, Pencil } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { serializeForClient } from '@/lib/utils/serialization'
 import type { BudgetTreeNode } from '@/components/budget/budget-tree-table-admin'
@@ -40,6 +42,7 @@ export default async function BudgetVersionPage({ params }: PageProps) {
           id: true,
           name: true,
           projectNumber: true,
+          status: true,
         },
       },
       budgetLines: {
@@ -51,6 +54,8 @@ export default async function BudgetVersionPage({ params }: PageProps) {
               name: true,
               parentId: true,
               category: true,
+              sortOrder: true,
+              active: true,
             },
           },
           resources: {
@@ -64,7 +69,7 @@ export default async function BudgetVersionPage({ params }: PageProps) {
             },
           },
         },
-        orderBy: [{ wbsNode: { code: 'asc' } }, { sortOrder: 'asc' }],
+        orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }, { sortOrder: 'asc' }],
       },
       createdBy: {
         select: {
@@ -86,33 +91,73 @@ export default async function BudgetVersionPage({ params }: PageProps) {
   type VersionWithRelations = typeof versionRaw
   const version = serializeForClient(versionRaw) as unknown as VersionWithRelations
 
+  const wbsNodes =
+    version.budgetLines.length === 0
+      ? await prisma.wbsNode.findMany({
+          where: { projectId, orgId, active: true },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            parentId: true,
+            category: true,
+            sortOrder: true,
+          },
+          orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+        })
+      : []
+
   const wbsGroups = new Map<
     string,
     Array<(typeof version.budgetLines)[number]>
   >()
   for (const line of version.budgetLines) {
+    const wbs = line.wbsNode as { active?: boolean }
+    if (wbs.active === false) continue
     const wbsId = line.wbsNode.id
     if (!wbsGroups.has(wbsId)) wbsGroups.set(wbsId, [])
     wbsGroups.get(wbsId)!.push(line)
   }
 
+  const globalOverhead = Number(version.globalOverheadPct ?? 0)
+  const globalFinancial = Number(version.globalFinancialPct ?? 0)
+  const globalProfit = Number(version.globalProfitPct ?? 0)
+  const globalTax = Number(version.globalTaxPct ?? 0)
+
   function buildTree(
     parentId: string | null
   ): BudgetTreeNode[] {
-    const nodes: BudgetTreeNode[] = []
+    const entries: Array<{ wbsId: string; lines: (typeof version.budgetLines)[number][] }> = []
     wbsGroups.forEach((lines, wbsId) => {
       const firstLine = lines[0]
       if (firstLine.wbsNode.parentId !== parentId) return
+      entries.push({ wbsId, lines })
+    })
+    const sortOrder = (x: (typeof version.budgetLines)[number][0]['wbsNode']) =>
+      (x as { sortOrder?: number }).sortOrder ?? 0
+    entries.sort((a, b) => {
+      const soA = sortOrder(a.lines[0].wbsNode)
+      const soB = sortOrder(b.lines[0].wbsNode)
+      if (soA !== soB) return soA - soB
+      return a.lines[0].wbsNode.code.localeCompare(b.lines[0].wbsNode.code)
+    })
+    return entries.map(({ wbsId, lines }) => {
+      const firstLine = lines[0]
       const treeLines = lines.map((line) => ({
         id: line.id,
         description: line.description,
         unit: line.unit,
         quantity: Number(line.quantity),
         directCostTotal: Number(line.directCostTotal),
-        overheadPct: Number(line.overheadPct ?? 0),
-        financialPct: Number(line.financialPct ?? 0),
-        profitPct: Number(line.profitPct ?? 0),
-        taxPct: Number(line.taxPct ?? 0),
+        actualCostTotal: Number(
+          'actualCostTotal' in line && line.actualCostTotal != null
+            ? Number(line.actualCostTotal)
+            : 0
+        ),
+        overheadPct: Number(line.overheadPct ?? globalOverhead),
+        financialPct: Number(line.financialPct ?? globalFinancial),
+        profitPct: Number(line.profitPct ?? globalProfit),
+        taxPct: Number(line.taxPct ?? globalTax),
         resources: (line.resources ?? []).map((r: { id: string; resourceType: string; quantity: unknown; unitCost: unknown; sortOrder: number }) => ({
           id: r.id,
           resourceType: r.resourceType,
@@ -120,23 +165,40 @@ export default async function BudgetVersionPage({ params }: PageProps) {
           unitCost: Number(r.unitCost),
         })),
       }))
-      nodes.push({
+      return {
         wbsNode: {
           id: firstLine.wbsNode.id,
           code: firstLine.wbsNode.code,
           name: firstLine.wbsNode.name,
           category: firstLine.wbsNode.category ?? 'ITEM',
         },
+        parentId,
         lines: treeLines,
         children: buildTree(wbsId),
-      })
+      }
     })
-    return nodes.sort((a, b) =>
-      a.wbsNode.code.localeCompare(b.wbsNode.code)
-    )
   }
 
-  const treeData = buildTree(null)
+  function buildTreeFromWbs(parentId: string | null): BudgetTreeNode[] {
+    const list = wbsNodes as Array<{ id: string; code: string; name: string; parentId: string | null; category: string | null; sortOrder: number }>
+    return list
+      .filter((n) => n.parentId === parentId)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code))
+      .map((n) => ({
+        wbsNode: {
+          id: n.id,
+          code: n.code,
+          name: n.name,
+          category: (n.category ?? 'ITEM') as 'PHASE' | 'TASK' | 'BUDGET_ITEM' | 'ITEM',
+        },
+        parentId,
+        lines: [] as BudgetTreeNode['lines'],
+        children: buildTreeFromWbs(n.id),
+      }))
+  }
+
+  const treeData =
+    version.budgetLines.length > 0 ? buildTree(null) : buildTreeFromWbs(null)
 
   const totalDirectCostNum = version.budgetLines.reduce(
     (sum: number, line: (typeof version.budgetLines)[number]) => sum + Number(line.directCostTotal),
@@ -145,10 +207,10 @@ export default async function BudgetVersionPage({ params }: PageProps) {
 
   function lineSaleTotal(line: (typeof version.budgetLines)[number]): number {
     const directUnit = Number(line.directCostTotal) / Number(line.quantity) || 0
-    const oh = line.overheadPct != null ? Number(line.overheadPct) : 0
-    const fin = line.financialPct != null ? Number(line.financialPct) : 0
-    const prof = line.profitPct != null ? Number(line.profitPct) : 0
-    const tax = line.taxPct != null ? Number(line.taxPct) : 0
+    const oh = Number(line.overheadPct ?? globalOverhead)
+    const fin = Number(line.financialPct ?? globalFinancial)
+    const prof = Number(line.profitPct ?? globalProfit)
+    const tax = Number(line.taxPct ?? globalTax)
     let price = directUnit
     price += price * (oh / 100)
     price += price * (fin / 100)
@@ -171,10 +233,10 @@ export default async function BudgetVersionPage({ params }: PageProps) {
       ? Number(line.directCostTotal) / Number(line.quantity)
       : 0,
     total: Number(line.directCostTotal),
-    overheadPct: Number(line.overheadPct ?? 0),
-    financialPct: Number(line.financialPct ?? 0),
-    profitPct: Number(line.profitPct ?? 0),
-    taxPct: Number(line.taxPct ?? 0),
+    overheadPct: Number(line.overheadPct ?? globalOverhead),
+    financialPct: Number(line.financialPct ?? globalFinancial),
+    profitPct: Number(line.profitPct ?? globalProfit),
+    taxPct: Number(line.taxPct ?? globalTax),
   }))
 
   const canEdit =
@@ -183,6 +245,8 @@ export default async function BudgetVersionPage({ params }: PageProps) {
   const canSeeAdmin = ['ADMIN', 'OWNER'].includes(role)
 
   const t = await getTranslations('budget')
+  const tProjects = await getTranslations('projects')
+  const project = version.project as { id: string; name: string; projectNumber: string; status?: string }
 
   return (
     <div className="space-y-6 p-6">
@@ -194,9 +258,14 @@ export default async function BudgetVersionPage({ params }: PageProps) {
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            {version.project.name}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-foreground">
+              {version.project.name}
+            </h1>
+            {project.status && (
+              <ProjectStatusBadge status={project.status} />
+            )}
+          </div>
           <p className="mt-0.5 text-sm text-slate-500">
             Versión: {version.versionCode} • {version.project.projectNumber}
           </p>
@@ -220,6 +289,12 @@ export default async function BudgetVersionPage({ params }: PageProps) {
             versionId={version.id}
             versionCode={version.versionCode}
           />
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/projects/${projectId}/edit`}>
+              <Pencil className="mr-1.5 h-4 w-4" />
+              {tProjects('edit')}
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -239,6 +314,8 @@ export default async function BudgetVersionPage({ params }: PageProps) {
           </span>
         )}
       </div>
+
+      <ProjectTabsWrapper projectId={projectId} />
 
       <BudgetVersionTabsWithSearch
         treeData={treeData}

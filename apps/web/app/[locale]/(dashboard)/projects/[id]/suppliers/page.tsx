@@ -5,18 +5,11 @@ import { getOrgContext } from '@/lib/org-context'
 import { prisma } from '@repo/database'
 import { PageHeader } from '@/components/layout/page-header'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Building2, FileText, Receipt } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { listBudgetVersions } from '@/app/actions/budget'
 import { getMaterialsBySupplier } from '@/app/actions/materials'
+import { ProjectSuppliersListClient } from '@/components/suppliers/project-suppliers-list-client'
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -90,6 +83,16 @@ export default async function ProjectSuppliersPage({ params }: PageProps) {
     new Set([...uniqueParties.map((p) => p.name), ...budgetSupplierNames])
   ).sort()
 
+  const listItems = allSupplierNames.map((name) => {
+    const party = uniqueParties.find((p) => p.name === name)
+    return {
+      name,
+      email: party?.email ?? null,
+      phone: party?.phone ?? null,
+      city: party?.city ?? null,
+    }
+  })
+
   return (
     <div className="h-full">
       <PageHeader
@@ -142,43 +145,7 @@ export default async function ProjectSuppliersPage({ params }: PageProps) {
         <Card>
           <CardContent className="p-6">
             <h3 className="mb-4 font-semibold">{tNav('projectSuppliers')}</h3>
-            {allSupplierNames.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hay proveedores asociados a este proyecto aún (transacciones o presupuesto).
-              </p>
-            ) : (
-              <div className="rounded-lg border border-border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[280px]">{t('name')}</TableHead>
-                      <TableHead>{t('email')}</TableHead>
-                      <TableHead>{t('phone')}</TableHead>
-                      <TableHead>{t('city')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allSupplierNames.map((name) => {
-                      const party = uniqueParties.find((p) => p.name === name)
-                      return (
-                        <TableRow key={name}>
-                          <TableCell className="font-medium">{name}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {party?.email ?? '—'}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {party?.phone ?? '—'}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {party?.city ?? '—'}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+            <ProjectSuppliersListClient items={listItems} />
           </CardContent>
         </Card>
 

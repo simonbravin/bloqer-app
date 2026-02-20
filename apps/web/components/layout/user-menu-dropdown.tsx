@@ -27,12 +27,16 @@ import { Link } from '@/i18n/navigation'
 
 interface UserMenuDropdownProps {
   user: { name?: string | null; email?: string | null }
+  /** Sidebar variant: full-width trigger, sidebar colors */
+  variant?: 'default' | 'sidebar'
+  /** When true (sidebar collapsed): show only avatar */
+  collapsed?: boolean
 }
 
 /**
  * User menu dropdown with settings and logout
  */
-export function UserMenuDropdown({ user }: UserMenuDropdownProps) {
+export function UserMenuDropdown({ user, variant = 'default', collapsed = false }: UserMenuDropdownProps) {
   const t = useTranslations('nav')
   const pathname = usePathname()
   const locale = pathname?.match(/^\/(es|en)/)?.[1] ?? 'es'
@@ -49,16 +53,34 @@ export function UserMenuDropdown({ user }: UserMenuDropdownProps) {
     window.location.pathname = `/${locale}/login`
   }
 
+  const isSidebar = variant === 'sidebar'
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-            <span className="text-xs font-semibold text-slate-600">{initials}</span>
+        <DropdownMenuTrigger
+          title={displayName}
+          className={
+            isSidebar
+              ? `flex w-full items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-sidebar-accent focus:outline-none focus:ring-2 focus:ring-sidebar-ring ${collapsed ? 'justify-center px-2' : ''}`
+              : 'flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300'
+          }
+        >
+          <div
+            className={
+              isSidebar
+                ? 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sidebar-accent'
+                : 'flex h-8 w-8 items-center justify-center rounded-full bg-muted'
+            }
+          >
+            <span className={isSidebar ? 'text-sm font-semibold text-sidebar-foreground' : 'text-xs font-semibold text-slate-600'}>
+              {initials}
+            </span>
           </div>
-          <span className="text-sm font-medium text-slate-700">
-            {displayName}
-          </span>
+          {(!isSidebar || !collapsed) && (
+            <span className={isSidebar ? 'truncate text-sm font-medium text-sidebar-foreground' : 'text-sm font-medium text-slate-700'}>
+              {displayName}
+            </span>
+          )}
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-56">

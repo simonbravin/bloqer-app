@@ -40,16 +40,28 @@ export default async function SuppliersListPage({ searchParams }: PageProps) {
     },
   })
 
-  const localSuppliers = await prisma.party.findMany({
-    where: { orgId: org.orgId, partyType: 'SUPPLIER', active: true },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      city: true,
-    },
-  })
+  const [localSuppliers, localClients] = await Promise.all([
+    prisma.party.findMany({
+      where: { orgId: org.orgId, partyType: 'SUPPLIER', active: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        city: true,
+      },
+    }),
+    prisma.party.findMany({
+      where: { orgId: org.orgId, partyType: 'CLIENT', active: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        city: true,
+      },
+    }),
+  ])
 
   const globalSearch = q
     ? await prisma.globalParty.findMany({
@@ -70,12 +82,12 @@ export default async function SuppliersListPage({ searchParams }: PageProps) {
       })
 
   const canAddLocal = hasMinimumRole(org.role, 'EDITOR')
-  const totalCount = linkedSuppliers.length + localSuppliers.length
+  const totalCount = linkedSuppliers.length + localSuppliers.length + localClients.length
 
   return (
     <div className="h-full">
       <PageHeader
-        title={t('title')}
+        title={t('listTitle')}
         subtitle={`${totalCount} ${totalCount === 1 ? t('oneSupplier') : t('manySuppliers')}`}
         actions={
           canAddLocal ? (
@@ -94,6 +106,7 @@ export default async function SuppliersListPage({ searchParams }: PageProps) {
           defaultTab={tab || 'linked'}
           linkedSuppliers={linkedSuppliers}
           localSuppliers={localSuppliers}
+          localClients={localClients}
           globalSearchResults={globalSearch}
           canAddLocal={canAddLocal}
         />

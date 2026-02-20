@@ -398,7 +398,7 @@ export async function getCertification(certId: string) {
           wbsNode: { select: { code: true, name: true } },
           budgetLine: { select: { description: true, unit: true } },
         },
-        orderBy: [{ wbsNode: { code: 'asc' } }],
+        orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }],
       },
     },
   })
@@ -415,7 +415,7 @@ export async function getBudgetLinesForCert(budgetVersionId: string) {
     include: {
       wbsNode: { select: { id: true, code: true, name: true } },
     },
-    orderBy: [{ wbsNode: { code: 'asc' } }, { sortOrder: 'asc' }],
+    orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }, { sortOrder: 'asc' }],
   })
   return lines.map((bl) => ({
     id: bl.id,

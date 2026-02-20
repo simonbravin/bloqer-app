@@ -735,6 +735,7 @@ model BudgetLine {
   unit             String
   quantity         Decimal @db.Decimal(15, 4)
   directCostTotal  Decimal @map("direct_cost_total") @db.Decimal(15, 2)
+  importedDirectCostTotal Decimal? @map("imported_direct_cost_total") @db.Decimal(15, 2)
   salePriceTotal   Decimal @map("sale_price_total") @db.Decimal(15, 2)
   overheadPct      Decimal @default(0) @map("overhead_pct") @db.Decimal(5, 2)
   indirectCostPct  Decimal @default(0) @map("indirect_cost_pct") @db.Decimal(5, 2)

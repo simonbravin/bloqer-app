@@ -7,6 +7,14 @@ interface PageProps {
   params: Promise<{ id: string; locale: string }>
 }
 
+export async function generateMetadata({ params }: PageProps) {
+  const { id } = await params
+  const project = await getProject(id)
+  return {
+    title: project ? `Proyección de caja — ${project.name}` : 'Proyección de caja',
+  }
+}
+
 export default async function ProjectCashProjectionPage({ params }: PageProps) {
   const { id: projectId } = await params
 
@@ -18,14 +26,7 @@ export default async function ProjectCashProjectionPage({ params }: PageProps) {
   if (!project) notFound()
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Proyección de caja</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Capital proyectado del proyecto {project.name} a una fecha
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <CashProjectionClient
         initialProjection={initialProjection}
         projectId={projectId}

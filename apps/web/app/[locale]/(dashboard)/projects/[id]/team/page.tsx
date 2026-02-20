@@ -32,16 +32,7 @@ export default async function ProjectTeamPage({ params }: PageProps) {
   if (!project) redirect({ href: '/projects', locale })
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">
-          Equipo del Proyecto
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {project.name} • {project.projectNumber}
-        </p>
-      </div>
-
+    <div className="erp-stack">
       <ProjectTeamClient
         projectId={projectId}
         initialProjectMembers={projectMembers}

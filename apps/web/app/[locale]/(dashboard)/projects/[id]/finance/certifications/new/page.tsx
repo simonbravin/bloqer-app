@@ -46,8 +46,7 @@ export default async function FinanceNewCertificationPage({ params }: PageProps)
   const cancelHref = basePath
 
   return (
-    <div className="p-6">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
+    <div className="space-y-6 p-6">
         <div className="flex flex-wrap items-center gap-4">
           <Link
             href={cancelHref}
@@ -89,7 +88,6 @@ export default async function FinanceNewCertificationPage({ params }: PageProps)
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   )
 }

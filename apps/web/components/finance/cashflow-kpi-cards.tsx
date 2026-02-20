@@ -22,21 +22,21 @@ interface Props {
 export function CashflowKPICards({ kpis }: Props) {
   const cards = [
     {
-      title: 'Total Ingresos',
+      title: 'Total Ingresos (acum.)',
       value: kpis.totalIncome,
       icon: ArrowUpIcon,
       variant: 'success' as const,
       description: `Pendientes: ${formatCurrency(kpis.pendingIncome)}`,
     },
     {
-      title: 'Total Gastos',
+      title: 'Total Gastos (acum.)',
       value: kpis.totalExpense,
       icon: ArrowDownIcon,
       variant: 'destructive' as const,
       description: `Pendientes: ${formatCurrency(kpis.pendingExpense)}`,
     },
     {
-      title: 'Balance Total',
+      title: 'Balance total (acum.)',
       value: kpis.balance,
       icon: TrendingUpIcon,
       variant: (kpis.balance >= 0 ? 'success' : 'destructive') as 'success' | 'destructive',

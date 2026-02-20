@@ -40,6 +40,7 @@ export {
   getProjectTransaction,
   getPartiesForProject,
   getPartiesForProjectFilter,
+  createPartyForTransaction,
   createProjectTransaction,
   updateProjectTransaction,
   deleteProjectTransaction,
@@ -53,6 +54,9 @@ export type {
 export {
   getProjectCashflow,
   getProjectCashflowKPIs,
+  getProjectCashflowSummary,
+  getProjectCashflowBreakdownByWbs,
+  getProjectCashflowMonthComparison,
   getWBSActualCosts,
   getWBSActualCost,
   getCompanyCashflow,
@@ -66,6 +70,9 @@ export type {
   CashflowBreakdownItem,
   CompanyCashflowDetailedResult,
   CashflowMonthComparisonResult,
+  ProjectCashflowSummary,
+  ProjectCashflowBreakdownByWbsItem,
+  ProjectCashflowBreakdownByWbsResult,
 } from './finance-cashflow'
 
 // Overhead
@@ -74,6 +81,8 @@ export {
   allocateOverhead,
   getOverheadTransactions,
   getOverheadDashboard,
+  getApprovedBudgetTotalByProject,
+  getOverheadAllocatedToProject,
   deleteOverheadAllocation,
   updateOverheadAllocation,
 } from './finance-overhead'
@@ -87,13 +96,16 @@ export {
   getCompanyTransactions,
   getCompanyFinanceDashboard,
   getFinanceExecutiveDashboard,
+  getProjectFinanceExecutiveDashboard,
   getActiveProjects,
+  getAllProjects,
   getFinanceFilterOptions,
 } from './finance-kpis'
 export type {
   CompanyTransactionsFilters,
   CompanyFinanceDashboard,
   FinanceExecutiveDashboard,
+  ProjectFinanceExecutiveDashboard,
 } from './finance-kpis'
 
 // AP/AR & Cash projection & Alerts
@@ -105,6 +117,7 @@ export {
   getCompanyCashProjection,
   getProjectCashProjection,
   getCompanyFinanceAlerts,
+  getProjectFinanceAlerts,
 } from './finance-ap-ar'
 export type {
   AccountsPayableFilters,

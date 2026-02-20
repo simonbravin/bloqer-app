@@ -4,6 +4,10 @@ import { getOrgContext } from '@/lib/org-context'
 import { getCompanyCashProjection } from '@/app/actions/finance'
 import { CashProjectionClient } from '@/components/finance/cash-projection-client'
 
+export const metadata = {
+  title: 'Proyección de caja',
+}
+
 export default async function FinanceCashProjectionPage() {
   const session = await getSession()
   if (!session?.user?.id) return notFound()

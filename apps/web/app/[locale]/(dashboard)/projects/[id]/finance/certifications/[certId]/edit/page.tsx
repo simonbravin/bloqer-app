@@ -40,8 +40,7 @@ export default async function FinanceCertificationEditPage({ params }: PageProps
 
   return (
     <div className="space-y-6 p-6">
-      <div className="mx-auto max-w-5xl">
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
           <Link href={backHref} className="text-sm font-medium text-muted-foreground hover:text-foreground">
             ← Certificación #{cert.number}
           </Link>
@@ -64,7 +63,6 @@ export default async function FinanceCertificationEditPage({ params }: PageProps
           defaultValues={defaultValues}
           backHref={backHref}
         />
-      </div>
     </div>
   )
 }

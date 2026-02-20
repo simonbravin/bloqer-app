@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
+import { hasMinimumRole } from '@/lib/rbac'
 import { getProject } from '@/app/actions/projects'
-import { ProjectTabs } from '@/components/projects/project-tabs'
+import { serializeForClient } from '@/lib/utils/serialization'
+import { ProjectLayoutInner } from '@/components/projects/project-layout-inner'
 
 type ProjectLayoutProps = {
   children: React.ReactNode
@@ -12,8 +14,8 @@ type ProjectLayoutProps = {
 /**
  * Project-specific layout
  * - Validates project access
- * - The sidebar switch is handled by DynamicSidebar (detects UUID in path)
- * - This layout ensures the project exists and user has access
+ * - Header: nombre + número + editar (mismo ancho que finanzas)
+ * - Submenú (tabs) debajo del header, antes del contenido
  */
 export default async function ProjectLayout({
   children,
@@ -27,14 +29,17 @@ export default async function ProjectLayout({
 
   const { id } = await params
 
-  // Validate project exists and belongs to org
   const project = await getProject(id)
   if (!project) return notFound()
 
+  const canEdit = hasMinimumRole(org.role, 'EDITOR')
+  const projectPlain = serializeForClient(project)
+
   return (
-    <>
-      <ProjectTabs projectId={id} />
-      {children}
-    </>
+    <div className="erp-view-container space-y-6 py-6">
+      <ProjectLayoutInner project={projectPlain} canEdit={canEdit}>
+        {children}
+      </ProjectLayoutInner>
+    </div>
   )
 }

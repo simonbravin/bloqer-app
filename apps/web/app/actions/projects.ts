@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@repo/database'
 import { requireRole } from '@/lib/rbac'
 import { requirePermission, getAuthContext } from '@/lib/auth-helpers'
+import { createAuditLog } from '@/lib/audit-log'
 import { publishOutboxEvent } from '@/lib/events/event-publisher'
 import {
   createProjectSchema,
@@ -258,9 +259,16 @@ export async function getProject(projectId: string) {
   return project
 }
 
+function toPlainValue(v: unknown): unknown {
+  if (v == null) return v
+  if (typeof v === 'object' && 'toISOString' in (v as object)) return (v as Date).toISOString()
+  if (typeof v === 'object' && typeof (v as { toNumber?: () => number }).toNumber === 'function') return (v as { toNumber: () => number }).toNumber()
+  return v
+}
+
 export async function updateProject(projectId: string, data: UpdateProjectInput) {
   await requirePermission('PROJECTS', 'edit')
-  const { org } = await getAuthContext()
+  const { org, session } = await getAuthContext()
   requireRole(org.role, 'EDITOR')
 
   const existing = await prisma.project.findFirst({
@@ -299,6 +307,17 @@ export async function updateProject(projectId: string, data: UpdateProjectInput)
   if (parsed.data.plannedEndDate !== undefined) updatePayload.plannedEndDate = parsed.data.plannedEndDate
   if (parsed.data.active !== undefined) updatePayload.active = parsed.data.active
 
+  const updatedFields = Object.keys(updatePayload) as (keyof typeof existing)[]
+  const beforeSnapshot: Record<string, unknown> = {}
+  for (const key of updatedFields) {
+    const val = existing[key as keyof typeof existing]
+    beforeSnapshot[key] = toPlainValue(val)
+  }
+  const afterSnapshot: Record<string, unknown> = {}
+  for (const key of updatedFields) {
+    afterSnapshot[key] = toPlainValue((updatePayload as Record<string, unknown>)[key])
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.project.update({
       where: { id: projectId },
@@ -309,8 +328,19 @@ export async function updateProject(projectId: string, data: UpdateProjectInput)
       eventType: 'PROJECT.UPDATED',
       entityType: 'Project',
       entityId: projectId,
-      payload: { updatedFields: Object.keys(updatePayload) },
+      payload: { updatedFields },
     })
+  })
+
+  await createAuditLog({
+    orgId: org.orgId,
+    userId: session.user.id,
+    action: 'UPDATE',
+    entity: 'Project',
+    entityId: projectId,
+    projectId: projectId,
+    oldValues: beforeSnapshot,
+    newValues: afterSnapshot,
   })
 
   revalidatePath('/projects')

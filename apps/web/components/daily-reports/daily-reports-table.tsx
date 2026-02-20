@@ -4,16 +4,13 @@ import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { formatDateDDMMYYYY } from '@/lib/format-utils'
 import type { DailyReportListItem } from '@/app/actions/daily-reports'
 
 type DailyReportsTableProps = {
   projectId: string
   items: DailyReportListItem[]
   canEdit?: boolean
-}
-
-function formatDate(d: Date): string {
-  return new Date(d).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function StatusBadge({ statusKey, label }: { statusKey: string; label: string }) {
@@ -65,7 +62,7 @@ export function DailyReportsTable({ projectId, items, canEdit = false }: DailyRe
           {items.map((row) => (
             <tr key={row.id} className="border-b border-gray-100 dark:border-gray-800">
               <td className="whitespace-nowrap px-3 py-2 text-gray-700 dark:text-gray-300">
-                {formatDate(row.reportDate)}
+                {formatDateDDMMYYYY(row.reportDate)}
               </td>
               <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row.authorName}</td>
               <td className="max-w-[280px] truncate px-3 py-2 text-gray-900 dark:text-white">

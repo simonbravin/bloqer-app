@@ -54,7 +54,6 @@ export default async function FinanceCertificationDetailPage({ params }: PagePro
 
   return (
     <div className="space-y-6 p-6">
-      <div className="mx-auto max-w-5xl">
       <div className="flex flex-wrap items-center gap-4">
         <Link
           href={`/projects/${projectId}/finance/certifications`}
@@ -106,7 +105,6 @@ export default async function FinanceCertificationDetailPage({ params }: PagePro
         canEdit={canEdit}
         canDelete={canDelete}
       />
-      </div>
     </div>
   )
 }

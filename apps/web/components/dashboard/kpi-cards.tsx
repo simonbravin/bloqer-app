@@ -1,8 +1,10 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { formatCurrencyForDisplay } from '@/lib/format-utils'
+import { cn } from '@/lib/utils'
+import { getCurrencySymbol } from '@/lib/format-utils'
 import { Link } from '@/i18n/navigation'
+import { AnimNum } from '@/components/ui/anim-num'
 import {
   FolderKanban,
   DollarSign,
@@ -125,14 +127,23 @@ export function KPICards({ kpis, variant = 'all' }: KPICardsProps) {
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
-        <p className="mt-1.5 text-2xl font-semibold tabular-nums text-foreground">
-          {card.format === 'currency'
-            ? formatCurrencyForDisplay(card.value)
-            : card.format === 'percent'
-              ? card.value != null
-                ? `${Number(card.value).toFixed(1)}%`
-                : '—'
-              : Number(card.value).toLocaleString('es-AR')}
+        <p
+          className={cn(
+            'mt-1.5 min-w-0 font-semibold tabular-nums text-foreground',
+            card.format === 'currency' ? 'text-xl lg:text-lg' : 'text-2xl'
+          )}
+        >
+          {card.format === 'currency' ? (
+            <AnimNum value={Math.round(Number(card.value))} prefix={`${getCurrencySymbol('ARS')} `} duration={1200} locale="es-AR" />
+          ) : card.format === 'percent' ? (
+            card.value != null ? (
+              <AnimNum value={Number(card.value)} suffix="%" duration={1200} />
+            ) : (
+              '—'
+            )
+          ) : (
+            <AnimNum value={Number(card.value)} duration={1200} locale="es-AR" />
+          )}
         </p>
       </div>
       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${card.color}`}>

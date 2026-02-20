@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { CurrencyInput } from '@/components/ui/currency-input'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
   updateBudgetResource,
   deleteBudgetResource,
   getBudgetLineWithResources,
+  updateBudgetLine,
 } from '@/app/actions/budget'
 import { toast } from 'sonner'
 import { formatCurrency, formatCurrencyForDisplay, formatNumber } from '@/lib/format-utils'
@@ -60,6 +62,15 @@ interface BudgetLineData {
   description: string
   unit: string
   quantity: number
+  overheadPct?: number
+  financialPct?: number
+  profitPct?: number
+  taxPct?: number
+  markupMode?: string
+  globalOverheadPct?: number
+  globalFinancialPct?: number
+  globalProfitPct?: number
+  globalTaxPct?: number
   resources: BudgetResourceRow[]
 }
 
@@ -81,6 +92,12 @@ export function APUEditorDialog({
   const [budgetLine, setBudgetLine] = useState<BudgetLineData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('materials')
+  const [marginForm, setMarginForm] = useState({
+    overheadPct: 0,
+    financialPct: 0,
+    profitPct: 0,
+    taxPct: 0,
+  })
 
   const [newResource, setNewResource] = useState({
     type: 'MATERIAL',
@@ -95,7 +112,16 @@ export function APUEditorDialog({
   useEffect(() => {
     getBudgetLineWithResources(budgetLineId)
       .then((data) => {
-        setBudgetLine(data ?? null)
+        if (data) {
+          setBudgetLine(data)
+          const oh = Number(data.overheadPct) === 0 ? Number(data.globalOverheadPct ?? 0) : Number(data.overheadPct ?? data.globalOverheadPct ?? 0)
+          const fin = Number(data.financialPct) === 0 ? Number(data.globalFinancialPct ?? 0) : Number(data.financialPct ?? data.globalFinancialPct ?? 0)
+          const prof = Number(data.profitPct) === 0 ? Number(data.globalProfitPct ?? 0) : Number(data.profitPct ?? data.globalProfitPct ?? 0)
+          const tax = Number(data.taxPct) === 0 ? Number(data.globalTaxPct ?? 0) : Number(data.taxPct ?? data.globalTaxPct ?? 0)
+          setMarginForm({ overheadPct: oh, financialPct: fin, profitPct: prof, taxPct: tax })
+        } else {
+          setBudgetLine(null)
+        }
       })
       .catch(() => {
         toast.error(t('error'))
@@ -205,6 +231,36 @@ export function APUEditorDialog({
     onClose()
   }
 
+  function handleSaveMargins() {
+    startTransition(async () => {
+      const result = await updateBudgetLine(budgetLineId, {
+        overheadPct: marginForm.overheadPct,
+        financialPct: marginForm.financialPct,
+        profitPct: marginForm.profitPct,
+        taxPct: marginForm.taxPct,
+      })
+      if (result && 'error' in result) {
+        toast.error(t('error'), { description: (result.error as { _form?: string[] })?._form?.[0] })
+        return
+      }
+      setBudgetLine((prev) =>
+        prev
+          ? {
+              ...prev,
+              overheadPct: marginForm.overheadPct,
+              financialPct: marginForm.financialPct,
+              profitPct: marginForm.profitPct,
+              taxPct: marginForm.taxPct,
+            }
+          : null
+      )
+      toast.success(t('marginsSaved', { defaultValue: 'Márgenes guardados' }))
+      router.refresh()
+    })
+  }
+
+  const showMarginsTab = budgetLine?.markupMode === 'ADVANCED'
+
   if (isLoading) {
     return (
       <Dialog open onOpenChange={() => onClose()}>
@@ -273,7 +329,7 @@ export function APUEditorDialog({
         <Separator />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={`grid w-full ${showMarginsTab ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TabsTrigger value="materials">
               {t('materials', { defaultValue: 'Materiales' })} ({materials.length})
             </TabsTrigger>
@@ -283,6 +339,11 @@ export function APUEditorDialog({
             <TabsTrigger value="equipment">
               {t('equipment', { defaultValue: 'Equipos' })} ({equipment.length})
             </TabsTrigger>
+            {showMarginsTab && (
+              <TabsTrigger value="margins">
+                {t('margins', { defaultValue: 'Márgenes' })}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="materials" className="space-y-4">
@@ -341,6 +402,88 @@ export function APUEditorDialog({
               t={t}
             />
           </TabsContent>
+
+          {showMarginsTab && (
+            <TabsContent value="margins" className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {t('marginsPerLineDesc', { defaultValue: 'Márgenes aplicados a esta partida (modo avanzado).' })}
+              </p>
+              <div className="grid max-w-md grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="apu-overheadPct">{t('overheadLabel', { defaultValue: 'Gastos generales' })} %</Label>
+                  <Input
+                    id="apu-overheadPct"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={marginForm.overheadPct === 0 ? '' : marginForm.overheadPct}
+                    placeholder="0"
+                    onChange={(e) =>
+                      setMarginForm((prev) => ({ ...prev, overheadPct: parseFloat(e.target.value) || 0 }))
+                    }
+                    disabled={isPending}
+                    className="bg-background text-foreground border-input min-w-[6rem]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apu-financialPct">{t('financialLabel', { defaultValue: 'Financiero' })} %</Label>
+                  <Input
+                    id="apu-financialPct"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={marginForm.financialPct === 0 ? '' : marginForm.financialPct}
+                    placeholder="0"
+                    onChange={(e) =>
+                      setMarginForm((prev) => ({ ...prev, financialPct: parseFloat(e.target.value) || 0 }))
+                    }
+                    disabled={isPending}
+                    className="bg-background text-foreground border-input min-w-[6rem]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apu-profitPct">{t('profitLabel', { defaultValue: 'Utilidad' })} %</Label>
+                  <Input
+                    id="apu-profitPct"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={marginForm.profitPct === 0 ? '' : marginForm.profitPct}
+                    placeholder="0"
+                    onChange={(e) =>
+                      setMarginForm((prev) => ({ ...prev, profitPct: parseFloat(e.target.value) || 0 }))
+                    }
+                    disabled={isPending}
+                    className="bg-background text-foreground border-input min-w-[6rem]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apu-taxPct">{t('taxLabel', { defaultValue: 'Impuesto' })} %</Label>
+                  <Input
+                    id="apu-taxPct"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={marginForm.taxPct === 0 ? '' : marginForm.taxPct}
+                    placeholder="0"
+                    onChange={(e) =>
+                      setMarginForm((prev) => ({ ...prev, taxPct: parseFloat(e.target.value) || 0 }))
+                    }
+                    disabled={isPending}
+                    className="bg-background text-foreground border-input min-w-[6rem]"
+                  />
+                </div>
+              </div>
+              <Button onClick={handleSaveMargins} disabled={isPending}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {t('saveMargins', { defaultValue: 'Guardar márgenes' })}
+              </Button>
+            </TabsContent>
+          )}
         </Tabs>
 
         <Separator />

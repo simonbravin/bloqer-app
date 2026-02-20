@@ -1,7 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
   FolderPlus,
@@ -16,13 +17,17 @@ import type { ActivityItem } from '@/app/actions/dashboard'
 
 interface RecentActivityFeedProps {
   activities: ActivityItem[]
+  /** When true, do not show "en ProjectName" (e.g. when already on project overview) */
+  hideProjectName?: boolean
 }
 
 /**
  * Recent activity feed showing audit log entries
  */
-export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
+export function RecentActivityFeed({ activities, hideProjectName = false }: RecentActivityFeedProps) {
   const t = useTranslations('dashboard')
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   const getActivityIcon = (action: string, entityType: string) => {
     const key = `${action}_${entityType}`.toUpperCase()
@@ -125,7 +130,7 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
                     <span className="font-medium">{activity.actorName}</span>
                     {' '}
                     {getActivityLabel(activity.action, activity.entityType)}
-                    {activity.projectName && (
+                    {!hideProjectName && activity.projectName && (
                       <>
                         {' '}en{' '}
                         <span className="font-medium">{activity.projectName}</span>
@@ -133,10 +138,12 @@ export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {
                     )}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(activity.createdAt), {
-                      addSuffix: true,
-                      locale: es,
-                    })}
+                    {mounted
+                      ? formatDistanceToNow(new Date(activity.createdAt), {
+                          addSuffix: true,
+                          locale: es,
+                        })
+                      : format(new Date(activity.createdAt), "d MMM yyyy, HH:mm", { locale: es })}
                   </p>
                 </div>
               </div>

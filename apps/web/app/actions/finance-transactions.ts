@@ -170,7 +170,7 @@ export async function listWbsNodesForProject(projectId: string) {
   const nodes = await prisma.wbsNode.findMany({
     where: { projectId, orgId: org.orgId, active: true },
     select: { id: true, code: true, name: true },
-    orderBy: [{ code: 'asc' }],
+    orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
   })
   return nodes
 }
@@ -807,6 +807,49 @@ export async function getPartiesForProjectFilter(projectId: string): Promise<{ i
   return list
 }
 
+/** Create a party (client or supplier) for use in transactions when not yet in the list. */
+export async function createPartyForTransaction(
+  partyType: 'CLIENT' | 'SUPPLIER',
+  name: string
+): Promise<{ success: true; partyId: string; name: string } | { error: string }> {
+  await requirePermission('FINANCE', 'create')
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'ACCOUNTANT')
+
+  const trimmed = name.trim()
+  if (!trimmed || trimmed.length < 2) {
+    return { error: 'El nombre debe tener al menos 2 caracteres.' }
+  }
+
+  const existing = await prisma.party.findFirst({
+    where: { orgId: org.orgId, partyType, name: { equals: trimmed, mode: 'insensitive' }, active: true },
+    select: { id: true, name: true },
+  })
+  if (existing) {
+    return { success: true, partyId: existing.id, name: existing.name }
+  }
+
+  const party = await prisma.$transaction(async (tx) => {
+    const created = await tx.party.create({
+      data: {
+        orgId: org.orgId,
+        partyType,
+        name: trimmed,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'PARTY.CREATED',
+      entityType: 'Party',
+      entityId: created.id,
+      payload: { partyType: created.partyType, name: created.name },
+    })
+    return created
+  })
+
+  return { success: true, partyId: party.id, name: party.name }
+}
+
 export async function createProjectTransaction(
   projectId: string,
   data: ProjectTransactionCreateInput
@@ -936,6 +979,7 @@ export async function updateProjectTransaction(id: string, data: ProjectTransact
   const canEditFull = isEditableStatus(existing.status)
   if (parsed.data.status !== undefined) payload.status = parsed.data.status
   if (parsed.data.partyId !== undefined) payload.partyId = parsed.data.partyId ?? null
+  if (parsed.data.status === 'PAID') payload.paidDate = parsed.data.paidDate ?? new Date()
   if (canEditFull) {
     if (parsed.data.description !== undefined) payload.description = parsed.data.description
     if (parsed.data.documentType !== undefined) payload.documentType = parsed.data.documentType

@@ -47,12 +47,14 @@ type ProjectOption = { id: string; name: string; projectNumber: string }
 
 interface Props {
   initialTransactions: OverheadTransactionWithAllocations[]
-  projects: ProjectOption[]
+  activeProjects: ProjectOption[]
+  allProjects: ProjectOption[]
 }
 
 export function OverheadTransactionsListClient({
   initialTransactions,
-  projects,
+  activeProjects,
+  allProjects,
 }: Props) {
   const router = useRouter()
   const [transactions, setTransactions] = useState(initialTransactions)
@@ -141,7 +143,7 @@ export function OverheadTransactionsListClient({
   }
 
   async function handleExport(format: 'excel' | 'pdf', selectedColumns: string[]) {
-    if (format === 'pdf') return { success: false, error: 'Exportación PDF no disponible para overhead' }
+    if (format === 'pdf') return { success: false, error: 'Exportación PDF no disponible para gastos generales' }
     return exportOverheadToExcel(selectedColumns)
   }
 
@@ -169,7 +171,7 @@ export function OverheadTransactionsListClient({
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Transacciones Overhead</CardTitle>
+          <CardTitle>Transacciones de gastos generales</CardTitle>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -216,7 +218,7 @@ export function OverheadTransactionsListClient({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="OVERHEAD">Overhead</SelectItem>
+                <SelectItem value="OVERHEAD">Generales</SelectItem>
                 <SelectItem value="EXPENSE">Gasto</SelectItem>
               </SelectContent>
             </Select>
@@ -246,7 +248,7 @@ export function OverheadTransactionsListClient({
                 {filteredTransactions.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-                      No hay transacciones overhead que coincidan con el filtro
+                      No hay transacciones de gastos generales que coincidan con el filtro
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -331,7 +333,8 @@ export function OverheadTransactionsListClient({
               allocationAmount: a.allocationAmount,
             })),
           }}
-          projects={projects}
+          activeProjects={activeProjects}
+          allProjects={allProjects}
           onSuccess={handleAllocationSuccess}
         />
       )}
@@ -352,7 +355,7 @@ export function OverheadTransactionsListClient({
       <ExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
-        title="Exportar transacciones overhead (Excel)"
+        title="Exportar transacciones de gastos generales (Excel)"
         columns={exportColumns}
         onExport={handleExport}
       />

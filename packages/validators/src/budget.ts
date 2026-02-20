@@ -47,6 +47,10 @@ export const updateBudgetLineSchema = z.object({
   quantity: z.coerce.number().min(0).optional(),
   unitCost: z.coerce.number().nonnegative().optional(),
   indirectCostPct: z.coerce.number().min(0).max(100).optional(),
+  overheadPct: z.coerce.number().min(0).max(100).optional(),
+  financialPct: z.coerce.number().min(0).max(100).optional(),
+  profitPct: z.coerce.number().min(0).max(100).optional(),
+  taxPct: z.coerce.number().min(0).max(100).optional(),
 })
 export type UpdateBudgetLineInput = z.infer<typeof updateBudgetLineSchema>
 

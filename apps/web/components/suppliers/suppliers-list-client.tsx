@@ -58,6 +58,7 @@ type SuppliersListClientProps = {
   defaultTab: string
   linkedSuppliers: LinkedSupplier[]
   localSuppliers: LocalSupplier[]
+  localClients: LocalSupplier[]
   globalSearchResults: GlobalParty[]
   canAddLocal: boolean
 }
@@ -66,6 +67,7 @@ export function SuppliersListClient({
   defaultTab,
   linkedSuppliers,
   localSuppliers,
+  localClients,
   globalSearchResults,
 }: SuppliersListClientProps) {
   const t = useTranslations('suppliers')
@@ -74,6 +76,7 @@ export function SuppliersListClient({
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') ?? '')
+  const [localPartyTypeFilter, setLocalPartyTypeFilter] = useState<'all' | 'suppliers' | 'clients'>('all')
 
   const categories = Array.from(
     new Set([
@@ -90,7 +93,7 @@ export function SuppliersListClient({
         return matchSearch && matchCategory
       })
     : linkedSuppliers
-  const filteredLocal = qLower
+  const localSuppliersFilteredBySearch = qLower
     ? localSuppliers.filter(
         (s) =>
           s.name.toLowerCase().includes(qLower) ||
@@ -98,6 +101,25 @@ export function SuppliersListClient({
           (s.city?.toLowerCase().includes(qLower) ?? false)
       )
     : localSuppliers
+  const localClientsFilteredBySearch = qLower
+    ? localClients.filter(
+        (s) =>
+          s.name.toLowerCase().includes(qLower) ||
+          (s.email?.toLowerCase().includes(qLower) ?? false) ||
+          (s.city?.toLowerCase().includes(qLower) ?? false)
+      )
+    : localClients
+  type LocalPartyItem = LocalSupplier & { partyType: 'SUPPLIER' | 'CLIENT' }
+  const filteredLocalByType: LocalPartyItem[] =
+    localPartyTypeFilter === 'suppliers'
+      ? localSuppliersFilteredBySearch.map((s) => ({ ...s, partyType: 'SUPPLIER' as const }))
+      : localPartyTypeFilter === 'clients'
+        ? localClientsFilteredBySearch.map((s) => ({ ...s, partyType: 'CLIENT' as const }))
+        : [
+            ...localSuppliersFilteredBySearch.map((s) => ({ ...s, partyType: 'SUPPLIER' as const })),
+            ...localClientsFilteredBySearch.map((s) => ({ ...s, partyType: 'CLIENT' as const })),
+          ].sort((a, b) => a.name.localeCompare(b.name))
+  const filteredLocal = filteredLocalByType
 
   function handleSearch() {
     const params = new URLSearchParams(searchParams.toString())
@@ -199,7 +221,7 @@ export function SuppliersListClient({
             {t('linked')} ({linkedSuppliers.length})
           </TabsTrigger>
           <TabsTrigger value="local">
-            {t('local')} ({localSuppliers.length})
+            {t('local')} ({localSuppliers.length + localClients.length})
           </TabsTrigger>
           <TabsTrigger value="directory">{t('global')}</TabsTrigger>
         </TabsList>
@@ -319,6 +341,32 @@ export function SuppliersListClient({
         </TabsContent>
 
         <TabsContent value="local" className="mt-4">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">{t('typeFilter')}:</span>
+            <div className="flex gap-2">
+              <Button
+                variant={localPartyTypeFilter === 'all' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setLocalPartyTypeFilter('all')}
+              >
+                {t('typeAll')}
+              </Button>
+              <Button
+                variant={localPartyTypeFilter === 'suppliers' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setLocalPartyTypeFilter('suppliers')}
+              >
+                {t('typeSuppliers')}
+              </Button>
+              <Button
+                variant={localPartyTypeFilter === 'clients' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setLocalPartyTypeFilter('clients')}
+              >
+                {t('typeClients')}
+              </Button>
+            </div>
+          </div>
           {filteredLocal.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">
               <Building2 className="h-12 w-12 text-muted-foreground" />
@@ -340,14 +388,18 @@ export function SuppliersListClient({
                 </TableHeader>
                 <TableBody>
                   {filteredLocal.map((s) => (
-                    <TableRow key={s.id}>
+                    <TableRow key={`${s.partyType}-${s.id}`}>
                       <TableCell className="font-medium">
-                        <Link
-                          href={`/suppliers/local/${s.id}`}
-                          className="hover:underline text-foreground"
-                        >
-                          {s.name}
-                        </Link>
+                        {s.partyType === 'SUPPLIER' ? (
+                          <Link
+                            href={`/suppliers/local/${s.id}`}
+                            className="hover:underline text-foreground"
+                          >
+                            {s.name}
+                          </Link>
+                        ) : (
+                          s.name
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{s.email ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{s.phone ?? '—'}</TableCell>
@@ -360,15 +412,19 @@ export function SuppliersListClient({
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredLocal.map((s) => (
-                <Card key={s.id} className="transition-colors hover:bg-muted/50">
+                <Card key={`${s.partyType}-${s.id}`} className="transition-colors hover:bg-muted/50">
                   <CardContent className="p-4">
                     <h3 className="font-medium">
-                      <Link
-                        href={`/suppliers/local/${s.id}`}
-                        className="hover:underline text-foreground"
-                      >
-                        {s.name}
-                      </Link>
+                      {s.partyType === 'SUPPLIER' ? (
+                        <Link
+                          href={`/suppliers/local/${s.id}`}
+                          className="hover:underline text-foreground"
+                        >
+                          {s.name}
+                        </Link>
+                      ) : (
+                        s.name
+                      )}
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">{t('email')}: {s.email ?? '—'}</p>
                     <p className="text-sm text-muted-foreground">{t('phone')}: {s.phone ?? '—'}</p>

@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { hasMinimumRole } from '@/lib/rbac'
@@ -25,15 +24,7 @@ export default async function ProjectBudgetPage({ params }: PageProps) {
   const canEdit = hasMinimumRole(org.role, 'EDITOR')
 
   return (
-    <div className="erp-view-container space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          href={`/projects/${projectId}`}
-          className="text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          ← {project.name}
-        </Link>
-      </div>
+    <div className="erp-stack">
       <BudgetVersionListClient
         projectId={projectId}
         versions={versions ?? []}

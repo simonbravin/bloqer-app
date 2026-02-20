@@ -11,19 +11,21 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, Loader2 } from 'lucide-react'
 import { updateProjectTransaction } from '@/app/actions/finance'
-import { STATUS_LABELS } from '@/lib/finance-labels'
+import { getStatusLabel } from '@/lib/finance-labels'
 import { toast } from 'sonner'
 import { TRANSACTION_STATUS } from '@repo/validators'
 
 interface TransactionStatusDropdownProps {
   transactionId: string
   currentStatus: string
+  transactionType?: string
   onSuccess: (updated: { status: string }) => void
 }
 
 export function TransactionStatusDropdown({
   transactionId,
   currentStatus,
+  transactionType,
   onSuccess,
 }: TransactionStatusDropdownProps) {
   const [isPending, setIsPending] = useState(false)
@@ -64,7 +66,7 @@ export function TransactionStatusDropdown({
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Badge variant="neutral" className="font-normal">
-              {STATUS_LABELS[currentStatus] ?? currentStatus}
+              {getStatusLabel(currentStatus, transactionType)}
             </Badge>
           )}
           <ChevronDown className="h-3.5 w-3.5 opacity-50" />
@@ -77,7 +79,7 @@ export function TransactionStatusDropdown({
             onClick={() => handleStatusChange(status)}
             disabled={status === currentStatus}
           >
-            {STATUS_LABELS[status] ?? status}
+            {getStatusLabel(status, transactionType)}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

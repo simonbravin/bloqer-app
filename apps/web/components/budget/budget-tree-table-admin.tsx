@@ -33,6 +33,8 @@ export interface BudgetTreeLine {
   unit: string
   quantity: number
   directCostTotal: number
+  /** Costo real acumulado (desde reportes diarios aprobados). */
+  actualCostTotal?: number
   overheadPct: number
   financialPct: number
   profitPct: number
@@ -47,6 +49,7 @@ export interface BudgetTreeNode {
     name: string
     category: string
   }
+  parentId?: string | null
   lines: BudgetTreeLine[]
   children: BudgetTreeNode[]
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMessageBus } from '@/hooks/use-message-bus'
+import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -36,7 +37,7 @@ import {
 import { exportProjectTransactionsToExcel } from '@/app/actions/export'
 import { ExportDialog } from '@/components/export/export-dialog'
 import { toast } from 'sonner'
-import { FileDown } from 'lucide-react'
+import { FileDown, TrendingUp } from 'lucide-react'
 import { STATUS_LABELS } from '@/lib/finance-labels'
 
 export type ProjectTransactionRow = {
@@ -67,11 +68,13 @@ export type ProjectTransactionRow = {
 interface Props {
   projectId: string
   initialTransactions: ProjectTransactionRow[]
+  projectBalance?: number
 }
 
 export function ProjectTransactionsListClient({
   projectId,
   initialTransactions,
+  projectBalance,
 }: Props) {
   const router = useRouter()
   const [transactions, setTransactions] = useState(initialTransactions)
@@ -89,6 +92,9 @@ export function ProjectTransactionsListClient({
 
   useMessageBus('FINANCE_TRANSACTION.CREATED', () => router.refresh())
   useMessageBus('FINANCE_TRANSACTION.UPDATED', () => router.refresh())
+  useMessageBus('PARTY.CREATED', () => {
+    getPartiesForProjectFilter(projectId).then(setParties)
+  })
 
   useEffect(() => {
     getPartiesForProjectFilter(projectId).then(setParties)
@@ -137,6 +143,30 @@ export function ProjectTransactionsListClient({
   return (
     <>
       <div className="space-y-4">
+        {projectBalance !== undefined && (
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
+                Balance del proyecto:
+              </span>
+              <span
+                className={`tabular-nums font-semibold ${
+                  projectBalance >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
+                {formatCurrency(projectBalance, 'ARS')}
+              </span>
+            </div>
+            <Button variant="link" size="sm" className="h-auto p-0" asChild>
+              <Link href={`/projects/${projectId}/finance/cashflow`}>
+                Ver Cashflow
+              </Link>
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
@@ -263,6 +293,7 @@ export function ProjectTransactionsListClient({
                     <TransactionStatusDropdown
                       transactionId={tx.id}
                       currentStatus={tx.status}
+                      transactionType={tx.type}
                       onSuccess={(updated) => {
                         setTransactions((prev) =>
                           prev.map((t) => (t.id === tx.id ? { ...t, status: updated.status } : t))

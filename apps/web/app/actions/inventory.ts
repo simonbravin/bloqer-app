@@ -605,7 +605,7 @@ export async function getProjectWBSNodes(projectId: string) {
     const nodes = await prisma.wbsNode.findMany({
       where: { projectId, orgId: org.orgId, active: true },
       select: { id: true, code: true, name: true, category: true },
-      orderBy: { code: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
     })
     return { success: true as const, nodes }
   } catch {

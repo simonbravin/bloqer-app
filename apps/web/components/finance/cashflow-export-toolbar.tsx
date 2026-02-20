@@ -20,7 +20,7 @@ const CASHFLOW_EXPORT_COLUMNS = [
   { field: 'month', label: 'Mes', defaultVisible: true },
   { field: 'income', label: 'Ingresos', defaultVisible: true },
   { field: 'expense', label: 'Gastos', defaultVisible: true },
-  { field: 'overhead', label: 'Overhead', defaultVisible: true },
+  { field: 'overhead', label: 'Generales', defaultVisible: true },
   { field: 'projectExpense', label: 'Gastos proyectos', defaultVisible: true },
   { field: 'balance', label: 'Balance', defaultVisible: true },
 ]

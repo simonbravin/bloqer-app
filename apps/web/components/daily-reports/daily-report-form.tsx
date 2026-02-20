@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
@@ -12,10 +13,32 @@ import {
   type UpdateDailyReportInput,
   type LaborEntryInput,
 } from '@repo/validators'
+import { formatDateDDMMYYYY, parseDateDDMMYYYY } from '@/lib/format-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LaborEntriesTable } from './labor-entries-table'
+
+function getFirstErrorMessage(errors: Record<string, unknown>): string | undefined {
+  for (const key of Object.keys(errors)) {
+    const e = errors[key]
+    if (e && typeof e === 'object' && 'message' in e && typeof (e as { message?: string }).message === 'string')
+      return (e as { message: string }).message
+    if (e && typeof e === 'object' && !Array.isArray(e)) {
+      const nested = getFirstErrorMessage(e as Record<string, unknown>)
+      if (nested) return nested
+    }
+    if (Array.isArray(e)) {
+      for (const item of e) {
+        if (item && typeof item === 'object') {
+          const nested = getFirstErrorMessage(item as Record<string, unknown>)
+          if (nested) return nested
+        }
+      }
+    }
+  }
+  return undefined
+}
 
 type WbsOption = { id: string; code: string; name: string }
 
@@ -75,14 +98,27 @@ export function DailyReportForm({
 
   const laborEntries = watch('laborEntries') as LaborEntryInput[] | undefined
   const setLaborEntries = (entries: LaborEntryInput[]) => setValue('laborEntries', entries)
+  const reportDateForm = watch('reportDate')
+  const [reportDateStr, setReportDateStr] = useState(() =>
+    reportDateForm instanceof Date ? formatDateDDMMYYYY(reportDateForm) : ''
+  )
+  useEffect(() => {
+    if (reportDateForm instanceof Date) setReportDateStr(formatDateDDMMYYYY(reportDateForm))
+  }, [reportDateForm])
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   async function submitWithAction(action: 'draft' | 'submit') {
     const data = getValues()
-    const wbsIds = Array.isArray(data.wbsNodeIds) ? (data.wbsNodeIds as string[]).filter(Boolean) : []
+    const wbsIds = Array.isArray(data.wbsNodeIds)
+      ? (data.wbsNodeIds as string[]).filter((id) => id && id !== '__none__' && UUID_REGEX.test(id))
+      : []
+    const labor = (data.laborEntries ?? []) as LaborEntryInput[]
+    const laborEntriesFiltered = labor.filter((e) => (e.speciality ?? '').trim().length > 0)
     const payload = {
       ...data,
       wbsNodeId: data.wbsNodeId === '__none__' || data.wbsNodeId === '' ? null : data.wbsNodeId,
       wbsNodeIds: wbsIds,
+      laborEntries: laborEntriesFiltered,
     }
     if (action === 'draft') {
       if ((payload.summary?.trim() ?? '').length < 5) (payload as { summary: string }).summary = 'Borrador'
@@ -90,11 +126,7 @@ export function DailyReportForm({
     if (action === 'submit') {
       const valid = await trigger(undefined, { shouldFocus: true })
       if (!valid) {
-        toast.error(
-          errors.summary?.message ??
-            errors.reportDate?.message ??
-            'Revisá que el resumen tenga al menos 5 caracteres y que la fecha sea válida.'
-        )
+        toast.error(getFirstErrorMessage(errors) ?? 'Revisá los datos del formulario.')
         return
       }
     } else {
@@ -113,12 +145,26 @@ export function DailyReportForm({
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="reportDate">Fecha</Label>
-            <Input
-              id="reportDate"
-              type="date"
-              {...register('reportDate', { valueAsDate: true })}
-              className="h-10 w-full"
+            <Label htmlFor="reportDate">Fecha (DD/MM/AAAA)</Label>
+            <Controller
+              name="reportDate"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id="reportDate"
+                  type="text"
+                  placeholder="DD/MM/AAAA"
+                  className="h-10 w-full"
+                  value={reportDateStr}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    setReportDateStr(raw)
+                    const parsed = parseDateDDMMYYYY(raw)
+                    if (parsed) field.onChange(parsed)
+                  }}
+                  onBlur={field.onBlur}
+                />
+              )}
             />
             {errors.reportDate && (
               <p className="text-sm text-destructive">{errors.reportDate.message}</p>

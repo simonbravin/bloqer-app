@@ -73,8 +73,8 @@ export function BudgetSummarySheet({
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-table-head">
             <TableRow className="h-9">
-              <TableHead className="text-foreground text-xs py-1 px-2 w-[100px]">
-                {t('code')}
+              <TableHead className="text-foreground text-xs py-1 px-2 text-center w-12 min-w-[2.5rem]">
+                {t('rowNumber')}
               </TableHead>
               <TableHead className="text-foreground text-xs py-1 px-2">
                 {t('description')}
@@ -107,8 +107,8 @@ export function BudgetSummarySheet({
 
               return (
                 <TableRow key={idx} className="h-8 hover:bg-muted/50">
-                  <TableCell className="font-mono text-[10px] py-1 px-2">
-                    {item.code}
+                  <TableCell className="font-mono text-xs text-center text-muted-foreground tabular-nums py-1 px-2">
+                    {idx + 1}
                   </TableCell>
                   <TableCell className="text-xs py-1 px-2">
                     {item.description}

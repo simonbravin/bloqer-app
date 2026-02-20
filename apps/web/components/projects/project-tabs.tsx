@@ -16,64 +16,44 @@ interface ProjectTabsProps {
   projectId: string
 }
 
+/** Misma estética que el menú de Finanzas de empresa: barra redondeada, pestañas con íconos, activo con bg-card. */
 export function ProjectTabs({ projectId }: ProjectTabsProps) {
   const pathname = usePathname()
   const t = useTranslations('nav')
 
   const tabs = [
-    {
-      name: t('overview'),
-      href: `/projects/${projectId}`,
-      icon: LayoutDashboard,
-      exact: true,
-    },
-    {
-      name: t('projectDashboard'),
-      href: `/projects/${projectId}/dashboard`,
-      icon: BarChart3,
-    },
-    {
-      name: t('budget'),
-      href: `/projects/${projectId}/budget`,
-      icon: Calculator,
-    },
-    {
-      name: t('schedule'),
-      href: `/projects/${projectId}/schedule`,
-      icon: Calendar,
-    },
-    {
-      name: t('finance'),
-      href: `/projects/${projectId}/finance`,
-      icon: DollarSign,
-    },
+    { name: t('overview'), href: `/projects/${projectId}`, icon: LayoutDashboard, exact: true },
+    { name: t('projectDashboard'), href: `/projects/${projectId}/dashboard`, icon: BarChart3, exact: false },
+    { name: t('budget'), href: `/projects/${projectId}/budget`, icon: Calculator, exact: false },
+    { name: t('schedule'), href: `/projects/${projectId}/schedule`, icon: Calendar, exact: false },
+    { name: t('finance'), href: `/projects/${projectId}/finance`, icon: DollarSign, exact: false },
   ]
 
   return (
-    <div className="border-b border-border bg-card">
-      <nav className="flex flex-wrap gap-x-6 gap-y-2 px-6 py-1" aria-label="Tabs">
-        {tabs.map((tab) => {
-          const Icon = tab.icon
-          const isActive = tab.exact
-            ? pathname === tab.href
-            : pathname.startsWith(tab.href)
-          return (
-            <Link
-              key={tab.name}
-              href={tab.href}
-              className={cn(
-                'flex items-center gap-2 border-b-2 px-1 py-3.5 text-sm font-semibold transition-colors',
-                isActive
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-foreground/90 hover:border-border hover:text-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="whitespace-nowrap">{tab.name}</span>
-            </Link>
-          )
-        })}
-      </nav>
-    </div>
+    <nav
+      className="flex w-full flex-nowrap gap-1 overflow-x-auto rounded-lg border border-border bg-muted/50 p-1"
+      aria-label="Tabs"
+    >
+      {tabs.map((tab) => {
+        const isActive = tab.exact
+          ? pathname === tab.href
+          : pathname === tab.href || pathname.startsWith(tab.href + '/')
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={cn(
+              'flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              isActive
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <tab.icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{tab.name}</span>
+          </Link>
+        )
+      })}
+    </nav>
   )
 }

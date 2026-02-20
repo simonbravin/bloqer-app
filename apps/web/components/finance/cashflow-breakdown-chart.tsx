@@ -42,7 +42,7 @@ export function CashflowBreakdownChart({ breakdown }: Props) {
   const chartData = breakdown.map((item, index) => ({
     name:
       item.projectId === null
-        ? 'Overhead'
+        ? 'Generales'
         : `${item.projectNumber} - ${item.projectName.substring(0, 20)}${item.projectName.length > 20 ? '...' : ''}`,
     value: item.totalExpense,
     fill: COLORS[index % COLORS.length],
@@ -56,7 +56,7 @@ export function CashflowBreakdownChart({ breakdown }: Props) {
       <CardContent>
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="h-64 min-h-[200px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={256}>
               <PieChart>
                 <Pie
                   data={chartData}
@@ -83,7 +83,7 @@ export function CashflowBreakdownChart({ breakdown }: Props) {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-2 text-left font-medium text-muted-foreground">
-                    Proyecto / Overhead
+                    Proyecto / Generales
                   </th>
                   <th className="px-4 py-2 text-right font-medium text-muted-foreground">
                     Gasto Total
@@ -98,7 +98,7 @@ export function CashflowBreakdownChart({ breakdown }: Props) {
                     <tr key={item.projectId ?? 'overhead'} className="border-b last:border-0">
                       <td className="px-4 py-2">
                         {item.projectId === null ? (
-                          'Overhead'
+                          'Generales'
                         ) : (
                           <span>
                             {item.projectNumber} {item.projectName}

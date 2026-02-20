@@ -83,7 +83,10 @@ export default async function DashboardLayoutPage({
       <DashboardLayout
         orgName={orgContext.orgName}
         orgLogoUrl={orgLogoUrl}
-        userName={session.user.name ?? session.user.email ?? 'User'}
+        user={{
+          name: session.user.name ?? session.user.email ?? 'User',
+          email: session.user.email ?? null,
+        }}
       >
         {children}
       </DashboardLayout>

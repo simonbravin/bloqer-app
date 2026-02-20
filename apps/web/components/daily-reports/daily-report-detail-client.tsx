@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { formatDateDDMMYYYY } from '@/lib/format-utils'
 import { uploadDailyReportFiles } from '@/app/actions/daily-reports'
 
 type Report = Awaited<ReturnType<typeof import('@/app/actions/daily-reports').getDailyReport>>
@@ -23,14 +24,6 @@ type DailyReportDetailClientProps = {
   onReject: (id: string, reason: string) => Promise<unknown>
   onPublish: (id: string) => Promise<unknown>
   onDelete: (id: string) => Promise<void>
-}
-
-function formatDate(d: Date): string {
-  return new Date(d).toLocaleDateString(undefined, {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
 }
 
 function StatusBadge({ statusKey, label }: { statusKey: string; label: string }) {
@@ -72,6 +65,7 @@ export function DailyReportDetailClient({
   const [showReject, setShowReject] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const statusLabels: Record<string, string> = {
     DRAFT: t('statusDraft'),
@@ -176,7 +170,7 @@ export function DailyReportDetailClient({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {formatDate(report.reportDate)} — {report.summary.slice(0, 50)}
+            {formatDateDDMMYYYY(report.reportDate)} — {report.summary.slice(0, 50)}
             {report.summary.length > 50 ? '...' : ''}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -338,15 +332,40 @@ export function DailyReportDetailClient({
               {report.photos.length > 0 ? 'Agregar más fotos/documentos' : t('photosAndDocs')}
             </h2>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('dropzoneHint')}</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".jpg,.jpeg,.png,.webp,.pdf,.docx"
-              onChange={handleFileUpload}
-              disabled={uploading}
-              className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:rounded file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-gray-700 dark:file:bg-gray-800 dark:file:text-gray-300"
-            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.doc,.docx"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="hidden"
+                id={`daily-report-file-${report.id}`}
+              />
+              <label
+                htmlFor={`daily-report-file-${report.id}`}
+                className="inline-flex cursor-pointer items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                {tCommon('chooseFile')}
+              </label>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="hidden"
+                id={`daily-report-camera-${report.id}`}
+              />
+              <label
+                htmlFor={`daily-report-camera-${report.id}`}
+                className="inline-flex cursor-pointer items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                {t('takePhoto')}
+              </label>
+            </div>
             {uploading && <p className="mt-2 text-sm text-gray-500">{tCommon('loading')}</p>}
           </div>
         )}

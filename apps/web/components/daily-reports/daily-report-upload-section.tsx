@@ -25,6 +25,7 @@ export function DailyReportUploadSection({
   const tCommon = useTranslations('common')
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -57,15 +58,40 @@ export function DailyReportUploadSection({
         {photoCount > 0 ? 'Agregar más fotos/documentos' : t('photosAndDocs')}
       </h2>
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('dropzoneHint')}</p>
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept=".jpg,.jpeg,.png,.webp,.pdf,.docx"
-        onChange={handleFileUpload}
-        disabled={uploading}
-        className="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:rounded file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-gray-700 dark:file:bg-gray-800 dark:file:text-gray-300"
-      />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx"
+          onChange={handleFileUpload}
+          disabled={uploading}
+          className="hidden"
+          id={`daily-report-file-${reportId}`}
+        />
+        <label
+          htmlFor={`daily-report-file-${reportId}`}
+          className="inline-flex cursor-pointer items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        >
+          {t('chooseFile')}
+        </label>
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileUpload}
+          disabled={uploading}
+          className="hidden"
+          id={`daily-report-camera-${reportId}`}
+        />
+        <label
+          htmlFor={`daily-report-camera-${reportId}`}
+          className="inline-flex cursor-pointer items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        >
+          {t('takePhoto')}
+        </label>
+      </div>
       {uploading && <p className="mt-2 text-sm text-gray-500">{tCommon('loading')}</p>}
     </div>
   )

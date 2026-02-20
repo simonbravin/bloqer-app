@@ -85,13 +85,29 @@ export async function getCompanyTransactions(filters: CompanyTransactionsFilters
     orderBy: { issueDate: 'desc' },
     take: 500,
   })
-  return list.map((t) => serializeTransaction({
-    ...t,
-    total: t.total,
-    subtotal: t.subtotal,
-    taxTotal: t.taxTotal,
-    amountBaseCurrency: t.amountBaseCurrency,
-  }))
+  return list.map((t) => {
+    const serialized = serializeTransaction({
+      ...t,
+      total: t.total,
+      subtotal: t.subtotal,
+      taxTotal: t.taxTotal,
+      amountBaseCurrency: t.amountBaseCurrency,
+    })
+    return {
+      ...serialized,
+      overheadAllocations: (t.overheadAllocations ?? []).map((a) => ({
+        id: a.id,
+        orgId: a.orgId,
+        transactionId: a.transactionId,
+        projectId: a.projectId,
+        allocationPct: Number(a.allocationPct),
+        allocationAmount: Number(a.allocationAmount),
+        notes: a.notes,
+        createdAt: a.createdAt,
+        project: a.project,
+      })),
+    }
+  })
 }
 
 export type CompanyFinanceDashboard = {
@@ -241,7 +257,7 @@ export async function getCompanyFinanceDashboard(): Promise<CompanyFinanceDashbo
       dueDate: p.dueDate,
       amount: Number(p.amountBaseCurrency),
       supplier: p.party?.name ?? '—',
-      project: p.project?.name ?? 'Overhead',
+      project: p.project?.name ?? 'Generales',
     })),
     topProjects,
   }
@@ -435,10 +451,207 @@ export async function getFinanceExecutiveDashboard(): Promise<FinanceExecutiveDa
       dueDate: tx.dueDate,
       amount: Number(tx.amountBaseCurrency),
       supplier: tx.party?.name ?? '—',
-      project: tx.project?.name ?? 'Overhead',
+      project: tx.project?.name ?? 'Generales',
     })),
     overheadSummary,
   }
+}
+
+// ====================
+// DASHBOARD EJECUTIVO POR PROYECTO
+// ====================
+
+export type ProjectFinanceExecutiveDashboard = {
+  summary: CompanyFinanceDashboard
+  monthlyTrend: Array<{ month: string; income: number; expense: number; balance: number }>
+  expensesByType: Array<{ type: string; total: number; count: number }>
+  topSuppliers: Array<{ supplierId: string; supplierName: string; total: number; count: number }>
+}
+
+export async function getProjectFinanceExecutiveDashboard(
+  projectId: string
+): Promise<ProjectFinanceExecutiveDashboard> {
+  const { org } = await getAuthContext()
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, orgId: org.orgId },
+    select: { id: true },
+  })
+  if (!project) throw new Error('Proyecto no encontrado')
+
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth()
+  const startDate = new Date(currentYear, currentMonth - 11, 1)
+  const endDate = new Date(now)
+  endDate.setHours(23, 59, 59, 999)
+  const startOfMonth = new Date(currentYear, currentMonth, 1)
+  const endOfMonth = new Date(currentYear, currentMonth + 1, 0)
+  const next30 = new Date(now)
+  next30.setDate(next30.getDate() + 30)
+
+  const baseWhere = { orgId: org.orgId, projectId, deleted: false }
+
+  const [
+    totalIncome,
+    totalExpense,
+    pendingIncome,
+    pendingExpense,
+    currentMonthIncome,
+    currentMonthExpense,
+    transactionsForTrend,
+    upcomingPayments,
+    expensesByTypeRaw,
+    txBySupplier,
+  ] = await Promise.all([
+    prisma.financeTransaction.aggregate({
+      where: { ...baseWhere, type: { in: ['INCOME', 'SALE'] }, status: 'PAID' },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: { ...baseWhere, type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] }, status: 'PAID' },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: { ...baseWhere, type: { in: ['INCOME', 'SALE'] }, status: { in: ['DRAFT', 'SUBMITTED', 'APPROVED'] } },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: { ...baseWhere, type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] }, status: { in: ['DRAFT', 'SUBMITTED', 'APPROVED'] } },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: { ...baseWhere, type: { in: ['INCOME', 'SALE'] }, status: 'PAID', paidDate: { gte: startOfMonth, lte: endOfMonth } },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: { ...baseWhere, type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] }, status: 'PAID', paidDate: { gte: startOfMonth, lte: endOfMonth } },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.findMany({
+      where: { ...baseWhere, issueDate: { gte: startDate, lte: endDate } },
+      select: { issueDate: true, type: true, amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.findMany({
+      where: {
+        ...baseWhere,
+        type: { in: ['EXPENSE', 'PURCHASE'] },
+        status: { in: ['DRAFT', 'SUBMITTED', 'APPROVED'] },
+        dueDate: { gte: now, lte: next30 },
+      },
+      select: {
+        id: true,
+        description: true,
+        dueDate: true,
+        amountBaseCurrency: true,
+        party: { select: { name: true } },
+        project: { select: { name: true } },
+      },
+      orderBy: { dueDate: 'asc' },
+      take: 10,
+    }),
+    prisma.financeTransaction.groupBy({
+      by: ['type'],
+      where: {
+        ...baseWhere,
+        type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] },
+        status: 'PAID',
+        issueDate: { gte: startDate, lte: endDate },
+      },
+      _sum: { amountBaseCurrency: true },
+      _count: true,
+    }),
+    prisma.financeTransaction.groupBy({
+      by: ['partyId'],
+      where: {
+        ...baseWhere,
+        type: { in: ['EXPENSE', 'PURCHASE'] },
+        status: 'PAID',
+        partyId: { not: null },
+        issueDate: { gte: startDate, lte: endDate },
+      },
+      _sum: { amountBaseCurrency: true },
+      _count: true,
+    }),
+  ])
+
+  const ti = Number(totalIncome._sum.amountBaseCurrency ?? 0)
+  const te = Number(totalExpense._sum.amountBaseCurrency ?? 0)
+  const cmi = Number(currentMonthIncome._sum.amountBaseCurrency ?? 0)
+  const cme = Number(currentMonthExpense._sum.amountBaseCurrency ?? 0)
+
+  const monthMap = new Map<string, { income: number; expense: number }>()
+  for (let m = 0; m < 12; m++) {
+    const d = new Date(currentYear, currentMonth - 11 + m, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    monthMap.set(key, { income: 0, expense: 0 })
+  }
+  for (const tx of transactionsForTrend) {
+    const key = `${tx.issueDate.getFullYear()}-${String(tx.issueDate.getMonth() + 1).padStart(2, '0')}`
+    const row = monthMap.get(key)
+    if (!row) continue
+    const amount = Number(tx.amountBaseCurrency)
+    if (tx.type === 'INCOME' || tx.type === 'SALE') {
+      row.income += amount
+    } else if (tx.type === 'EXPENSE' || tx.type === 'PURCHASE' || tx.type === 'OVERHEAD') {
+      row.expense += amount
+    }
+  }
+  const monthlyTrend = Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, row]) => ({
+      month,
+      income: row.income,
+      expense: row.expense,
+      balance: row.income - row.expense,
+    }))
+
+  const expensesByType = expensesByTypeRaw.map((r) => ({
+    type: r.type,
+    total: Number(r._sum.amountBaseCurrency ?? 0),
+    count: r._count,
+  }))
+
+  const supplierPartyIds = [...new Set(txBySupplier.map((r) => r.partyId).filter(Boolean))] as string[]
+  const supplierParties =
+    supplierPartyIds.length > 0
+      ? await prisma.party.findMany({
+          where: { id: { in: supplierPartyIds } },
+          select: { id: true, name: true },
+        })
+      : []
+  const supplierNameMap = new Map(supplierParties.map((p) => [p.id, p.name]))
+  const topSuppliers = txBySupplier
+    .map((r) => ({
+      supplierId: r.partyId!,
+      supplierName: supplierNameMap.get(r.partyId!) ?? '—',
+      total: Number(r._sum.amountBaseCurrency ?? 0),
+      count: r._count,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
+
+  const summary: CompanyFinanceDashboard = {
+    totalIncome: ti,
+    totalExpense: te,
+    balance: ti - te,
+    pendingIncome: Number(pendingIncome._sum.amountBaseCurrency ?? 0),
+    pendingExpense: Number(pendingExpense._sum.amountBaseCurrency ?? 0),
+    currentMonthIncome: cmi,
+    currentMonthExpense: cme,
+    currentMonthNet: cmi - cme,
+    unallocatedOverhead: 0,
+    upcomingPayments: upcomingPayments.map((p) => ({
+      id: p.id,
+      description: p.description,
+      dueDate: p.dueDate,
+      amount: Number(p.amountBaseCurrency),
+      supplier: p.party?.name ?? '—',
+      project: p.project?.name ?? '—',
+    })),
+    topProjects: [],
+  }
+
+  return { summary, monthlyTrend, expensesByType, topSuppliers }
 }
 
 // ====================
@@ -451,6 +664,17 @@ export async function getActiveProjects(): Promise<
   const { org } = await getAuthContext()
   return prisma.project.findMany({
     where: { orgId: org.orgId, active: true },
+    select: { id: true, name: true, projectNumber: true },
+    orderBy: { name: 'asc' },
+  })
+}
+
+export async function getAllProjects(): Promise<
+  Array<{ id: string; name: string; projectNumber: string }>
+> {
+  const { org } = await getAuthContext()
+  return prisma.project.findMany({
+    where: { orgId: org.orgId },
     select: { id: true, name: true, projectNumber: true },
     orderBy: { name: 'asc' },
   })

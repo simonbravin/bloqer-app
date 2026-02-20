@@ -18,10 +18,16 @@ export const STATUS_LABELS: Record<string, string> = {
   VOIDED: 'Anulado',
 }
 
+/** Status label for display; use "Cobrado" for PAID when type is INCOME or SALE. */
+export function getStatusLabel(status: string, type?: string): string {
+  if (status === 'PAID' && (type === 'INCOME' || type === 'SALE')) return 'Cobrado'
+  return STATUS_LABELS[status] ?? status
+}
+
 export const TYPE_LABELS: Record<string, string> = {
   EXPENSE: 'Gasto',
   INCOME: 'Ingreso',
   PURCHASE: 'Compra',
   SALE: 'Venta',
-  OVERHEAD: 'Overhead',
+  OVERHEAD: 'Generales',
 }

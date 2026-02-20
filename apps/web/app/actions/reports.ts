@@ -192,7 +192,7 @@ export async function executeCustomQuery(config: QueryConfig): Promise<ReportRes
         amountBaseCurrency:
           typeof t.amountBaseCurrency === 'number' ? t.amountBaseCurrency : Number(t.amountBaseCurrency ?? t.total),
         description: t.description,
-        projectName: (t.project as { name?: string })?.name ?? 'Overhead',
+        projectName: (t.project as { name?: string })?.name ?? 'Generales',
         partyName: (t.party as { name?: string })?.name ?? '—',
       }
       return selectSet.size > 0 ? pick(row) : row
@@ -486,7 +486,7 @@ export async function getReportPreview(
     const keys = selectedColumns.length ? selectedColumns : ['transactionNumber', 'type', 'status', 'issueDate', 'total']
     return (list as Record<string, unknown>[]).map((t) => {
       const row: Record<string, unknown> = {}
-      const flat = { ...t, projectName: (t.project as { name?: string })?.name ?? 'Overhead' }
+      const flat = { ...t, projectName: (t.project as { name?: string })?.name ?? 'Generales' }
       for (const k of keys) {
         if (k in flat) row[k] = flat[k]
       }

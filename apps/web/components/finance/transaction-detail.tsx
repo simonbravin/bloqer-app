@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { CurrencyConverter } from './currency-converter'
-import { DOCUMENT_TYPE_LABELS, STATUS_LABELS } from '@/lib/finance-labels'
+import { DOCUMENT_TYPE_LABELS, getStatusLabel } from '@/lib/finance-labels'
 import { cn } from '@/lib/utils'
 
 export type TransactionDetailData = {
@@ -66,7 +66,7 @@ function formatCurrency(value: number, currency: string = 'USD'): string {
   }).format(value)
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, type }: { status: string; type?: string }) {
   const styles: Record<string, string> = {
     DRAFT: 'bg-muted text-muted-foreground',
     SUBMITTED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
@@ -81,7 +81,7 @@ function StatusBadge({ status }: { status: string }) {
         styles[status] ?? 'bg-muted text-muted-foreground'
       )}
     >
-      {STATUS_LABELS[status] ?? status}
+      {getStatusLabel(status, type)}
     </span>
   )
 }
@@ -128,7 +128,7 @@ export function TransactionDetail({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <StatusBadge status={transaction.status} />
+          <StatusBadge status={transaction.status} type={transaction.type} />
           {canEdit && transaction.status === 'DRAFT' && (
             <Link href={`/finance/transactions/${transaction.id}/edit`}>
               <Button variant="outline" size="default">{t('edit')}</Button>

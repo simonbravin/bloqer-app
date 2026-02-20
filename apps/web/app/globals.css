@@ -362,7 +362,7 @@
   }
 
   .erp-card {
-    @apply rounded-lg border border-border bg-card shadow-[var(--shadow-card)];
+    @apply rounded-xl border border-border bg-card shadow-[var(--shadow-card)];
   }
 
   .erp-card-header {
@@ -375,7 +375,7 @@
 
   /* Clickable card (e.g. project card link): same as erp-card + hover + focus-visible */
   .erp-card-interactive {
-    @apply rounded-lg border border-border bg-card shadow-[var(--shadow-card)];
+    @apply rounded-xl border border-border bg-card shadow-[var(--shadow-card)];
     transition: box-shadow var(--motion-base) var(--motion-ease), border-color var(--motion-base) var(--motion-ease);
   }
   .erp-card-interactive:hover {
@@ -414,6 +414,26 @@
   }
   .erp-wizard-step-dot-inactive {
     @apply border-border bg-muted text-muted-foreground;
+  }
+
+  /* Sidebar scrollbar: track and thumb use theme colors; thumb has subtle accent on hover */
+  .sidebar-nav-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--sidebar-ring) / 0.5) hsl(var(--sidebar-border));
+  }
+  .sidebar-nav-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .sidebar-nav-scroll::-webkit-scrollbar-track {
+    background: hsl(var(--sidebar-border));
+    border-radius: 3px;
+  }
+  .sidebar-nav-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--sidebar-ring) / 0.5);
+    border-radius: 3px;
+  }
+  .sidebar-nav-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--sidebar-ring) / 0.75);
   }
   .erp-wizard-step-separator {
     @apply text-muted-foreground;
@@ -746,4 +766,68 @@
   .bg-surface-muted {
     background-color: hsl(var(--muted));
   }
+}
+
+/* Login branding SVG: líneas tipo planos/cotas + movimientos fluidos */
+@keyframes login-dash-h {
+  to {
+    stroke-dashoffset: -80;
+  }
+}
+@keyframes login-dash-v {
+  to {
+    stroke-dashoffset: -64;
+  }
+}
+@keyframes login-dash-fluid {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -120;
+  }
+}
+@keyframes login-flow-opacity {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes login-branding-pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-branding-dash-h,
+  .login-branding-dash-v,
+  .login-branding-dash-fluid,
+  .login-branding-flow-opacity,
+  .login-branding-pulse {
+    animation: none;
+  }
+  .login-branding-pulse,
+  .login-branding-flow-opacity {
+    opacity: 0.9;
+  }
+}
+.login-branding-dash-h {
+  animation: login-dash-h 12s linear infinite;
+}
+.login-branding-dash-v {
+  animation: login-dash-v 16s linear infinite;
+}
+.login-branding-dash-fluid {
+  animation: login-dash-fluid 8s ease-in-out infinite;
+}
+.login-branding-flow-opacity {
+  animation: login-flow-opacity 4s ease-in-out infinite;
+}
+.login-branding-pulse {
+  animation: login-branding-pulse 3s ease-in-out infinite;
 }

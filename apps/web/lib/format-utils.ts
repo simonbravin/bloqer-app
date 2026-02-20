@@ -139,6 +139,36 @@ export function formatDateTime(date: Date | string | null, locale = 'es-AR'): st
 }
 
 /**
+ * Date as DD/MM/YYYY for inputs and display (Argentina / Spanish).
+ * Use for Libro de Obra and any form that must show DD/MM/AAAA.
+ */
+export function formatDateDDMMYYYY(date: Date | string | null): string {
+  if (!date) return ''
+  const d = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(d)
+}
+
+/**
+ * Parse DD/MM/YYYY or D/M/YYYY string to Date, or null if invalid.
+ */
+export function parseDateDDMMYYYY(s: string): Date | null {
+  const trimmed = (s ?? '').trim()
+  if (!trimmed) return null
+  const parts = trimmed.split('/').map((p) => parseInt(p, 10))
+  if (parts.length !== 3) return null
+  const [day, month, year] = parts
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  const d = new Date(year, month - 1, day)
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null
+  return d
+}
+
+/**
  * Relative time for notifications (e.g. "Hace 5 min", "Ayer", "14/02")
  */
 export function formatRelativeTime(date: Date | string, locale = 'es-AR'): string {

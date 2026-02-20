@@ -11,7 +11,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  className?: string
+  /** When set, trigger shows icon + label (e.g. for sidebar) */
+  label?: string
+}
+
+export function ThemeToggle({ className, label }: ThemeToggleProps = {}) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
@@ -22,7 +28,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" disabled>
+      <Button variant="ghost" size="icon" disabled className={className}>
         <Sun className="h-5 w-5" />
       </Button>
     )
@@ -31,9 +37,12 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        <Button variant="ghost" size={label ? 'sm' : 'icon'} className={`relative ${label ? 'w-full justify-start gap-2 px-3' : ''} ${className ?? ''}`}>
+          <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </span>
+          {label && <span className="text-sm text-sidebar-muted">{label}</span>}
           <span className="sr-only">Cambiar tema</span>
         </Button>
       </DropdownMenuTrigger>

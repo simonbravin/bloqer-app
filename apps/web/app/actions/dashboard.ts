@@ -494,3 +494,43 @@ export async function getRecentActivity(orgId: string): Promise<ActivityItem[]> 
     details: activity.detailsJson,
   }))
 }
+
+/**
+ * Get recent activity for a specific project from audit log
+ */
+export async function getRecentActivityByProject(
+  orgId: string,
+  projectId: string
+): Promise<ActivityItem[]> {
+  const activities = await prisma.auditLog.findMany({
+    where: { orgId, projectId },
+    orderBy: { createdAt: 'desc' },
+    take: 15,
+  })
+
+  const userIds = [...new Set(activities.map((a) => a.actorUserId))]
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, fullName: true },
+  })
+  const userMap = new Map(users.map((u) => [u.id, u.fullName]))
+
+  const projectIds = activities
+    .map((a) => a.projectId)
+    .filter((id): id is string => id !== null)
+  const projects = await prisma.project.findMany({
+    where: { id: { in: projectIds } },
+    select: { id: true, name: true },
+  })
+  const projectMap = new Map(projects.map((p) => [p.id, p.name]))
+
+  return activities.map((activity) => ({
+    id: activity.id,
+    action: activity.action,
+    entityType: activity.entityType,
+    actorName: userMap.get(activity.actorUserId) || 'Sistema',
+    projectName: activity.projectId ? projectMap.get(activity.projectId) : null,
+    createdAt: activity.createdAt,
+    details: activity.detailsJson,
+  }))
+}

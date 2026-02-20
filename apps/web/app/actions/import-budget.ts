@@ -134,6 +134,7 @@ export async function importBudgetFromExcel(
           unit: item.unit ?? 'un',
           quantity: new Prisma.Decimal(item.quantity),
           directCostTotal: amount,
+          importedDirectCostTotal: amount,
           salePriceTotal: amount,
           overheadPct: new Prisma.Decimal(0),
           indirectCostPct: new Prisma.Decimal(0),

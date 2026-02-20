@@ -159,7 +159,7 @@ export function AccountsPayableListClient({
                     <td className="px-4 py-2">{tx.dueDate ? formatDateShort(tx.dueDate) : '—'}</td>
                     <td className="px-4 py-2 text-muted-foreground">{DOCUMENT_TYPE_LABELS[tx.documentType] ?? tx.documentType}</td>
                     {!isProjectScope && (
-                      <td className="px-4 py-2 text-muted-foreground">{tx.project?.name ?? 'Overhead'}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{tx.project?.name ?? 'Generales'}</td>
                     )}
                     <td className="px-4 py-2">{tx.party?.name ?? '—'}</td>
                     <td className="max-w-[200px] truncate px-4 py-2 text-muted-foreground">{tx.description}</td>

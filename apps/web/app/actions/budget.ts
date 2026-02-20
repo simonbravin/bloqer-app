@@ -698,6 +698,30 @@ export async function updateBudgetLine(lineId: string, data: UpdateBudgetLineInp
   const indirectPct = parsed.data.indirectCostPct ?? (lineIndirect != null ? Number(lineIndirect) : 0)
   const { directCost, totalCost } = calculateBudgetLineTotal(quantity, unitCost, indirectPct)
 
+  const hasMarginUpdates =
+    parsed.data.overheadPct !== undefined ||
+    parsed.data.financialPct !== undefined ||
+    parsed.data.profitPct !== undefined ||
+    parsed.data.taxPct !== undefined
+
+  const overheadPct = parsed.data.overheadPct ?? Number(line.overheadPct ?? 0)
+  const financialPct = parsed.data.financialPct ?? Number(line.financialPct ?? 0)
+  const profitPct = parsed.data.profitPct ?? Number(line.profitPct ?? 0)
+  const taxPct = parsed.data.taxPct ?? Number(line.taxPct ?? 0)
+
+  const hasCostUpdates =
+    parsed.data.quantity !== undefined ||
+    parsed.data.unitCost !== undefined ||
+    parsed.data.indirectCostPct !== undefined
+
+  const directCostForSale = Number(hasCostUpdates ? directCost : line.directCostTotal)
+  const qtyForSale = Number(quantity)
+  const unitDirectForSale = qtyForSale > 0 ? directCostForSale / qtyForSale : 0
+  const saleCalc = calculateBudgetLine(unitDirectForSale, overheadPct, financialPct, profitPct, taxPct)
+  const salePriceTotal = hasMarginUpdates
+    ? new Prisma.Decimal(Number(saleCalc.totalPrice) * qtyForSale)
+    : totalCost
+
   await prisma.$transaction(async (tx) => {
     await tx.budgetLine.update({
       where: { id: lineId },
@@ -706,8 +730,12 @@ export async function updateBudgetLine(lineId: string, data: UpdateBudgetLineInp
         ...(parsed.data.unit !== undefined && { unit: parsed.data.unit }),
         ...(parsed.data.quantity !== undefined && { quantity: new Prisma.Decimal(parsed.data.quantity) }),
         ...(parsed.data.indirectCostPct !== undefined && { indirectCostPct: new Prisma.Decimal(parsed.data.indirectCostPct) }),
-        directCostTotal: directCost,
-        salePriceTotal: totalCost,
+        ...(parsed.data.overheadPct !== undefined && { overheadPct: new Prisma.Decimal(parsed.data.overheadPct) }),
+        ...(parsed.data.financialPct !== undefined && { financialPct: new Prisma.Decimal(parsed.data.financialPct) }),
+        ...(parsed.data.profitPct !== undefined && { profitPct: new Prisma.Decimal(parsed.data.profitPct) }),
+        ...(parsed.data.taxPct !== undefined && { taxPct: new Prisma.Decimal(parsed.data.taxPct) }),
+        ...(hasCostUpdates && { directCostTotal: directCost }),
+        salePriceTotal,
       },
     })
     await publishOutboxEvent(tx, {
@@ -1001,6 +1029,15 @@ export async function getBudgetLineWithResources(budgetLineId: string) {
     where: { id: budgetLineId, orgId: org.orgId },
     include: {
       wbsNode: { select: { code: true, name: true } },
+      budgetVersion: {
+        select: {
+          markupMode: true,
+          globalOverheadPct: true,
+          globalFinancialPct: true,
+          globalProfitPct: true,
+          globalTaxPct: true,
+        },
+      },
       resources: {
         orderBy: { sortOrder: 'asc' },
         select: {
@@ -1028,6 +1065,15 @@ export async function getBudgetLineWithResources(budgetLineId: string) {
     description: line.description,
     unit: line.unit,
     quantity: Number(line.quantity),
+    overheadPct: Number(line.overheadPct ?? 0),
+    financialPct: Number(line.financialPct ?? 0),
+    profitPct: Number(line.profitPct ?? 0),
+    taxPct: Number(line.taxPct ?? 0),
+    markupMode: line.budgetVersion?.markupMode ?? 'SIMPLE',
+    globalOverheadPct: Number(line.budgetVersion?.globalOverheadPct ?? 0),
+    globalFinancialPct: Number(line.budgetVersion?.globalFinancialPct ?? 0),
+    globalProfitPct: Number(line.budgetVersion?.globalProfitPct ?? 0),
+    globalTaxPct: Number(line.budgetVersion?.globalTaxPct ?? 0),
     resources: line.resources.map((r) => ({
       id: r.id,
       type: r.resourceType,
@@ -1088,7 +1134,10 @@ export async function addBudgetResource(
 
   const line = await prisma.budgetLine.findFirst({
     where: { id: budgetLineId, orgId: org.orgId },
-    include: { budgetVersion: { select: { status: true, projectId: true } } },
+    include: {
+      budgetVersion: { select: { status: true, projectId: true } },
+      resources: { select: { totalCost: true } },
+    },
   })
   if (!line) return { success: false, error: 'Línea no encontrada' }
   if (!isEditableVersion(line.budgetVersion.status)) {
@@ -1100,6 +1149,17 @@ export async function addBudgetResource(
   }
 
   const totalCost = new Prisma.Decimal(data.quantity * data.unitCost)
+  const importedCap = line.importedDirectCostTotal != null ? Number(line.importedDirectCostTotal) : null
+  if (importedCap != null) {
+    const currentSum = line.resources.reduce((s, r) => s + Number(r.totalCost), 0)
+    const newTotal = currentSum + Number(totalCost)
+    if (newTotal > importedCap) {
+      return {
+        success: false,
+        error: `La suma del desglose (materiales, mano de obra, equipos) no debe superar el valor importado (${importedCap.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}). Suma actual: ${newTotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}.`,
+      }
+    }
+  }
   const maxSort = await prisma.budgetResource.aggregate({
     where: { budgetLineId },
     _max: { sortOrder: true },
@@ -1163,7 +1223,14 @@ export async function updateBudgetResource(
 
   const resource = await prisma.budgetResource.findFirst({
     where: { id: resourceId, orgId: org.orgId },
-    include: { budgetLine: { include: { budgetVersion: { select: { status: true, projectId: true } } } } },
+    include: {
+      budgetLine: {
+        include: {
+          budgetVersion: { select: { status: true, projectId: true } },
+          resources: { select: { id: true, totalCost: true } },
+        },
+      },
+    },
   })
   if (!resource) return { success: false, error: 'Recurso no encontrado' }
   if (!isEditableVersion(resource.budgetLine.budgetVersion.status)) {
@@ -1184,6 +1251,23 @@ export async function updateBudgetResource(
   if (data.description !== undefined) attrs.description = data.description
   if (data.supplierName !== undefined) attrs.supplierName = data.supplierName
   payload.attributes = attrs
+
+  const importedCap = resource.budgetLine.importedDirectCostTotal != null ? Number(resource.budgetLine.importedDirectCostTotal) : null
+  if (importedCap != null) {
+    const q = data.quantity ?? Number(resource.quantity)
+    const u = data.unitCost ?? Number(resource.unitCost)
+    const updatedResourceTotal = q * u
+    const otherSum = resource.budgetLine.resources
+      .filter((r) => r.id !== resourceId)
+      .reduce((s, r) => s + Number(r.totalCost), 0)
+    const newTotal = otherSum + updatedResourceTotal
+    if (newTotal > importedCap) {
+      return {
+        success: false,
+        error: `La suma del desglose no debe superar el valor importado (${importedCap.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}).`,
+      }
+    }
+  }
 
   await prisma.budgetResource.update({
     where: { id: resourceId },
@@ -1311,4 +1395,23 @@ export async function getApprovedOrBaselineBudgetTotal(projectId: string): Promi
   } catch {
     return 0
   }
+}
+
+/**
+ * Totales de presupuesto (approved/baseline) para una lista de proyectos.
+ * Misma fuente que la columna Presupuesto de la lista de proyectos.
+ */
+export async function getApprovedOrBaselineBudgetTotals(
+  projectIds: string[]
+): Promise<Record<string, number>> {
+  if (projectIds.length === 0) return {}
+  const results = await Promise.all(
+    projectIds.map(async (id) => {
+      const total = await getApprovedOrBaselineBudgetTotal(id)
+      return { id, total }
+    })
+  )
+  const record: Record<string, number> = {}
+  for (const { id, total } of results) record[id] = total
+  return record
 }

@@ -3,6 +3,7 @@
 import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
+import { formatDateDDMMYYYY } from '@/lib/format-utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { DailyReportListItem } from '@/app/actions/daily-reports'
@@ -11,14 +12,6 @@ type DailyReportsCardGridProps = {
   projectId: string
   items: DailyReportListItem[]
   canEdit?: boolean
-}
-
-function formatDate(d: Date): string {
-  return new Date(d).toLocaleDateString(undefined, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
 }
 
 function StatusBadge({ statusKey, label }: { statusKey: string; label: string }) {
@@ -58,7 +51,7 @@ export function DailyReportsCardGrid({ projectId, items, canEdit = false }: Dail
           <Link href={`/projects/${projectId}/daily-reports/${row.id}`} className="block">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <time className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {formatDate(row.reportDate)}
+                {formatDateDDMMYYYY(row.reportDate)}
               </time>
               <StatusBadge statusKey={row.status} label={statusLabels[row.status] ?? row.status} />
             </CardHeader>

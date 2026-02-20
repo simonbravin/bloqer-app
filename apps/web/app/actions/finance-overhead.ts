@@ -7,6 +7,7 @@ import { requirePermission, getAuthContext } from '@/lib/auth-helpers'
 import { publishOutboxEvent } from '@/lib/events/event-publisher'
 import { toBaseAmount } from '@/lib/currency-utils'
 import { serializeTransaction } from './finance-helpers'
+import { getApprovedOrBaselineBudgetTotals } from './budget'
 
 export async function createCompanyTransaction(data: {
   type: 'EXPENSE' | 'INCOME' | 'OVERHEAD'
@@ -99,14 +100,31 @@ export async function allocateOverhead(
 ) {
   const { org } = await getAuthContext()
   requireRole(org.role, 'ACCOUNTANT')
-  const totalPct = allocations.reduce((s, a) => s + a.allocationPct, 0)
-  if (Math.abs(totalPct - 100) > 0.01) throw new Error('La suma de porcentajes debe ser 100%')
   const tx = await prisma.financeTransaction.findFirst({
     where: { id: transactionId, orgId: org.orgId, deleted: false },
     select: { id: true, projectId: true, total: true },
   })
   if (!tx) throw new Error('Transacción no encontrada')
-  if (tx.projectId != null) throw new Error('Solo se puede asignar overhead a transacciones sin proyecto')
+  if (tx.projectId != null) throw new Error('Solo se puede asignar gastos generales a transacciones sin proyecto')
+
+  if (allocations.length === 0) {
+    await prisma.$transaction(async (db) => {
+      await db.overheadAllocation.deleteMany({ where: { transactionId } })
+      await publishOutboxEvent(db, {
+        orgId: org.orgId,
+        eventType: 'OVERHEAD_ALLOCATION.UPDATED',
+        entityType: 'FinanceTransaction',
+        entityId: transactionId,
+        payload: { allocationCount: 0 },
+      })
+    })
+    revalidatePath('/finance')
+    revalidatePath('/finance/overhead')
+    return { success: true }
+  }
+
+  const totalPct = allocations.reduce((s, a) => s + a.allocationPct, 0)
+  if (Math.abs(totalPct - 100) > 0.01) throw new Error('La suma de porcentajes debe ser 100%')
   const projectIds = allocations.map((a) => a.projectId)
   const projects = await prisma.project.findMany({
     where: { id: { in: projectIds }, orgId: org.orgId },
@@ -136,6 +154,28 @@ export async function allocateOverhead(
   revalidatePath('/finance')
   revalidatePath('/finance/overhead')
   return { success: true }
+}
+
+/** Total de presupuesto (approved/baseline) por proyecto; misma fuente que la columna Presupuesto de la lista. */
+export async function getApprovedBudgetTotalByProject(
+  projectIds: string[]
+): Promise<Record<string, number>> {
+  return getApprovedOrBaselineBudgetTotals(projectIds)
+}
+
+/** Total de gastos generales asignados a un proyecto (suma de allocationAmount). */
+export async function getOverheadAllocatedToProject(projectId: string): Promise<number> {
+  const { org } = await getAuthContext()
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, orgId: org.orgId },
+    select: { id: true },
+  })
+  if (!project) return 0
+  const result = await prisma.overheadAllocation.aggregate({
+    where: { projectId, orgId: org.orgId },
+    _sum: { allocationAmount: true },
+  })
+  return Number(result._sum.allocationAmount ?? 0)
 }
 
 // ====================

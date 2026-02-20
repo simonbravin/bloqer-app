@@ -82,6 +82,168 @@ export async function getProjectCashflow(
   return result
 }
 
+export type ProjectCashflowSummary = {
+  totalIncome: number
+  totalExpense: number
+  avgMonthlyIncome: number
+  avgMonthlyExpense: number
+  periodBalance: number
+}
+
+export async function getProjectCashflowSummary(
+  projectId: string,
+  dateRange: { from: Date; to: Date }
+): Promise<ProjectCashflowSummary> {
+  const points = await getProjectCashflow(projectId, dateRange)
+  const totalIncome = points.reduce((s, p) => s + p.income, 0)
+  const totalExpense = points.reduce((s, p) => s + p.expense, 0)
+  const monthsCount = points.length || 1
+  return {
+    totalIncome,
+    totalExpense,
+    avgMonthlyIncome: totalIncome / monthsCount,
+    avgMonthlyExpense: totalExpense / monthsCount,
+    periodBalance: totalIncome - totalExpense,
+  }
+}
+
+export type ProjectCashflowBreakdownByWbsItem = {
+  wbsNodeId: string | null
+  wbsNodeCode: string
+  wbsNodeName: string
+  totalExpense: number
+}
+
+export type ProjectCashflowBreakdownByWbsResult = {
+  breakdown: ProjectCashflowBreakdownByWbsItem[]
+  /** Per-month expense by WBS for chart tab (top WBS keys + 'other') */
+  timelineByWbs: Array<{ month: string; wbsExpenses: Record<string, number> }>
+}
+
+export async function getProjectCashflowBreakdownByWbs(
+  projectId: string,
+  dateRange: { from: Date; to: Date }
+): Promise<ProjectCashflowBreakdownByWbsResult> {
+  const { org } = await getAuthContext()
+  const from = dateRange.from
+  const to = dateRange.to
+
+  const [lines, transactionsWithNoLines] = await Promise.all([
+    prisma.financeLine.findMany({
+      where: {
+        transaction: {
+          projectId,
+          orgId: org.orgId,
+          deleted: false,
+          issueDate: { gte: from, lte: to },
+          type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] },
+          status: { in: ['APPROVED', 'PAID'] },
+        },
+      },
+      select: {
+        wbsNodeId: true,
+        lineTotal: true,
+        transaction: { select: { issueDate: true } },
+        wbsNode: { select: { code: true, name: true } },
+      },
+    }),
+    prisma.financeTransaction.findMany({
+      where: {
+        projectId,
+        orgId: org.orgId,
+        deleted: false,
+        issueDate: { gte: from, lte: to },
+        type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] },
+        status: { in: ['APPROVED', 'PAID'] },
+        lines: { none: {} },
+      },
+      select: { amountBaseCurrency: true, issueDate: true },
+    }),
+  ])
+
+  const totalByWbs = new Map<
+    string | null,
+    { code: string; name: string; total: number }
+  >()
+  const byMonthByWbs = new Map<
+    string,
+    Map<string | null, number>
+  >()
+
+  for (const tx of transactionsWithNoLines) {
+    const amount = Number(tx.amountBaseCurrency)
+    const d = new Date(tx.issueDate)
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const existing = totalByWbs.get(null)
+    if (existing) {
+      existing.total += amount
+    } else {
+      totalByWbs.set(null, { code: '—', name: 'Sin partida', total: amount })
+    }
+    let monthMap = byMonthByWbs.get(monthKey)
+    if (!monthMap) {
+      monthMap = new Map()
+      byMonthByWbs.set(monthKey, monthMap)
+    }
+    monthMap.set(null, (monthMap.get(null) ?? 0) + amount)
+  }
+
+  for (const line of lines) {
+    const amount = Number(line.lineTotal)
+    const wbsId = line.wbsNodeId
+    const code = line.wbsNode?.code ?? '—'
+    const name = line.wbsNode?.name ?? 'Sin partida'
+
+    const existing = totalByWbs.get(wbsId)
+    if (existing) {
+      existing.total += amount
+    } else {
+      totalByWbs.set(wbsId, { code, name, total: amount })
+    }
+
+    const d = new Date(line.transaction.issueDate)
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    let monthMap = byMonthByWbs.get(monthKey)
+    if (!monthMap) {
+      monthMap = new Map()
+      byMonthByWbs.set(monthKey, monthMap)
+    }
+    monthMap.set(wbsId, (monthMap.get(wbsId) ?? 0) + amount)
+  }
+
+  const breakdown: ProjectCashflowBreakdownByWbsItem[] = Array.from(
+    totalByWbs.entries()
+  )
+    .map(([wbsNodeId, data]) => ({
+      wbsNodeId,
+      wbsNodeCode: data.code,
+      wbsNodeName: data.name,
+      totalExpense: data.total,
+    }))
+    .sort((a, b) => b.totalExpense - a.totalExpense)
+
+  const topWbsIds = breakdown.slice(0, 8).map((b) => b.wbsNodeId)
+  const monthKeys = Array.from(byMonthByWbs.keys()).sort()
+
+  const timelineByWbs = monthKeys.map((monthKey) => {
+    const monthMap = byMonthByWbs.get(monthKey)!
+    const wbsExpenses: Record<string, number> = {}
+    let other = 0
+    for (const [wbsId, amount] of monthMap) {
+      const key = wbsId ?? '__null__'
+      if (topWbsIds.includes(wbsId)) {
+        wbsExpenses[key] = (wbsExpenses[key] ?? 0) + amount
+      } else {
+        other += amount
+      }
+    }
+    if (other > 0) wbsExpenses['__other__'] = other
+    return { month: monthKey, wbsExpenses }
+  })
+
+  return { breakdown, timelineByWbs }
+}
+
 // ====================
 // KPIs DE CASHFLOW
 // ====================
@@ -405,7 +567,7 @@ export async function getCompanyCashflowDetailed(
         if (existing) {
           existing.total += amount
         } else {
-          projectTotals.set(null, { name: 'Overhead', number: '—', total: amount })
+          projectTotals.set(null, { name: 'Generales', number: '—', total: amount })
         }
       } else {
         if (!data.projectExpenses[tx.projectId]) {
@@ -487,6 +649,83 @@ export async function getCashflowMonthComparison(): Promise<CashflowMonthCompari
   const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
 
   const baseWhere = { orgId: org.orgId, deleted: false }
+
+  const [currentIncome, currentExpense, prevIncome, prevExpense] = await Promise.all([
+    prisma.financeTransaction.aggregate({
+      where: {
+        ...baseWhere,
+        type: { in: ['INCOME', 'SALE'] },
+        issueDate: { gte: currentMonthStart, lte: currentMonthEnd },
+      },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: {
+        ...baseWhere,
+        type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] },
+        issueDate: { gte: currentMonthStart, lte: currentMonthEnd },
+      },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: {
+        ...baseWhere,
+        type: { in: ['INCOME', 'SALE'] },
+        issueDate: { gte: prevMonthStart, lte: prevMonthEnd },
+      },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: {
+        ...baseWhere,
+        type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] },
+        issueDate: { gte: prevMonthStart, lte: prevMonthEnd },
+      },
+      _sum: { amountBaseCurrency: true },
+    }),
+  ])
+
+  const currIncome = Number(currentIncome._sum.amountBaseCurrency ?? 0)
+  const currExpense = Number(currentExpense._sum.amountBaseCurrency ?? 0)
+  const pIncome = Number(prevIncome._sum.amountBaseCurrency ?? 0)
+  const pExpense = Number(prevExpense._sum.amountBaseCurrency ?? 0)
+
+  const incomeChange = pIncome === 0 ? 0 : ((currIncome - pIncome) / pIncome) * 100
+  const expenseChange = pExpense === 0 ? 0 : ((currExpense - pExpense) / pExpense) * 100
+  const prevBalance = pIncome - pExpense
+  const balanceChange =
+    prevBalance === 0 ? 0 : ((currIncome - currExpense - prevBalance) / Math.abs(prevBalance)) * 100
+
+  return {
+    current: {
+      income: currIncome,
+      expense: currExpense,
+      balance: currIncome - currExpense,
+    },
+    previous: {
+      income: pIncome,
+      expense: pExpense,
+      balance: prevBalance,
+    },
+    changes: {
+      incomeChange,
+      expenseChange,
+      balanceChange,
+    },
+  }
+}
+
+export async function getProjectCashflowMonthComparison(
+  projectId: string
+): Promise<CashflowMonthComparisonResult> {
+  const { org } = await getAuthContext()
+  const now = new Date()
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+
+  const baseWhere = { orgId: org.orgId, projectId, deleted: false }
 
   const [currentIncome, currentExpense, prevIncome, prevExpense] = await Promise.all([
     prisma.financeTransaction.aggregate({

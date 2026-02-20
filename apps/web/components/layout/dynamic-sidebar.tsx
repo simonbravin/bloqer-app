@@ -10,6 +10,14 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 interface DynamicSidebarProps {
   orgName?: string
   orgLogoUrl?: string | null
+  user: { name: string; email?: string | null }
+  /** Mobile: sidebar as overlay drawer */
+  isMobile?: boolean
+  sidebarOpen?: boolean
+  onSidebarClose?: () => void
+  /** Desktop: collapsed = icons only */
+  collapsed?: boolean
+  onCollapseToggle?: () => void
 }
 
 /**
@@ -21,22 +29,50 @@ interface DynamicSidebarProps {
  * - URL matches /projects/[uuid] or /projects/[uuid]/*
  * - The ID is a valid UUID (not 'new' or other route names)
  */
-export function DynamicSidebar({ orgName = 'Bloqer', orgLogoUrl }: DynamicSidebarProps) {
+const SIDEBAR_WIDTH = 256
+const SIDEBAR_COLLAPSED_WIDTH = 64
+
+export function DynamicSidebar({
+  orgName = 'Bloqer',
+  orgLogoUrl,
+  user,
+  isMobile = false,
+  sidebarOpen = false,
+  onSidebarClose,
+  collapsed = false,
+  onCollapseToggle,
+}: DynamicSidebarProps) {
   const pathname = usePathname()
-  
-  // Extract project ID from path
-  // Format: /es/projects/[uuid] or /es/projects/[uuid]/...
+
   const projectMatch = pathname.match(/\/projects\/([^\/]+)/)
   const projectId = projectMatch?.[1]
-  
-  // We're in project context if:
-  // 1. We have a projectId
-  // 2. The projectId is a valid UUID (not 'new' or other route segments)
   const isProjectContext = projectId && UUID_REGEX.test(projectId)
-  
+
+  const mobileProps = isMobile
+    ? { isMobile: true as const, sidebarOpen: sidebarOpen ?? false, onSidebarClose: onSidebarClose ?? (() => {}) }
+    : { isMobile: false as const, sidebarOpen: undefined, onSidebarClose: undefined }
+  const collapseProps = { collapsed: isMobile ? false : collapsed, onCollapseToggle: onCollapseToggle ?? (() => {}) }
+
   if (isProjectContext) {
-    return <ProjectSidebar projectId={projectId} orgName={orgName} orgLogoUrl={orgLogoUrl} />
+    return (
+      <ProjectSidebar
+        projectId={projectId}
+        orgName={orgName}
+        orgLogoUrl={orgLogoUrl}
+        user={user}
+        {...mobileProps}
+        {...collapseProps}
+      />
+    )
   }
-  
-  return <GlobalSidebar orgName={orgName} orgLogoUrl={orgLogoUrl} />
+
+  return (
+    <GlobalSidebar
+      orgName={orgName}
+      orgLogoUrl={orgLogoUrl}
+      user={user}
+      {...mobileProps}
+      {...collapseProps}
+    />
+  )
 }

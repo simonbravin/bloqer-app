@@ -54,7 +54,7 @@ export async function createScheduleFromWBS(
 
     const wbsNodes = await prisma.wbsNode.findMany({
       where: { projectId, orgId: org.orgId, active: true },
-      orderBy: { code: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
     })
 
     if (wbsNodes.length === 0) {
@@ -829,7 +829,7 @@ export async function getScheduleForView(scheduleId: string) {
               },
             },
           },
-          orderBy: { wbsNode: { code: 'asc' } },
+          orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }],
         },
       },
     })
@@ -891,7 +891,7 @@ export async function exportScheduleToPDF(scheduleId: string) {
           include: {
             wbsNode: { select: { code: true, name: true } },
           },
-          orderBy: { wbsNode: { code: 'asc' } },
+          orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }],
         },
       },
     })

@@ -17,10 +17,16 @@ import {
   type NotificationItem,
 } from '@/app/actions/notifications'
 
+interface NotificationsDropdownProps {
+  /** When set, trigger shows icon + label (for sidebar) */
+  label?: string
+  triggerClassName?: string
+}
+
 /**
  * Notifications bell: badge only when unread, dropdown with last 3 + link to list.
  */
-export function NotificationsDropdown() {
+export function NotificationsDropdown({ label, triggerClassName }: NotificationsDropdownProps = {}) {
   const t = useTranslations('common')
   const [open, setOpen] = useState(false)
   const [preview, setPreview] = useState<NotificationItem[]>([])
@@ -55,15 +61,17 @@ export function NotificationsDropdown() {
     if (n.link) window.location.href = n.link
   }
 
+  const triggerLabel = label ?? t('notifications', { defaultValue: 'Notificaciones' })
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        className="relative rounded-lg p-2 transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
-        aria-label={t('notifications', { defaultValue: 'Notificaciones' })}
+        className={`relative flex items-center gap-2 rounded-lg p-2 transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring ${label ? 'w-full justify-start px-3' : ''} ${triggerClassName ?? ''}`}
+        aria-label={triggerLabel}
       >
-        <Bell className="h-5 w-5 text-muted-foreground" />
+        <Bell className="h-5 w-5 shrink-0 text-current" />
+        {label && <span className="text-sm font-medium text-current">{triggerLabel}</span>}
         {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+          <span className={`flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground ${label ? 'ml-auto' : 'absolute right-1 top-1'}`}>
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

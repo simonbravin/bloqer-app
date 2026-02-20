@@ -1,27 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -29,236 +14,317 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency } from '@/lib/format-utils'
-import { getProjectCashflow } from '@/app/actions/finance'
-import type { CashflowDataPoint } from '@/app/actions/finance'
+import type {
+  CashflowDataPoint,
+  ProjectCashflowBreakdownByWbsItem,
+} from '@/app/actions/finance'
+
+type TimelineByWbsItem = { month: string; wbsExpenses: Record<string, number> }
 
 interface Props {
   projectId: string
   initialData: CashflowDataPoint[]
+  range?: { from: Date; to: Date }
+  timelineByWbs?: TimelineByWbsItem[]
+  breakdownByWbs?: ProjectCashflowBreakdownByWbsItem[]
 }
 
-export function CashflowChartClient({ projectId, initialData }: Props) {
-  const [data, setData] = useState(initialData)
-  const [preset, setPreset] = useState('6months')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+function formatMonthKey(monthKey: string): string {
+  return new Intl.DateTimeFormat('es', { month: 'short', year: '2-digit' }).format(
+    new Date(monthKey + '-01')
+  )
+}
 
-  async function handlePresetChange(value: string) {
-    setPreset(value)
-    if (value === 'custom') return
-    setIsLoading(true)
-    try {
-      const to = new Date()
-      let from: Date
-      switch (value) {
-        case '3months':
-          from = new Date(to.getFullYear(), to.getMonth() - 3, 1)
-          break
-        case '6months':
-          from = new Date(to.getFullYear(), to.getMonth() - 6, 1)
-          break
-        case '12months':
-          from = new Date(to.getFullYear(), to.getMonth() - 12, 1)
-          break
-        default:
-          return
-      }
-      const newData = await getProjectCashflow(projectId, { from, to })
-      setData(newData)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+const CHART_COLORS = [
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-5))',
+  '#8884d8',
+  '#82ca9d',
+  '#ffc658',
+]
 
-  async function handleCustomRange() {
-    if (!dateFrom || !dateTo) return
-    const from = new Date(dateFrom)
-    const to = new Date(dateTo)
-    if (from > to) return
-    setIsLoading(true)
-    try {
-      const newData = await getProjectCashflow(projectId, { from, to })
-      setData(newData)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+export function CashflowChartClient({
+  projectId: _projectId,
+  initialData,
+  range: _range,
+  timelineByWbs = [],
+  breakdownByWbs = [],
+}: Props) {
+  const data = initialData
 
   const chartData = data.map((point) => ({
-    month: new Intl.DateTimeFormat('es', { month: 'short', year: '2-digit' }).format(
-      new Date(point.month + '-01')
-    ),
+    month: formatMonthKey(point.month),
     monthKey: point.month,
     Ingresos: point.income,
     Gastos: point.expense,
     Balance: point.balance,
   }))
 
+  const breakdownChartData = useMemo(() => {
+    if (timelineByWbs.length === 0) return []
+    return timelineByWbs.map(({ month, wbsExpenses }) => ({
+      monthLabel: formatMonthKey(month),
+      monthKey: month,
+      ...wbsExpenses,
+    }))
+  }, [timelineByWbs])
+
+  const wbsBarKeys = useMemo(() => {
+    const keys = new Set<string>()
+    for (const row of timelineByWbs) {
+      for (const k of Object.keys(row.wbsExpenses)) keys.add(k)
+    }
+    return Array.from(keys)
+  }, [timelineByWbs])
+
+  const hasBreakdown = breakdownChartData.length > 0 && wbsBarKeys.length > 0
+
+  const yAxisFormatter = (value: number) =>
+    value >= 1000 ? `${(value / 1000).toFixed(0)}k` : String(value)
+  const tooltipFormatter = (value: number) => formatCurrency(value, 'ARS')
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Evolución Mensual</CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={preset} onValueChange={handlePresetChange} disabled={isLoading}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Rango" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3months">Últimos 3 meses</SelectItem>
-                <SelectItem value="6months">Últimos 6 meses</SelectItem>
-                <SelectItem value="12months">Último año</SelectItem>
-                <SelectItem value="custom">Personalizado</SelectItem>
-              </SelectContent>
-            </Select>
-            {preset === 'custom' && (
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-[140px]"
-                />
-                <span className="text-muted-foreground">–</span>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-[140px]"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleCustomRange}
-                  disabled={!dateFrom || !dateTo || isLoading}
-                >
-                  Aplicar
-                </Button>
-              </div>
-            )}
-          </div>
+        <CardHeader>
+          <CardTitle>Evolución Temporal</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80 min-h-[200px] w-full min-w-0">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                <AreaChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tickFormatter={(value: number) =>
-                      formatCurrency(value, 'USD').replace('USD', '').trim()
-                    }
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    formatter={(value: number | undefined) =>
-                      value != null ? formatCurrency(value) : ''
-                    }
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: 'var(--radius)',
-                    }}
-                    labelFormatter={(_, payload) =>
-                      payload?.[0]?.payload?.monthKey
-                        ? new Intl.DateTimeFormat('es', {
+          {hasBreakdown ? (
+            <Tabs defaultValue="cashflow" className="w-full">
+              <TabsList>
+                <TabsTrigger value="cashflow">Cashflow</TabsTrigger>
+                <TabsTrigger value="breakdown">Desglose Gastos</TabsTrigger>
+              </TabsList>
+              <TabsContent value="cashflow" className="mt-4">
+                <div className="h-80 w-full min-w-0">
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <AreaChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                        <YAxis
+                          tickFormatter={yAxisFormatter}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip
+                          formatter={(value: number | undefined) =>
+                            value != null ? formatCurrency(value, 'ARS') : ''
+                          }
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                          }}
+                          labelFormatter={(_, payload) =>
+                            payload?.[0]?.payload?.monthKey
+                              ? new Intl.DateTimeFormat('es', {
+                                  month: 'long',
+                                  year: 'numeric',
+                                }).format(
+                                  new Date(payload[0].payload.monthKey + '-01')
+                                )
+                              : ''
+                          }
+                        />
+                        <Legend />
+                        <Area
+                          type="monotone"
+                          dataKey="Ingresos"
+                          stackId="1"
+                          stroke="hsl(var(--chart-2))"
+                          fill="hsl(var(--chart-2) / 0.3)"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="Gastos"
+                          stackId="2"
+                          stroke="hsl(var(--chart-4))"
+                          fill="hsl(var(--chart-4) / 0.3)"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="Balance"
+                          stroke="hsl(var(--chart-1))"
+                          fill="transparent"
+                          strokeDasharray="4 4"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-80 items-center justify-center text-muted-foreground">
+                      No hay datos para el rango seleccionado
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              <TabsContent value="breakdown" className="mt-4">
+                <div className="h-80 w-full min-w-0">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={breakdownChartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} />
+                      <YAxis tickFormatter={yAxisFormatter} tick={{ fontSize: 12 }} />
+                      <Tooltip
+                        formatter={tooltipFormatter}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                        }}
+                      />
+                      <Legend />
+                      {wbsBarKeys.map((key, idx) => {
+                        const item = breakdownByWbs.find(
+                          (b) => (b.wbsNodeId ?? '__null__') === key
+                        )
+                        const label =
+                          key === '__other__'
+                            ? 'Otros'
+                            : key === '__null__'
+                              ? 'Sin partida'
+                              : item
+                                ? `${item.wbsNodeCode} - ${item.wbsNodeName.substring(0, 15)}${item.wbsNodeName.length > 15 ? '…' : ''}`
+                                : key
+                        return (
+                          <Bar
+                            key={key}
+                            dataKey={key}
+                            name={label}
+                            fill={CHART_COLORS[idx % CHART_COLORS.length]}
+                            stackId="g"
+                            animationDuration={300}
+                            animationBegin={idx * 50}
+                          />
+                        )
+                      })}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="h-80 min-h-[200px] w-full min-w-0">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <AreaChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                    <YAxis tickFormatter={yAxisFormatter} tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      formatter={(value: number | undefined) =>
+                        value != null ? formatCurrency(value, 'ARS') : ''
+                      }
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 'var(--radius)',
+                      }}
+                      labelFormatter={(_, payload) =>
+                        payload?.[0]?.payload?.monthKey
+                          ? new Intl.DateTimeFormat('es', {
+                              month: 'long',
+                              year: 'numeric',
+                            }).format(
+                              new Date(payload[0].payload.monthKey + '-01')
+                            )
+                          : ''
+                      }
+                    />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="Ingresos"
+                      stackId="1"
+                      stroke="hsl(var(--chart-2))"
+                      fill="hsl(var(--chart-2) / 0.3)"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Gastos"
+                      stackId="2"
+                      stroke="hsl(var(--chart-4))"
+                      fill="hsl(var(--chart-4) / 0.3)"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Balance"
+                      stroke="hsl(var(--chart-1))"
+                      fill="transparent"
+                      strokeDasharray="4 4"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-80 items-center justify-center text-muted-foreground">
+                  No hay datos para el rango seleccionado
+                </div>
+              )}
+            </div>
+          )}
+          <div className="mt-6">
+            <h3 className="mb-3 text-sm font-semibold">Detalle Mensual</h3>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                      Mes
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+                      Ingresos
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+                      Gastos
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+                      Neto
+                    </th>
+                    <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+                      Balance
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((point) => {
+                    const net = point.income - point.expense
+                    return (
+                      <tr key={point.month} className="border-b last:border-0">
+                        <td className="px-4 py-2">
+                          {new Intl.DateTimeFormat('es', {
                             month: 'long',
                             year: 'numeric',
-                          }).format(new Date(payload[0].payload.monthKey + '-01'))
-                        : ''
-                    }
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="Ingresos"
-                    stackId="1"
-                    stroke="hsl(var(--chart-2))"
-                    fill="hsl(var(--chart-2) / 0.3)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Gastos"
-                    stackId="2"
-                    stroke="hsl(var(--chart-4))"
-                    fill="hsl(var(--chart-4) / 0.3)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Balance"
-                    stroke="hsl(var(--chart-1))"
-                    fill="transparent"
-                    strokeDasharray="4 4"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                No hay datos para el rango seleccionado
-              </div>
-            )}
+                          }).format(new Date(point.month + '-01'))}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {formatCurrency(point.income, 'ARS')}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {formatCurrency(point.expense, 'ARS')}
+                        </td>
+                        <td
+                          className={`px-4 py-2 text-right tabular-nums ${
+                            net >= 0
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-red-600 dark:text-red-400'
+                          }`}
+                        >
+                          {formatCurrency(net, 'ARS')}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums">
+                          {formatCurrency(point.balance, 'ARS')}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Detalle Mensual</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mes</TableHead>
-                <TableHead className="text-right">Ingresos</TableHead>
-                <TableHead className="text-right">Gastos</TableHead>
-                <TableHead className="text-right">Neto</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((point) => {
-                const net = point.income - point.expense
-                return (
-                  <TableRow key={point.month}>
-                    <TableCell className="font-medium">
-                      {new Intl.DateTimeFormat('es', {
-                        month: 'long',
-                        year: 'numeric',
-                      }).format(new Date(point.month + '-01'))}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatCurrency(point.income)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatCurrency(point.expense)}
-                    </TableCell>
-                    <TableCell
-                      className={`text-right tabular-nums ${
-                        net >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'
-                      }`}
-                    >
-                      {formatCurrency(net)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatCurrency(point.balance)}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
         </CardContent>
       </Card>
     </div>

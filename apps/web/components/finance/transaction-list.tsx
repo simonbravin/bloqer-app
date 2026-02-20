@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/format-utils'
+import { getStatusLabel } from '@/lib/finance-labels'
 
 export type TransactionRow = {
   id: string
@@ -86,7 +87,7 @@ export function TransactionList({ transactions, canCreate }: TransactionListProp
                 {formatCurrency(row.total, row.currency)}
               </td>
               <td className="erp-table-cell">
-                <StatusBadge status={row.status} label={t(`statuses.${row.status}`)} />
+                <StatusBadge status={row.status} label={getStatusLabel(row.status, row.type)} />
               </td>
               <td className="erp-table-cell">
                 <Link href={`/finance/transactions/${row.id}`}>

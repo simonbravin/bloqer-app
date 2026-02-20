@@ -41,7 +41,7 @@ const COLORS = [
 const CATEGORY_LABELS: Record<string, string> = {
   EXPENSE: 'Gastos',
   PURCHASE: 'Compras',
-  OVERHEAD: 'Overhead',
+  OVERHEAD: 'Generales',
 }
 
 interface Props {
@@ -157,10 +157,10 @@ export function FinanceExecutiveDashboardClient({ data, alerts = [] }: Props) {
           className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
         >
           <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
-          <AlertTitle>Overhead sin asignar</AlertTitle>
+          <AlertTitle>Gastos generales sin asignar</AlertTitle>
           <AlertDescription>
             <span className="font-medium">
-              Overhead sin asignar: {formatCurrency(data.overheadSummary.unallocated, 'ARS')}
+              Gastos generales sin asignar: {formatCurrency(data.overheadSummary.unallocated, 'ARS')}
             </span>
             <span className="block mt-1 text-sm">
               {data.overheadSummary.unallocatedTransactions} transacción(es) pendiente(s) de
@@ -181,7 +181,7 @@ export function FinanceExecutiveDashboardClient({ data, alerts = [] }: Props) {
           description="Ingresos vs gastos por mes"
         >
           <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
@@ -222,7 +222,7 @@ export function FinanceExecutiveDashboardClient({ data, alerts = [] }: Props) {
         <div id="chart-category">
           <ChartCard title="Gastos por categoría" description="Distribución por tipo">
             <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
                   data={categoryChartData}
@@ -248,7 +248,7 @@ export function FinanceExecutiveDashboardClient({ data, alerts = [] }: Props) {
       <div className="grid gap-6 lg:grid-cols-2">
         <ChartCard title="Top 5 proveedores por gasto" description="Últimos 12 meses">
           <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart
                 data={suppliersChartData}
                 layout="vertical"
@@ -272,7 +272,7 @@ export function FinanceExecutiveDashboardClient({ data, alerts = [] }: Props) {
         <div id="chart-projects">
           <ChartCard title="Top 5 proyectos por gasto" description="Últimos 12 meses">
             <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={projectsChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />

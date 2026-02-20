@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown, X, PlusCircle } from 'lucide-react'
 
 interface Party { id: string; name: string }
 
@@ -16,6 +16,10 @@ interface PartyComboboxProps {
   onChange: (id: string | null) => void
   disabled?: boolean
   id?: string
+  /** Allow creating a new party when the typed name is not in the list */
+  allowCreate?: boolean
+  partyType?: 'CLIENT' | 'SUPPLIER'
+  onCreateParty?: (name: string) => Promise<{ id: string; name: string } | { error: string }>
 }
 
 export function PartyCombobox({
@@ -26,17 +30,31 @@ export function PartyCombobox({
   onChange,
   disabled,
   id = 'partyId',
+  allowCreate,
+  partyType,
+  onCreateParty,
 }: PartyComboboxProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const selected = parties.find((p) => p.id === value)
-  const filtered = search.trim()
+  const searchTrim = search.trim()
+  const filtered = searchTrim
     ? parties.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase().trim())
+        p.name.toLowerCase().includes(searchTrim.toLowerCase())
       )
     : parties
+  const exactMatch =
+    searchTrim &&
+    parties.some((p) => p.name.toLowerCase() === searchTrim.toLowerCase())
+  const showCreateOption =
+    !!allowCreate &&
+    !!partyType &&
+    !!onCreateParty &&
+    searchTrim.length >= 2 &&
+    !exactMatch
 
   useEffect(() => {
     if (!open) setSearch('')
@@ -107,7 +125,35 @@ export function PartyCombobox({
             >
               — Ninguno
             </li>
-            {filtered.length === 0 ? (
+            {showCreateOption && (
+              <li
+                role="option"
+                className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-sm outline-none hover:bg-muted focus:bg-muted text-primary border-t"
+                onMouseDown={async (e) => {
+                  e.preventDefault()
+                  if (isCreating || !onCreateParty) return
+                  setIsCreating(true)
+                  try {
+                    const result = await onCreateParty(searchTrim)
+                    if ('id' in result) {
+                      onChange(result.id)
+                      setSearch('')
+                      setOpen(false)
+                    }
+                  } finally {
+                    setIsCreating(false)
+                  }
+                }}
+              >
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                {isCreating
+                  ? 'Creando…'
+                  : partyType === 'CLIENT'
+                    ? `Crear "${searchTrim}" como nuevo cliente`
+                    : `Crear "${searchTrim}" como nuevo proveedor`}
+              </li>
+            )}
+            {filtered.length === 0 && !showCreateOption ? (
               <li className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</li>
             ) : (
               filtered.map((p) => (

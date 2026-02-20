@@ -28,7 +28,7 @@ export function OverheadDashboardCards({ data }: Props) {
 
   const kpis = [
     {
-      title: 'Total Overhead',
+      title: 'Total Generales',
       value: data.totalOverhead,
       format: 'currency' as const,
       description: 'Gastos generales del período',
@@ -52,7 +52,7 @@ export function OverheadDashboardCards({ data }: Props) {
       title: '% Asignado',
       value: allocationPct.toFixed(1),
       format: 'percent' as const,
-      description: 'Del overhead total',
+      description: 'Del total de generales',
       icon: Percent,
     },
   ]
@@ -81,7 +81,7 @@ export function OverheadDashboardCards({ data }: Props) {
       {data.topProjects.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Top 5 Proyectos con Overhead Asignado</CardTitle>
+            <CardTitle>Top 5 Proyectos con gastos generales asignados</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">

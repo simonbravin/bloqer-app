@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { formatCurrency, formatCurrencyCompact } from '@/lib/format-utils'
+import { formatCurrency } from '@/lib/format-utils'
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { CashflowDataPoint } from '@/app/actions/dashboard'
+import type { CashflowDataPointDetailed } from '@/app/actions/finance'
 
 export type CashflowRange = 'currentMonth' | 'last3' | 'last6' | 'last12'
 
@@ -25,20 +25,21 @@ const RANGES: { value: CashflowRange; key: string }[] = [
   { value: 'last12', key: 'cashflowRangeLast12' },
 ]
 
-interface CashflowChartProps {
-  data: CashflowDataPoint[]
+function formatMonthKey(monthKey: string): string {
+  return new Intl.DateTimeFormat('es', { month: 'short', year: '2-digit' }).format(
+    new Date(monthKey + '-01')
+  )
 }
 
-const MONTH_NAMES = [
-  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
-]
+interface CashflowChartProps {
+  timeline: CashflowDataPointDetailed[]
+}
 
 /**
- * Cashflow chart: income, expenses, net. Toggle changes temporal view (mes actual, 3/6/12 meses).
- * Data is sorted by month ascending; we slice from the end for the selected range.
+ * Cashflow chart: Ingresos, Gastos, Balance acumulado (same as Finanzas > Cashflow).
+ * Toggles slice the loaded 12-month timeline client-side; no reload.
  */
-export function CashflowChart({ data }: CashflowChartProps) {
+export function CashflowChart({ timeline }: CashflowChartProps) {
   const t = useTranslations('dashboard')
   const [range, setRange] = useState<CashflowRange>('last6')
 
@@ -48,42 +49,42 @@ export function CashflowChart({ data }: CashflowChartProps) {
     }
   }, [])
 
-  // Slice by selected range (data sorted by month ascending → last N months)
   const slicedData = useMemo(() => {
-    if (!data?.length) return []
-    if (range === 'currentMonth') return data.slice(-1)
-    if (range === 'last3') return data.slice(-3)
-    if (range === 'last6') return data.slice(-6)
-    return data.slice(-12)
-  }, [data, range])
-
-  const formattedData = useMemo(() => slicedData.map((item) => {
-    const [year, month] = item.month.split('-')
-    const monthIndex = parseInt(month, 10) - 1
-    const monthLabel = `${MONTH_NAMES[monthIndex]} ${year.slice(2)}`
-    return { ...item, monthLabel }
-  }), [slicedData])
-
-  // Custom tooltip formatter
-  const CustomTooltip = ({ active, payload, label }: {
-    active?: boolean
-    payload?: Array<{ name: string; value: number; color: string }>
-    label?: string
-  }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
-          <p className="mb-2 font-medium text-foreground">{label}</p>
-          {payload.map((entry) => (
-            <p key={entry.name} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      )
+    if (!timeline?.length) return []
+    if (range === 'currentMonth') {
+      const now = new Date()
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      const point = timeline.find((p) => p.month === currentMonthKey)
+      if (point) return [point]
+      // Si el backend no incluyó el mes corriente (ej. rango corto), mostrar un punto en cero
+      return [
+        {
+          month: currentMonthKey,
+          income: 0,
+          expense: 0,
+          balance: timeline.length ? timeline[timeline.length - 1].balance : 0,
+          overhead: 0,
+          projectExpenses: {},
+        },
+      ]
     }
-    return null
-  }
+    if (range === 'last3') return timeline.slice(-3)
+    if (range === 'last6') return timeline.slice(-6)
+    return timeline.slice(-12)
+  }, [timeline, range])
+
+  const chartData = useMemo(
+    () =>
+      slicedData.map((point) => ({
+        ...point,
+        monthLabel: formatMonthKey(point.month),
+      })),
+    [slicedData]
+  )
+
+  const tooltipFormatter = (value: number) => formatCurrency(value, 'ARS')
+  const yAxisFormatter = (value: number) =>
+    Math.abs(value) >= 1000 ? `${(value / 1000).toFixed(0)}k` : String(value)
 
   return (
     <div className="rounded-xl border border-border/60 bg-card p-6 shadow-sm">
@@ -112,57 +113,51 @@ export function CashflowChart({ data }: CashflowChartProps) {
       </div>
 
       <div className="mt-5 h-80 min-h-[280px] w-full min-w-0" style={{ minHeight: 280 }}>
-        {formattedData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%" minHeight={280} minWidth={0}>
-            <LineChart data={formattedData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-[var(--color-border)]" stroke="var(--color-border)" />
-              <XAxis
-                dataKey="monthLabel"
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-                tickLine={false}
-                tick={{ fill: 'var(--color-muted-foreground)' }}
+        {chartData.length > 0 ? (
+          <ResponsiveContainer key={range} width="100%" height={280}>
+            <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} />
+              <YAxis tickFormatter={yAxisFormatter} tick={{ fontSize: 12 }} />
+              <Tooltip
+                formatter={tooltipFormatter}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                }}
               />
-              <YAxis
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-                tickLine={false}
-                tick={{ fill: 'var(--color-muted-foreground)' }}
-                tickFormatter={(value: number) => formatCurrencyCompact(value)}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ paddingTop: '1rem', color: 'var(--color-foreground)' }}
-              />
-              <Line
+              <Legend wrapperStyle={{ paddingTop: '1rem' }} />
+              <Area
                 type="monotone"
                 dataKey="income"
                 name={t('income')}
-                stroke="#10b981"
-                strokeWidth={2}
-                dot={{ fill: '#10b981', strokeWidth: 2 }}
-                activeDot={{ r: 6 }}
+                stackId="a"
+                fill="hsl(var(--chart-2))"
+                stroke="hsl(var(--chart-2))"
+                animationDuration={900}
+                animationBegin={0}
               />
-              <Line
+              <Area
                 type="monotone"
-                dataKey="expenses"
+                dataKey="expense"
                 name={t('expenses')}
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={{ fill: '#ef4444', strokeWidth: 2 }}
-                activeDot={{ r: 6 }}
+                stackId="b"
+                fill="hsl(var(--chart-4))"
+                stroke="hsl(var(--chart-4))"
+                animationDuration={900}
+                animationBegin={100}
               />
-              <Line
+              <Area
                 type="monotone"
-                dataKey="net"
+                dataKey="balance"
                 name={t('net')}
-                stroke="#3b82f6"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ fill: '#3b82f6', strokeWidth: 2 }}
-                activeDot={{ r: 6 }}
+                fill="transparent"
+                stroke="hsl(var(--chart-3))"
+                strokeDasharray="4 4"
+                animationDuration={900}
+                animationBegin={200}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center">

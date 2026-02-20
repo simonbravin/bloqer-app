@@ -64,10 +64,10 @@ export function LoginForm() {
     <>
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex flex-col gap-6"
+        className="flex flex-col gap-7"
       >
         <div className="space-y-2">
-          <Label htmlFor="emailOrUsername" className="text-slate-700 dark:text-slate-300">
+          <Label htmlFor="emailOrUsername" className="text-sm font-medium text-slate-700 dark:text-slate-300">
             {t('userOrEmail')}
           </Label>
           <Input
@@ -75,7 +75,7 @@ export function LoginForm() {
             type="text"
             autoComplete="username"
             placeholder={t('userOrEmailPlaceholder')}
-            className="rounded-lg border-slate-200 dark:border-slate-600"
+            className="h-12 rounded-lg border-slate-200 px-4 text-base dark:border-slate-600"
             {...register('emailOrUsername')}
           />
           {errors.emailOrUsername && (
@@ -85,7 +85,7 @@ export function LoginForm() {
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-slate-700 dark:text-slate-300">
+          <Label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
             {t('password')}
           </Label>
           <div className="relative">
@@ -94,16 +94,16 @@ export function LoginForm() {
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder={t('passwordPlaceholder')}
-              className="rounded-lg border-slate-200 pr-10 dark:border-slate-600"
+              className="h-12 rounded-lg border-slate-200 px-4 pr-12 text-base dark:border-slate-600"
               {...register('password')}
             />
             <button
               type="button"
               aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword((v) => !v)}
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
           {errors.password && (
@@ -119,14 +119,14 @@ export function LoginForm() {
         )}
         <Button
           type="submit"
-          className="w-full rounded-lg bg-auth-primary text-auth-primary-foreground hover:bg-auth-primary-hover"
+          className="h-12 w-full rounded-lg bg-auth-primary text-base font-medium text-auth-primary-foreground hover:bg-auth-primary-hover"
           disabled={isSubmitting}
         >
           {isSubmitting ? t('signingIn') : t('signIn')}
         </Button>
         <button
           type="button"
-          className="text-center text-sm font-medium text-auth-primary hover:underline"
+          className="text-center text-sm font-medium text-auth-primary hover:underline sm:text-base"
           onClick={() => setForgotOpen(true)}
         >
           {t('forgotPassword')}

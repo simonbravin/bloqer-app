@@ -4,7 +4,6 @@ import { getOrgContext } from '@/lib/org-context'
 import { prisma } from '@repo/database'
 import { WbsEditor } from '@/components/wbs/wbs-editor'
 import type { WbsEditorNode } from '@/components/wbs/wbs-editor'
-import { getTranslations } from 'next-intl/server'
 
 type PageProps = {
   params: Promise<{ id: string; locale: string }>
@@ -17,8 +16,6 @@ export default async function WbsPage({ params }: PageProps) {
 
   const org = await getOrgContext(session.user.id)
   if (!org) redirect(`/${locale}/login`)
-
-  const t = await getTranslations('wbs')
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, orgId: org.orgId },
@@ -47,14 +44,7 @@ export default async function WbsPage({ params }: PageProps) {
   const canEdit = ['EDITOR', 'ADMIN', 'OWNER'].includes(org.role)
 
   return (
-    <div className="erp-view-container space-y-6">
-      <div className="erp-section-header">
-        <h1 className="erp-page-title">{t('title')}</h1>
-        <p className="erp-section-desc">
-          {project.name} ({project.projectNumber})
-        </p>
-      </div>
-
+    <div className="erp-stack">
       <WbsEditor
         nodes={nodes}
         projectId={projectId}

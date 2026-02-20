@@ -207,6 +207,21 @@ const getDailyReportIncludeBase = {
   },
 } as const
 
+/** Prisma Decimal is not serializable to client; convert to number for RSC → Client. */
+function toPlainObject<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj
+  if (typeof (obj as { toNumber?: () => number }).toNumber === 'function')
+    return (obj as { toNumber: () => number }).toNumber() as unknown as T
+  if (obj instanceof Date) return obj
+  if (Array.isArray(obj)) return obj.map((item) => toPlainObject(item)) as unknown as T
+  if (typeof obj === 'object' && obj.constructor?.name === 'Object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(obj)) out[k] = toPlainObject(v)
+    return out as T
+  }
+  return obj
+}
+
 export async function getDailyReport(reportId: string) {
   const { org } = await getAuthContext()
   try {
@@ -217,13 +232,13 @@ export async function getDailyReport(reportId: string) {
         wbsNodes: { select: { wbsNode: { select: { id: true, code: true, name: true } } } },
       },
     })
-    return report
+    return report ? toPlainObject(report) : null
   } catch {
     const report = await prisma.dailyReport.findFirst({
       where: { id: reportId, orgId: org.orgId },
       include: getDailyReportIncludeBase,
     })
-    return report ? { ...report, wbsNodes: [] } : null
+    return report ? toPlainObject({ ...report, wbsNodes: [] }) : null
   }
 }
 
@@ -619,7 +634,7 @@ export async function getWbsNodesForProject(projectId: string) {
   return prisma.wbsNode.findMany({
     where: { projectId, orgId: org.orgId, active: true },
     select: { id: true, code: true, name: true },
-    orderBy: [{ code: 'asc' }],
+    orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
   })
 }
 

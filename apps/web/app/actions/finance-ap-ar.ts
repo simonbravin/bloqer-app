@@ -451,3 +451,89 @@ export async function getCompanyFinanceAlerts(): Promise<FinanceAlert[]> {
 
   return alerts
 }
+
+/** Project-scoped finance alerts (no "gastos generales sin asignar"). */
+export async function getProjectFinanceAlerts(projectId: string): Promise<FinanceAlert[]> {
+  const { org } = await getAuthContext()
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, orgId: org.orgId },
+    select: { id: true },
+  })
+  if (!project) return []
+
+  const alerts: FinanceAlert[] = []
+  const now = new Date()
+  const next30 = new Date(now)
+  next30.setDate(next30.getDate() + 30)
+
+  const baseWhere = { orgId: org.orgId, projectId, deleted: false }
+
+  const [projection, overdueCount, payablesSum, receivablesSum] = await Promise.all([
+    getProjectCashProjection(projectId, now),
+    prisma.financeTransaction.count({
+      where: {
+        ...baseWhere,
+        type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] },
+        status: { in: ['DRAFT', 'SUBMITTED', 'APPROVED'] },
+        dueDate: { lt: now },
+      },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: {
+        ...baseWhere,
+        type: { in: ['EXPENSE', 'PURCHASE', 'OVERHEAD'] },
+        status: { in: ['DRAFT', 'SUBMITTED', 'APPROVED'] },
+        dueDate: { gte: now, lte: next30 },
+      },
+      _sum: { amountBaseCurrency: true },
+    }),
+    prisma.financeTransaction.aggregate({
+      where: {
+        ...baseWhere,
+        type: { in: ['INCOME', 'SALE'] },
+        status: { in: ['DRAFT', 'SUBMITTED', 'APPROVED'] },
+        dueDate: { lte: next30 },
+      },
+      _sum: { amountBaseCurrency: true },
+    }),
+  ])
+
+  const payablesDue = Number(payablesSum._sum.amountBaseCurrency ?? 0)
+  const receivablesDue = Number(receivablesSum._sum.amountBaseCurrency ?? 0)
+  const projectBase = `/projects/${projectId}/finance`
+
+  if (projection.projectedBalance < DEFAULT_MIN_CASH_THRESHOLD && projection.projectedBalance < 0) {
+    alerts.push({
+      id: 'low-cash',
+      type: 'LOW_CASH',
+      title: 'Caja proyectada en negativo',
+      message: `El balance proyectado a la fecha es ${projection.projectedBalance.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}. Revise cuentas por pagar y por cobrar.`,
+      severity: 'danger',
+      link: `${projectBase}/cashflow`,
+    })
+  }
+
+  if (receivablesDue < payablesDue && payablesDue > 0) {
+    alerts.push({
+      id: 'income-insufficient',
+      type: 'INCOME_INSUFFICIENT',
+      title: 'Ingresos esperados no alcanzan a cubrir pagos',
+      message: `Cuentas por cobrar hasta 30 días: ${receivablesDue.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}. Cuentas por pagar en el mismo período: ${payablesDue.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}.`,
+      severity: 'warning',
+      link: `${projectBase}/accounts-payable`,
+    })
+  }
+
+  if (overdueCount > 0) {
+    alerts.push({
+      id: 'overdue-payables',
+      type: 'OVERDUE_PAYABLES',
+      title: `${overdueCount} pago(s) vencido(s)`,
+      message: 'Hay cuentas por pagar con fecha de vencimiento pasada. Revise la lista de cuentas por pagar.',
+      severity: 'warning',
+      link: `${projectBase}/accounts-payable`,
+    })
+  }
+
+  return alerts
+}

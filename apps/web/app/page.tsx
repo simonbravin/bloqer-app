@@ -1,7 +1,9 @@
+import Image from 'next/image'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 
 export default function HomePage() {
+  const year = new Date().getFullYear()
   return (
     <div className="flex min-h-screen flex-col">
       {/* Hero Section */}
@@ -27,8 +29,9 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-border py-6">
-        <div className="container mx-auto text-center text-sm text-muted-foreground">
-          © 2025 Bloqer. Todos los derechos reservados.
+        <div className="container mx-auto flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Image src="/icon" alt="Bloqer" width={20} height={20} className="h-5 w-5 shrink-0" />
+          <span>© {year} Bloqer. Todos los derechos reservados.</span>
         </div>
       </footer>
     </div>

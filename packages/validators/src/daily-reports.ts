@@ -17,8 +17,9 @@ export type LaborEntryInput = z.infer<typeof laborEntrySchema>
 export const createDailyReportSchema = z.object({
   projectId: z.string().uuid(),
   reportDate: z
-    .date()
-    .max(new Date(new Date().setHours(23, 59, 59, 999)), 'No puedes reportar fechas futuras'),
+    .coerce
+    .date({ required_error: 'La fecha es obligatoria' })
+    .refine((d) => d <= new Date(new Date().setHours(23, 59, 59, 999)), 'No puedes reportar fechas futuras'),
   summary: z
     .string()
     .transform((s) => (s ?? '').trim())
@@ -35,8 +36,9 @@ export type CreateDailyReportInput = z.infer<typeof createDailyReportSchema>
 
 export const updateDailyReportSchema = z.object({
   reportDate: z
+    .coerce
     .date()
-    .max(new Date(new Date().setHours(23, 59, 59, 999)), 'No puedes reportar fechas futuras')
+    .refine((d) => d <= new Date(new Date().setHours(23, 59, 59, 999)), 'No puedes reportar fechas futuras')
     .optional(),
   summary: z.string().min(5).max(200).optional(),
   workAccomplished: z.string().max(10000).optional().nullable(),

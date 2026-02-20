@@ -16,6 +16,8 @@
     "db:seed": "tsx src/seed.ts",
     "db:seed-templates": "tsx src/seed-templates.ts",
     "db:seed-presupuesto-oficial": "tsx src/seed-presupuesto-oficial.ts",
+    "db:seed-demo": "tsx src/seed-demo.ts",
+    "db:backfill-paid-date": "tsx src/backfill-paid-date.ts",
     "set-bravin-admin": "tsx src/set-bravin-admin.ts",
     "set-bravin-password": "tsx src/set-bravin-password.ts",
     "set-superadmin-password": "tsx src/set-superadmin-password.ts",

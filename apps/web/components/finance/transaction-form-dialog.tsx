@@ -28,8 +28,9 @@ import {
   updateProjectTransaction,
   createCompanyTransaction,
   getPartiesForProject,
+  createPartyForTransaction,
 } from '@/app/actions/finance'
-import { DOCUMENT_TYPE_LABELS, STATUS_LABELS } from '@/lib/finance-labels'
+import { DOCUMENT_TYPE_LABELS, getStatusLabel } from '@/lib/finance-labels'
 import { PartyCombobox } from './party-combobox'
 import { toast } from 'sonner'
 import {
@@ -162,8 +163,8 @@ export function TransactionFormDialog({
         documentType: (transaction.documentType ?? 'INVOICE') as FormData['documentType'],
         partyId: transaction.partyId ?? transaction.party?.id ?? null,
         description: transaction.description,
-        issueDate: new Date(transaction.issueDate),
-        dueDate: transaction.dueDate ? new Date(transaction.dueDate) : undefined,
+        issueDate: new Date(transaction.issueDate).toISOString().slice(0, 10) as unknown as Date,
+        dueDate: transaction.dueDate ? (new Date(transaction.dueDate).toISOString().slice(0, 10) as unknown as Date) : undefined,
         currency: transaction.currency ?? 'ARS',
         exchangeRate: undefined,
         subtotal: transaction.subtotal != null ? toNum(transaction.subtotal) : 0,
@@ -244,7 +245,7 @@ export function TransactionFormDialog({
       } else if (isCompanyLevel) {
         const companyType = data.type as 'EXPENSE' | 'INCOME' | 'OVERHEAD'
         if (!['EXPENSE', 'INCOME', 'OVERHEAD'].includes(companyType)) {
-          toast.error('En nivel empresa solo se permiten Gasto, Ingreso u Overhead.')
+          toast.error('En nivel empresa solo se permiten Gasto, Ingreso o Generales.')
           return
         }
         const result = await createCompanyTransaction({
@@ -350,7 +351,7 @@ export function TransactionFormDialog({
                       <SelectItem value="SALE">Venta</SelectItem>
                     </>
                   )}
-                  <SelectItem value="OVERHEAD">Overhead</SelectItem>
+                  <SelectItem value="OVERHEAD">Generales</SelectItem>
                 </SelectContent>
               </Select>
               {form.formState.errors.type && (
@@ -381,6 +382,19 @@ export function TransactionFormDialog({
                 value={form.watch('partyId') ?? null}
                 onChange={(id) => form.setValue('partyId', id)}
                 id="partyId"
+                allowCreate
+                partyType={showPartyAsSupplier ? 'SUPPLIER' : 'CLIENT'}
+                onCreateParty={async (name) => {
+                  const partyType = showPartyAsSupplier ? 'SUPPLIER' : 'CLIENT'
+                  const result = await createPartyForTransaction(partyType, name)
+                  if (result && 'partyId' in result) {
+                    setParties((prev) => [...prev, { id: result.partyId, name: result.name }])
+                    return { id: result.partyId, name: result.name }
+                  }
+                  const err = result && 'error' in result ? result.error : 'No se pudo crear'
+                  toast.error(err)
+                  return { error: err }
+                }}
               />
             )}
             {isEditing && (
@@ -395,7 +409,7 @@ export function TransactionFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {TRANSACTION_STATUS.map((s) => (
-                      <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
+                      <SelectItem key={s} value={s}>{getStatusLabel(s, transaction?.type)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -2,19 +2,20 @@ import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
-import { hasMinimumRole } from '@/lib/rbac'
 import { getProject } from '@/app/actions/projects'
 import { getApprovedOrBaselineBudgetTotal } from '@/app/actions/budget'
+import { getRecentActivityByProject } from '@/app/actions/dashboard'
 import { Link } from '@/i18n/navigation'
-import { Button } from '@/components/ui/button'
-import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
-import { ProjectPhaseBadge } from '@/components/projects/project-phase-badge'
+import { RecentActivityFeed } from '@/components/dashboard/recent-activity-feed'
+import {
+  ProjectPhaseBadge,
+  ProjectStatusBadge,
+} from '@/components/projects/project-overview-badges'
 import { formatCurrency } from '@/lib/format-utils'
 import {
   Calendar,
   MapPin,
   User,
-  Pencil,
   DollarSign,
   FileText,
   CheckSquare,
@@ -47,13 +48,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   const t = await getTranslations('projects')
 
   const { id } = await params
-  const [project, approvedBudgetTotal] = await Promise.all([
+  const [project, approvedBudgetTotal, recentActivity] = await Promise.all([
     getProject(id),
     getApprovedOrBaselineBudgetTotal(id),
+    getRecentActivityByProject(org.orgId, id),
   ])
   if (!project) notFound()
-
-  const canEdit = hasMinimumRole(org.role, 'EDITOR')
 
   // Presupuesto: mostrar total de versión aprobada/baseline si existe; si no, el campo del proyecto
   const totalBudget =
@@ -66,33 +66,8 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         : 0
 
   return (
-    <div className="erp-container erp-stack py-6">
-      {/* Header */}
-      <div className="erp-header-row">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-foreground">
-              {project.name}
-            </h1>
-            <ProjectStatusBadge status={project.status} />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {project.projectNumber}
-          </p>
-        </div>
-        <div className="erp-header-actions">
-          {canEdit && (
-            <Button asChild variant="outline">
-              <Link href={`/projects/${project.id}/edit`}>
-                <Pencil className="mr-2 h-4 w-4" />
-                {t('edit')}
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Project Overview Cards */}
+    <div className="erp-stack">
+      {/* Project Overview Cards (KPIs) */}
       <div className="erp-grid-cards">
         {/* Budget */}
         <div className="erp-card-elevated p-5">
@@ -221,21 +196,15 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         </dl>
       </div>
 
+      {/* Actividad reciente */}
+      <RecentActivityFeed activities={recentActivity} hideProjectName />
+
       {/* Quick Actions */}
       <div className="erp-card-elevated p-6">
         <h2 className="erp-section-title mb-4">
           Acceso Rápido
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Link
-            href={`/projects/${project.id}/budget`}
-            className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:bg-muted/50"
-          >
-            <DollarSign className="h-6 w-6 text-emerald-600" />
-            <span className="text-sm font-medium text-foreground">
-              {t('budget')}
-            </span>
-          </Link>
           <Link
             href={`/projects/${project.id}/certifications`}
             className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:bg-muted/50"

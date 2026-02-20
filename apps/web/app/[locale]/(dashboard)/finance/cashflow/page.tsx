@@ -29,7 +29,7 @@ export default async function CompanyCashflowPage({ searchParams }: PageProps) {
             Cashflow consolidado
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Ingresos, gastos y balance de toda la empresa. Desglose overhead vs proyectos.
+            Ingresos, gastos y balance de toda la empresa. Desglose generales vs proyectos.
           </p>
         </div>
         <CashflowExportToolbar dateFrom={fromDate} dateTo={toDate} />

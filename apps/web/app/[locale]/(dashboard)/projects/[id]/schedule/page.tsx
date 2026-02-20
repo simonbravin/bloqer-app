@@ -5,7 +5,7 @@ import { getLocale } from 'next-intl/server'
 import { prisma } from '@repo/database'
 import { ScheduleView } from '@/components/schedule/schedule-view'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowLeft } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 
 export default async function ProjectSchedulePage({
@@ -60,14 +60,7 @@ export default async function ProjectSchedulePage({
 
   if (schedules.length === 0) {
     return (
-      <div className="erp-view-container space-y-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/projects/${id}`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al Proyecto
-          </Link>
-        </Button>
-
+      <div className="erp-stack">
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12">
           <h2 className="erp-page-title">No hay cronogramas aún</h2>
           <p className="mt-2 text-center erp-section-desc">
@@ -110,19 +103,9 @@ export default async function ProjectSchedulePage({
     activeSchedule.status === 'DRAFT'
 
   return (
-    <div className="erp-view-container space-y-6">
+    <div className="erp-stack">
       <div className="erp-header-row">
-        <div className="erp-section-header">
-          <Button variant="ghost" size="sm" asChild className="mb-2">
-            <Link href={`/projects/${id}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver al Proyecto
-            </Link>
-          </Button>
-          <h1 className="erp-page-title">{project.name}</h1>
-          <p className="erp-section-desc">Cronograma: {activeSchedule.name}</p>
-        </div>
-
+        <p className="erp-section-desc">Cronograma: {activeSchedule.name}</p>
         {['EDITOR', 'ADMIN', 'OWNER'].includes(orgContext.role) && (
           <div className="erp-header-actions">
             <Button asChild>

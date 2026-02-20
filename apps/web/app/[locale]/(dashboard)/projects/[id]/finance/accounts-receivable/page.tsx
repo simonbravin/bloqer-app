@@ -19,14 +19,7 @@ export default async function ProjectAccountsReceivablePage({ params }: PageProp
   if (!project) notFound()
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Cuentas por cobrar</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Cobros pendientes del proyecto {project.name} (incl. certificaciones / anticipos)
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <AccountsReceivableListClient
         initialItems={items}
         filterOptions={filterOptions ?? { projects: [], parties: [] }}

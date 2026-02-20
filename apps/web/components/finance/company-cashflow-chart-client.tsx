@@ -187,7 +187,7 @@ export function CompanyCashflowChartClient({
 
           <TabsContent value="cashflow" className="mt-4">
             <div className="h-80 w-full min-w-0">
-              <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+              <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} />
@@ -231,7 +231,7 @@ export function CompanyCashflowChartClient({
 
           <TabsContent value="breakdown" className="mt-4">
             <div className="h-80 w-full min-w-0">
-              <ResponsiveContainer width="100%" height="100%" minHeight={280}>
+              <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} />
@@ -244,12 +244,14 @@ export function CompanyCashflowChartClient({
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="overhead" name="Overhead" fill="hsl(var(--chart-4))" stackId="g" />
+                  <Bar dataKey="overhead" name="Overhead" fill="hsl(var(--chart-4))" stackId="g" animationDuration={900} animationBegin={0} />
                   <Bar
                     dataKey="Proyectos"
                     name="Proyectos"
                     fill="hsl(var(--chart-1))"
                     stackId="g"
+                    animationDuration={900}
+                    animationBegin={100}
                   />
                 </BarChart>
               </ResponsiveContainer>

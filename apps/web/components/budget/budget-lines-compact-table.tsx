@@ -3,6 +3,15 @@
 import React, { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { formatCurrency, formatCurrencyForDisplay, formatNumber } from '@/lib/format-utils'
 import {
   Table,
@@ -24,7 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronRight, Plus, Trash2, Calculator } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Trash2, Calculator, GripVertical } from 'lucide-react'
 import { AddWbsNodeDialog, type WbsTemplateForLibrary } from './add-wbs-node-dialog'
 import { APUEditorDialog } from './apu-editor-dialog'
 import { deleteWbsNodeWithRenumber, deleteWbsNodeCascade } from '@/app/actions/wbs'
@@ -37,8 +46,11 @@ interface BudgetLinesCompactTableProps {
   canEdit: boolean
   markupMode: string
   wbsTemplates?: WbsTemplateForLibrary[]
-  /** Filtra por código WBS o descripción (partida). Vacío = sin filtrar */
   searchQuery?: string
+  /** 'totals' = una columna Total; 'breakdown' = Materiales, MO, Equipos, Total */
+  columnView?: 'totals' | 'breakdown'
+  /** When set, enables drag-and-drop reorder; called with (parentId, orderedWbsNodeIds) */
+  onReorder?: (parentId: string | null, orderedWbsNodeIds: string[]) => Promise<void>
 }
 
 /** Filtra el árbol: se incluye un nodo si coincide código/nombre/descripción o si algún hijo coincide */
@@ -65,6 +77,64 @@ function filterTreeBySearch(nodes: BudgetTreeNode[], query: string): BudgetTreeN
     .filter((n): n is BudgetTreeNode => n != null)
 }
 
+/** Returns parent WBS id for nodeId, or undefined if not found. Root nodes get null as parent. */
+function getParentId(nodes: BudgetTreeNode[], nodeId: string, parentId: string | null = null): string | null | undefined {
+  for (const n of nodes) {
+    if (n.wbsNode.id === nodeId) return parentId
+    const found = getParentId(n.children, nodeId, n.wbsNode.id)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
+function getSiblingIds(nodes: BudgetTreeNode[], parentId: string | null): string[] {
+  if (parentId === null) return nodes.map((n) => n.wbsNode.id)
+  for (const n of nodes) {
+    if (n.wbsNode.id === parentId) return n.children.map((c) => c.wbsNode.id)
+    const ids = getSiblingIds(n.children, parentId)
+    if (ids.length > 0) return ids
+  }
+  return []
+}
+
+function SortableBudgetRow({
+  id,
+  canDrag,
+  rowIndex,
+  className,
+  children,
+}: {
+  id: string
+  canDrag: boolean
+  rowIndex?: number
+  className?: string
+  children: React.ReactNode
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({ id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return (
+    <TableRow ref={setNodeRef} style={style} className={className}>
+      <TableCell className="w-12 min-w-[2.5rem] px-2 py-1 text-center font-mono text-xs text-muted-foreground tabular-nums">
+        {canDrag && (
+          <span
+            className="inline-flex cursor-grab touch-none rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+            {...listeners}
+            {...attributes}
+            title="Arrastrar para reordenar"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </span>
+        )}
+        {rowIndex != null ? <span className={canDrag ? 'ml-1' : ''}>{rowIndex}</span> : '—'}
+      </TableCell>
+      {children}
+    </TableRow>
+  )
+}
+
 export function BudgetLinesCompactTable({
   data,
   versionId,
@@ -73,7 +143,39 @@ export function BudgetLinesCompactTable({
   markupMode,
   wbsTemplates = [],
   searchQuery = '',
+  columnView = 'totals',
+  onReorder,
 }: BudgetLinesCompactTableProps) {
+  const showBreakdown = columnView === 'breakdown'
+  const canDrag = Boolean(canEdit && onReorder)
+
+  function lineResourceSums(line: { resources: Array<{ resourceType: string; quantity: number; unitCost: number }> }) {
+    let material = 0, labor = 0, equipment = 0
+    for (const r of line.resources ?? []) {
+      const tot = Number(r.quantity) * Number(r.unitCost)
+      if (r.resourceType === 'MATERIAL') material += tot
+      else if (r.resourceType === 'LABOR') labor += tot
+      else if (r.resourceType === 'EQUIPMENT') equipment += tot
+    }
+    return { material, labor, equipment }
+  }
+
+  function nodeResourceSums(n: BudgetTreeNode): { material: number; labor: number; equipment: number } {
+    let material = 0, labor = 0, equipment = 0
+    for (const line of n.lines) {
+      const s = lineResourceSums(line)
+      material += s.material
+      labor += s.labor
+      equipment += s.equipment
+    }
+    for (const child of n.children) {
+      const s = nodeResourceSums(child)
+      material += s.material
+      labor += s.labor
+      equipment += s.equipment
+    }
+    return { material, labor, equipment }
+  }
   const t = useTranslations('budget')
   const tCommon = useTranslations('common')
   const router = useRouter()
@@ -101,6 +203,25 @@ export function BudgetLinesCompactTable({
     hasChildren: boolean
     childrenCount?: number
   } | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  )
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!onReorder || !over || active.id === over.id) return
+    const parentIdResult = getParentId(data, String(active.id))
+    if (parentIdResult === undefined) return
+    const parentId = parentIdResult ?? null
+    const siblingIds = getSiblingIds(data, parentId)
+    const oldIndex = siblingIds.indexOf(String(active.id))
+    const newIndex = siblingIds.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+    const newOrder = arrayMove(siblingIds, oldIndex, newIndex)
+    await onReorder(parentId, newOrder)
+    router.refresh()
+  }
 
   function toggleNode(nodeId: string) {
     const newExpanded = new Set(expandedNodes)
@@ -189,23 +310,243 @@ export function BudgetLinesCompactTable({
     return linesTotal + childrenTotal
   }
 
-  function renderNode(node: BudgetTreeNode, level: number = 0): React.ReactNode {
+  function calculateNodeActualTotal(node: BudgetTreeNode): number {
+    const linesTotal = node.lines.reduce(
+      (sum, line) => sum + Number(line.actualCostTotal ?? 0),
+      0
+    )
+    const childrenTotal = node.children.reduce(
+      (sum, child) => sum + calculateNodeActualTotal(child),
+      0
+    )
+    return linesTotal + childrenTotal
+  }
+
+  function renderNode(node: BudgetTreeNode, level: number = 0, rowIndex?: number): React.ReactNode {
     const isExpanded = expandedNodes.has(node.wbsNode.id)
+    const singleLinePhase = node.lines.length === 1 && node.children.length === 0
     const hasChildren = node.children.length > 0 || node.lines.length > 0
+    const showChevron = hasChildren && !singleLinePhase
     const nodeTotal = calculateNodeTotal(node)
 
     const bgColors = ['bg-muted/30', 'bg-muted/50', 'bg-muted/70', 'bg-muted/80']
     const bgColor = bgColors[Math.min(level, bgColors.length - 1)] ?? 'bg-muted/30'
 
+    if (singleLinePhase) {
+      const line = node.lines[0]
+      const hasAPU = line.resources.length > 0
+      const sums = lineResourceSums(line)
+      const itemAndRest = (
+        <>
+          <TableCell
+            style={{ paddingLeft: `${level * 16 + 8}px` }}
+            className="px-2 py-1"
+          >
+            <span className="text-xs font-medium text-foreground">
+              {node.wbsNode.name}
+            </span>
+          </TableCell>
+          <TableCell className="px-2 py-1">
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {line.unit}
+            </span>
+          </TableCell>
+          <TableCell className="px-2 py-1 text-right">
+            <span className="font-mono text-xs tabular-nums">
+              {formatNumber(Number(line.quantity))}
+            </span>
+          </TableCell>
+          {showBreakdown && (
+            <>
+              <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                {formatCurrency(sums.material)}
+              </TableCell>
+              <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                {formatCurrency(sums.labor)}
+              </TableCell>
+              <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                {formatCurrency(sums.equipment)}
+              </TableCell>
+            </>
+          )}
+          <TableCell className="erp-table-cell-currency px-2 py-1">
+            <span className="font-mono text-xs font-semibold tabular-nums">
+              {formatCurrency(Number(line.directCostTotal))}
+            </span>
+          </TableCell>
+          <TableCell className="erp-table-cell-currency px-2 py-1 text-muted-foreground">
+            <span className="font-mono text-xs tabular-nums">
+              {formatCurrency(Number(line.actualCostTotal ?? 0))}
+            </span>
+          </TableCell>
+          <TableCell className="px-2 py-1">
+            {canEdit && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    handleAddClick(
+                      node.wbsNode.id,
+                      node.wbsNode.code,
+                      node.wbsNode.name
+                    )
+                  }
+                  className="h-6 w-6 p-0"
+                >
+                  <Plus className="h-3 w-3 text-primary" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    handleDeleteClick(
+                      node.wbsNode.id,
+                      node.wbsNode.code,
+                      node.wbsNode.name
+                    )
+                  }
+                  className="h-6 w-6 p-0"
+                >
+                  <Trash2 className="h-3 w-3 text-destructive" />
+                </Button>
+                <Button
+                  variant={hasAPU ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setEditingAPU(line.id)}
+                  className="h-6 text-[10px]"
+                >
+                  <Calculator className="mr-1 h-3 w-3" />
+                  APU
+                  {hasAPU && (
+                    <span className="ml-1 rounded bg-primary/20 px-1 text-[10px]">
+                      {line.resources.length}
+                    </span>
+                  )}
+                </Button>
+              </div>
+            )}
+          </TableCell>
+        </>
+      )
+      if (canDrag) {
+        return (
+          <SortableBudgetRow key={node.wbsNode.id} id={node.wbsNode.id} canDrag rowIndex={rowIndex} className={`${bgColor} h-8 hover:bg-muted/50`}>
+            {itemAndRest}
+          </SortableBudgetRow>
+        )
+      }
+      return (
+        <TableRow key={node.wbsNode.id} className={`${bgColor} h-8 hover:bg-muted/50`}>
+          <TableCell className="w-12 min-w-[2.5rem] px-2 py-1 text-center font-mono text-xs text-muted-foreground tabular-nums">
+            {rowIndex != null ? rowIndex : '—'}
+          </TableCell>
+          {itemAndRest}
+        </TableRow>
+      )
+    }
+
     return (
       <React.Fragment key={node.wbsNode.id}>
+        {canDrag ? (
+          <SortableBudgetRow id={node.wbsNode.id} canDrag rowIndex={rowIndex} className={`${bgColor} h-8 hover:bg-muted/50`}>
+            <TableCell
+              style={{ paddingLeft: `${level * 16 + 8}px` }}
+              className="px-2 py-1"
+            >
+              <div className="flex items-center gap-1">
+                {showChevron && (
+                  <button
+                    type="button"
+                    onClick={() => toggleNode(node.wbsNode.id)}
+                    className="rounded p-0.5 hover:bg-muted"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3" />
+                    )}
+                  </button>
+                )}
+                <span className="text-xs font-medium text-foreground">
+                  {node.wbsNode.name}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell className="px-2 py-1" />
+            <TableCell className="px-2 py-1" />
+            {showBreakdown && (() => {
+              const sums = nodeResourceSums(node)
+              return (
+                <>
+                  <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                    {formatCurrency(sums.material)}
+                  </TableCell>
+                  <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                    {formatCurrency(sums.labor)}
+                  </TableCell>
+                  <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                    {formatCurrency(sums.equipment)}
+                  </TableCell>
+                </>
+              )
+            })()}
+            <TableCell className="erp-table-cell-currency px-2 py-1">
+              <span className="font-mono text-xs font-semibold">
+                {formatCurrencyForDisplay(nodeTotal)}
+              </span>
+            </TableCell>
+            <TableCell className="erp-table-cell-currency px-2 py-1 text-muted-foreground">
+              <span className="font-mono text-xs tabular-nums">
+                {formatCurrency(calculateNodeActualTotal(node))}
+              </span>
+            </TableCell>
+            <TableCell className="px-2 py-1">
+              {canEdit && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      handleAddClick(
+                        node.wbsNode.id,
+                        node.wbsNode.code,
+                        node.wbsNode.name
+                      )
+                    }
+                    className="h-6 w-6 p-0"
+                  >
+                    <Plus className="h-3 w-3 text-primary" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      handleDeleteClick(
+                        node.wbsNode.id,
+                        node.wbsNode.code,
+                        node.wbsNode.name
+                      )
+                    }
+                    className="h-6 w-6 p-0"
+                  >
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                  </Button>
+                </div>
+              )}
+            </TableCell>
+          </SortableBudgetRow>
+        ) : (
         <TableRow className={`${bgColor} h-8 hover:bg-muted/50`}>
+<TableCell className="w-12 min-w-[2.5rem] px-2 py-1 text-center font-mono text-xs text-muted-foreground tabular-nums">
+            {rowIndex != null ? rowIndex : '—'}
+          </TableCell>
           <TableCell
             style={{ paddingLeft: `${level * 16 + 8}px` }}
             className="px-2 py-1"
           >
             <div className="flex items-center gap-1">
-              {hasChildren && (
+              {showChevron && (
                 <button
                   type="button"
                   onClick={() => toggleNode(node.wbsNode.id)}
@@ -218,9 +559,6 @@ export function BudgetLinesCompactTable({
                   )}
                 </button>
               )}
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {node.wbsNode.code}
-              </span>
               <span className="text-xs font-medium text-foreground">
                 {node.wbsNode.name}
               </span>
@@ -228,9 +566,30 @@ export function BudgetLinesCompactTable({
           </TableCell>
           <TableCell className="px-2 py-1" />
           <TableCell className="px-2 py-1" />
+          {showBreakdown && (() => {
+            const sums = nodeResourceSums(node)
+            return (
+              <>
+                <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                  {formatCurrency(sums.material)}
+                </TableCell>
+                <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                  {formatCurrency(sums.labor)}
+                </TableCell>
+                <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                  {formatCurrency(sums.equipment)}
+                </TableCell>
+              </>
+            )
+          })()}
           <TableCell className="erp-table-cell-currency px-2 py-1">
             <span className="font-mono text-xs font-semibold">
               {formatCurrencyForDisplay(nodeTotal)}
+            </span>
+          </TableCell>
+          <TableCell className="erp-table-cell-currency px-2 py-1 text-muted-foreground">
+            <span className="font-mono text-xs tabular-nums">
+              {formatCurrency(calculateNodeActualTotal(node))}
             </span>
           </TableCell>
           <TableCell className="px-2 py-1">
@@ -268,12 +627,15 @@ export function BudgetLinesCompactTable({
             )}
           </TableCell>
         </TableRow>
+        )}
 
         {isExpanded &&
           node.lines.map((line) => {
             const hasAPU = line.resources.length > 0
+            const sums = lineResourceSums(line)
             return (
               <TableRow key={line.id} className="h-8 hover:bg-muted/50">
+                <TableCell className="w-12 min-w-[2.5rem] px-2 py-1 text-center text-muted-foreground">—</TableCell>
                 <TableCell
                   style={{ paddingLeft: `${(level + 1) * 16 + 8}px` }}
                   className="px-2 py-1"
@@ -290,9 +652,27 @@ export function BudgetLinesCompactTable({
                     {formatNumber(Number(line.quantity))}
                   </span>
                 </TableCell>
+                {showBreakdown && (
+                  <>
+                    <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                      {formatCurrency(sums.material)}
+                    </TableCell>
+                    <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                      {formatCurrency(sums.labor)}
+                    </TableCell>
+                    <TableCell className="px-2 py-1 text-right font-mono text-xs tabular-nums">
+                      {formatCurrency(sums.equipment)}
+                    </TableCell>
+                  </>
+                )}
                 <TableCell className="px-2 py-1 text-right">
                   <span className="font-mono text-xs font-semibold tabular-nums">
                     {formatCurrency(Number(line.directCostTotal))}
+                  </span>
+                </TableCell>
+                <TableCell className="px-2 py-1 text-right text-muted-foreground">
+                  <span className="font-mono text-xs tabular-nums">
+                    {formatCurrency(Number(line.actualCostTotal ?? 0))}
                   </span>
                 </TableCell>
                 <TableCell className="px-2 py-1">
@@ -317,28 +697,30 @@ export function BudgetLinesCompactTable({
             )
           })}
 
-        {isExpanded && node.children.map((child) => renderNode(child, level + 1))}
+        {isExpanded && node.children.length > 0 && (
+          <SortableContext
+            items={node.children.map((c) => c.wbsNode.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {node.children.map((child, i) => renderNode(child, level + 1, i + 1))}
+          </SortableContext>
+        )}
       </React.Fragment>
     )
   }
 
   const grandTotal = filteredData.reduce((sum, node) => sum + calculateNodeTotal(node), 0)
+  const grandActualTotal = filteredData.reduce((sum, node) => sum + calculateNodeActualTotal(node), 0)
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-end">
-        {canEdit && (
-          <Button onClick={() => handleAddClick(null)} variant="outline">
-            <Plus className="mr-2 h-4 w-4" />
-            {t('addPhase')}
-          </Button>
-        )}
-      </div>
-
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-muted">
             <TableRow className="h-8">
+              <TableHead className="w-12 min-w-[2.5rem] px-2 py-1 text-center text-xs text-foreground">
+                {t('rowNumber')}
+              </TableHead>
               <TableHead className="px-2 py-1 text-xs text-foreground">
                 {t('item')}
               </TableHead>
@@ -348,38 +730,78 @@ export function BudgetLinesCompactTable({
               <TableHead className="w-[80px] px-2 py-1 text-right text-xs text-foreground">
                 {t('quantity')}
               </TableHead>
+              {showBreakdown && (
+                <>
+                  <TableHead className="w-[100px] px-2 py-1 text-right text-xs text-foreground">
+                    Materiales
+                  </TableHead>
+                  <TableHead className="w-[100px] px-2 py-1 text-right text-xs text-foreground">
+                    Mano de obra
+                  </TableHead>
+                  <TableHead className="w-[100px] px-2 py-1 text-right text-xs text-foreground">
+                    Equipos
+                  </TableHead>
+                </>
+              )}
               <TableHead className="w-[120px] px-2 py-1 text-right text-xs text-foreground">
                 {t('total')}
               </TableHead>
+              <TableHead className="w-[120px] px-2 py-1 text-right text-xs text-foreground text-muted-foreground">
+                {t('actualCost')}
+              </TableHead>
               <TableHead className="w-[100px] px-2 py-1 text-xs text-foreground">
-                {tCommon('actions')}
+                <div className="flex items-center justify-end gap-1">
+                  <span>{tCommon('actions')}</span>
+                  {canEdit && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddClick(null)}
+                      className="h-6 w-6 shrink-0 p-0"
+                      title={t('addPhase')}
+                    >
+                      <Plus className="h-3.5 w-3.5 text-primary" />
+                    </Button>
+                  )}
+                </div>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={showBreakdown ? 10 : 7} className="py-8 text-center text-muted-foreground">
                   {searchQuery.trim() ? t('noResultsFound') : t('noBudgetLinesYet')}
                 </TableCell>
               </TableRow>
             ) : (
               <>
-                {filteredData.map((node) => (
+                {filteredData.map((node, i) => (
                   <React.Fragment key={node.wbsNode.id}>
-                    {renderNode(node)}
+                    {renderNode(node, 0, i + 1)}
                   </React.Fragment>
                 ))}
                 <TableRow className="h-8 border-t-2 border-border bg-muted font-bold">
-                  <TableCell colSpan={3} className="px-2 py-1 text-right text-xs">
+                  <TableCell colSpan={4} className="px-2 py-1 text-right text-xs">
                     {t('grandTotal')}:
                   </TableCell>
+                  {showBreakdown && (
+                    <>
+                      <TableCell className="px-2 py-1" />
+                      <TableCell className="px-2 py-1" />
+                      <TableCell className="px-2 py-1" />
+                    </>
+                  )}
                   <TableCell className="erp-table-cell-currency px-2 py-1 text-sm">
                     {formatCurrencyForDisplay(grandTotal)}
                   </TableCell>
+                  <TableCell className="erp-table-cell-currency px-2 py-1 text-sm text-muted-foreground">
+                    {formatCurrencyForDisplay(grandActualTotal)}
+                  </TableCell>
                   <TableCell className="px-2 py-1" />
                 </TableRow>
-              </>
+            </>
             )}
           </TableBody>
         </Table>

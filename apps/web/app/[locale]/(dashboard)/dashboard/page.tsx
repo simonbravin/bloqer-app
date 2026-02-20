@@ -2,14 +2,11 @@ import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { redirectToLogin } from '@/lib/i18n-redirect'
 import { getTranslations } from 'next-intl/server'
-import {
-  getOrgKPIs,
-  getCashflowData,
-  getAlerts,
-  getRecentActivity,
-} from '@/app/actions/dashboard'
+import { getOrgKPIs, getAlerts, getRecentActivity } from '@/app/actions/dashboard'
+import { getCompanyCashflowDetailed } from '@/app/actions/finance'
 import { KPICards } from '@/components/dashboard/kpi-cards'
 import { CashflowChart } from '@/components/dashboard/cashflow-chart'
+import { CashflowSummaryStats } from '@/components/finance/cashflow-summary-stats'
 import { AlertsWidget } from '@/components/dashboard/alerts-widget'
 import { RecentActivityFeed } from '@/components/dashboard/recent-activity-feed'
 
@@ -32,19 +29,23 @@ export default async function DashboardHomePage() {
     progressPct: null,
     pendingChangeOrders: 0,
   }
-  let cashflowData: { month: string; income: number; expenses: number; net: number }[] = []
+  let cashflowTimeline: Awaited<ReturnType<typeof getCompanyCashflowDetailed>>['timeline'] = []
+  let cashflowSummary: Awaited<ReturnType<typeof getCompanyCashflowDetailed>>['summary'] | null = null
   let alerts: { id: string; type: 'warning' | 'error' | 'info'; title: string; message: string; link?: string }[] = []
   let recentActivity: { id: string; action: string; entityType: string; actorName: string; projectName?: string | null; createdAt: Date; details: unknown }[] = []
 
   try {
+    const toDate = new Date()
+    const fromDate = new Date(toDate.getFullYear(), toDate.getMonth() - 12, 1)
     const [kpisRes, cashflowRes, alertsRes, activityRes] = await Promise.all([
       getOrgKPIs(orgContext.orgId),
-      getCashflowData(orgContext.orgId),
+      getCompanyCashflowDetailed({ from: fromDate, to: toDate }),
       getAlerts(orgContext.orgId),
       getRecentActivity(orgContext.orgId),
     ])
     kpis = kpisRes
-    cashflowData = cashflowRes
+    cashflowTimeline = cashflowRes.timeline
+    cashflowSummary = cashflowRes.summary
     alerts = alertsRes
     recentActivity = activityRes
   } catch (err) {
@@ -64,12 +65,17 @@ export default async function DashboardHomePage() {
       {/* Flujo de caja + Alertas */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="min-h-[360px] lg:col-span-2">
-          <CashflowChart data={cashflowData} />
+          <CashflowChart timeline={cashflowTimeline} />
         </div>
         <div>
           <AlertsWidget alerts={alerts} />
         </div>
       </div>
+
+      {/* Resumen del período (cashflow empresa: generales + proyectos) */}
+      {cashflowSummary && (
+        <CashflowSummaryStats summary={cashflowSummary} />
+      )}
 
       {/* Certificaciones pendientes, Cuentas por cobrar, Cuentas por pagar, Órdenes de cambio */}
       <KPICards kpis={kpis} variant="finance" />

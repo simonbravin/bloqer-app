@@ -19,14 +19,7 @@ export default async function ProjectAccountsPayablePage({ params }: PageProps) 
   if (!project) notFound()
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Cuentas por pagar</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Pagos pendientes del proyecto {project.name}
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <AccountsPayableListClient
         initialItems={items}
         filterOptions={filterOptions ?? { projects: [], parties: [] }}

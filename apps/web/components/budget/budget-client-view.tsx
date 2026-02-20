@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useTranslations } from 'next-intl'
 import { formatCurrency, formatNumber } from '@/lib/format-utils'
 import {
@@ -229,7 +229,11 @@ export function BudgetClientView({ data, projectTotal }: BudgetClientViewProps) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((node) => renderNode(node))}
+          {data.map((node) => (
+            <Fragment key={node.wbsNode.id}>
+              {renderNode(node)}
+            </Fragment>
+          ))}
 
           {/* Grand Total */}
           <TableRow className="h-9 border-t-2 border-border bg-muted font-bold">
