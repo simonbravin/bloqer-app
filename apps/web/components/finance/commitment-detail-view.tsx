@@ -1,5 +1,8 @@
 'use client'
 
+import { Link } from '@/i18n/navigation'
+import { useRouter } from 'next/navigation'
+import { useTransition, useState } from 'react'
 import { formatCurrency, formatDateShort } from '@/lib/format-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -11,8 +14,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { CommitmentDocumentsClient } from './commitment-documents-client'
+import { approvePurchaseOrder } from '@/app/actions/materials'
+import { createPurchaseFromCommitment } from '@/app/actions/finance-transactions'
+import { exportPurchaseOrderToExcel } from '@/app/actions/export'
 import type { CommitmentDetailWithLines } from '@/app/actions/materials'
+import { toast } from 'sonner'
+import { FileDown, FileSpreadsheet, Pencil, ShoppingCart } from 'lucide-react'
+
+const PO_EXPORT_COLUMNS = ['description', 'wbsCode', 'unit', 'quantity', 'unitPrice', 'totalCost']
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Borrador',
@@ -21,16 +32,113 @@ const STATUS_LABELS: Record<string, string> = {
   APPROVED: 'Aprobada',
 }
 
+const CAN_APPROVE_STATUSES = ['DRAFT', 'PENDING', 'SUBMITTED']
+const CAN_EDIT_STATUSES = ['DRAFT']
+
 interface Props {
   commitment: CommitmentDetailWithLines
 }
 
 export function CommitmentDetailView({ commitment }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingExcel, setDownloadingExcel] = useState(false)
   const statusLabel = STATUS_LABELS[commitment.status] ?? commitment.status
+  const canApprove = CAN_APPROVE_STATUSES.includes(commitment.status)
+  const canEdit = CAN_EDIT_STATUSES.includes(commitment.status)
+  const isApproved = commitment.status === 'APPROVED'
+  const hasLinkedTransaction = Boolean(commitment.linkedTransactionId)
+  const [registeringPurchase, setRegisteringPurchase] = useState(false)
+
+  function handleApprove() {
+    startTransition(async () => {
+      const result = await approvePurchaseOrder(commitment.id)
+      if (result.success) {
+        toast.success('Orden de compra aprobada')
+        router.refresh()
+      } else {
+        toast.error(result.error)
+      }
+    })
+  }
+
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true)
+    try {
+      const locale = typeof document !== 'undefined' ? document.documentElement.lang || 'es' : 'es'
+      const params = new URLSearchParams({
+        template: 'purchase-order',
+        id: commitment.id,
+        locale,
+        showEmitidoPor: '1',
+        showFullCompanyData: '1',
+      })
+      const res = await fetch(`/api/pdf?${params.toString()}`, { credentials: 'include' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data?.detail ?? data?.error ?? 'No se pudo generar el PDF')
+        return
+      }
+      const blob = await res.blob()
+      const disposition = res.headers.get('Content-Disposition')
+      const match = disposition?.match(/filename="?([^";]+)"?/)
+      const filename = match?.[1] ?? `orden-compra-${commitment.commitmentNumber}.pdf`
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = filename
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
+  async function handleRegistrarComoCompra() {
+    setRegisteringPurchase(true)
+    try {
+      const result = await createPurchaseFromCommitment(commitment.id)
+      if (result.success) {
+        toast.success(result.alreadyExists ? 'Compra ya registrada' : 'Compra registrada')
+        router.push(`/finance/transactions/${result.transactionId}`)
+        router.refresh()
+      } else {
+        toast.error(result.error)
+      }
+    } finally {
+      setRegisteringPurchase(false)
+    }
+  }
+
+  async function handleDownloadExcel() {
+    setDownloadingExcel(true)
+    try {
+      const result = await exportPurchaseOrderToExcel(commitment.id, PO_EXPORT_COLUMNS)
+      if (!result.success) {
+        toast.error(result.error)
+        return
+      }
+      if (result.data && result.filename) {
+        const bin = atob(result.data)
+        const arr = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+        const blob = new Blob([arr], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = result.filename
+        link.click()
+        URL.revokeObjectURL(link.href)
+      }
+    } finally {
+      setDownloadingExcel(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="border-border bg-card">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
           <div>
             <CardTitle className="text-xl font-mono">{commitment.commitmentNumber}</CardTitle>
@@ -38,9 +146,62 @@ export function CommitmentDetailView({ commitment }: Props) {
               Fecha: {formatDateShort(commitment.issueDate)} · Proveedor: {commitment.partyName}
             </p>
           </div>
-          <Badge variant={commitment.status === 'APPROVED' ? 'default' : 'secondary'}>
-            {statusLabel}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              {downloadingPdf ? '…' : 'Descargar PDF'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadExcel}
+              disabled={downloadingExcel}
+            >
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              {downloadingExcel ? '…' : 'Descargar Excel'}
+            </Button>
+            {canEdit && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/projects/${commitment.projectId}/finance/purchase-orders/${commitment.id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar
+                </Link>
+              </Button>
+            )}
+            {isApproved && (
+              hasLinkedTransaction ? (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/finance/transactions/${commitment.linkedTransactionId}`}>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Ver compra
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRegistrarComoCompra}
+                  disabled={registeringPurchase}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  {registeringPurchase ? '…' : 'Registrar como compra'}
+                </Button>
+              )
+            )}
+            {canApprove && (
+              <Button onClick={handleApprove} disabled={isPending}>
+                {isPending ? '…' : 'Aprobar'}
+              </Button>
+            )}
+            <Badge variant={commitment.status === 'APPROVED' ? 'default' : 'secondary'}>
+              {statusLabel}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {commitment.description && (
@@ -52,9 +213,9 @@ export function CommitmentDetailView({ commitment }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>Líneas</CardTitle>
+          <CardTitle className="text-foreground">Líneas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-md border border-border">

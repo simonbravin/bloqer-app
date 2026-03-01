@@ -52,6 +52,20 @@ async function getNextSiblingSequence(projectId: string, parentId: string | null
   return Number.isNaN(lastSegment) ? 1 : lastSegment + 1
 }
 
+/** Validate WBS code format: numeric segments separated by dots (e.g. 1, 1.1, 1.1.1), no trailing dot. */
+function validateWbsCodeFormat(code: string): string | null {
+  const trimmed = code.trim()
+  if (!trimmed) return 'El código es requerido'
+  if (/\.$/.test(trimmed)) return 'El código no debe terminar en punto (use por ejemplo 1, 1.1 o 1.1.1)'
+  if (!/^\d+(\.\d+)*$/.test(trimmed)) return 'El código debe ser como 1, 1.1 o 1.1.1 (solo números y puntos)'
+  return null
+}
+
+/** Normalize WBS code: trim and remove trailing dot if present. */
+function normalizeWbsCode(code: string): string {
+  return code.trim().replace(/\.+$/, '')
+}
+
 /** Prevent circular ref: ensure parentId is not self and not a descendant of self. */
 async function ensureNoCircular(
   tx: PrismaTransaction,
@@ -648,10 +662,14 @@ export async function createWbsNode(data: {
       return { success: false, error: 'No tenés permiso para editar el WBS de este proyecto' }
     }
 
+    const codeError = validateWbsCodeFormat(data.code)
+    if (codeError) return { success: false, error: codeError }
+    const code = normalizeWbsCode(data.code)
+
     const existing = await prisma.wbsNode.findFirst({
       where: {
         projectId: data.projectId,
-        code: data.code,
+        code,
         active: true,
       },
     })
@@ -663,7 +681,7 @@ export async function createWbsNode(data: {
           orgId: org.orgId,
           projectId: data.projectId,
           parentId: data.parentId,
-          code: data.code,
+          code,
           name: data.name,
           category: data.category,
           unit: data.unit,
@@ -716,10 +734,14 @@ export async function updateWbsNode(
       return { success: false, error: 'No tenés permiso para editar el WBS de este proyecto' }
     }
 
+    const codeError = validateWbsCodeFormat(data.code)
+    if (codeError) return { success: false, error: codeError }
+    const code = normalizeWbsCode(data.code)
+
     const existing = await prisma.wbsNode.findFirst({
       where: {
         projectId: node.projectId,
-        code: data.code,
+        code,
         active: true,
         NOT: { id: nodeId },
       },
@@ -730,7 +752,7 @@ export async function updateWbsNode(
       await tx.wbsNode.update({
         where: { id: nodeId },
         data: {
-          code: data.code,
+          code,
           name: data.name,
           category: data.category,
           unit: data.unit,
@@ -889,6 +911,28 @@ async function calculateNextCode(
   const nextNum = Number.isNaN(lastNum) ? 1 : lastNum + 1
   parts[parts.length - 1] = String(nextNum)
   return parts.join('.')
+}
+
+/** Return the next WBS code for a new node under parentId (null = root). Used to pre-fill the create form. */
+export async function getNextWbsCode(
+  projectId: string,
+  parentId: string | null
+): Promise<{ code: string } | { error: string }> {
+  const session = await getSession()
+  if (!session?.user?.id) return { error: 'Unauthorized' }
+  const org = await getOrgContext(session.user.id)
+  if (!org) return { error: 'Unauthorized' }
+  try {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, orgId: org.orgId },
+      select: { id: true },
+    })
+    if (!project) return { error: 'Proyecto no encontrado' }
+    const code = await calculateNextCode(projectId, parentId)
+    return { code }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Error al calcular código' }
+  }
 }
 
 /** Root WBS templates for the "library" in Add phase dialog (from all project templates). */

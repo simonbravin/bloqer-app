@@ -4,7 +4,16 @@ import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { requireRole } from '@/lib/rbac'
 import { assertProjectAccess, canEditProjectArea, PROJECT_AREAS } from '@/lib/project-permissions'
+import type { OrgContext } from '@/lib/org-context'
 import { prisma } from '@repo/database'
+
+/** Admin, Owner and Editor at org level can edit schedule; otherwise project role must allow it. */
+function canEditSchedule(org: OrgContext, projectRole: string | null): boolean {
+  return (
+    ['EDITOR', 'ADMIN', 'OWNER'].includes(org.role) ||
+    canEditProjectArea(projectRole, PROJECT_AREAS.SCHEDULE)
+  )
+}
 import { revalidatePath } from 'next/cache'
 import { Decimal } from '@prisma/client/runtime/library'
 import { calculateCriticalPath } from '@/lib/schedule/critical-path'
@@ -39,7 +48,7 @@ export async function createScheduleFromWBS(
 
   try {
     const access = await assertProjectAccess(projectId, org)
-    if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.SCHEDULE)) {
+    if (!canEditSchedule(org, access.projectRole)) {
       return { success: false, error: 'No tenés permiso para editar el cronograma de este proyecto' }
     }
   } catch (e) {
@@ -270,8 +279,8 @@ export async function updateTaskDates(
     }
     try {
       const access = await assertProjectAccess(task.schedule.projectId, org)
-      if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.SCHEDULE)) {
-        return { success: false, error: 'No tenés permiso para editar el cronograma de este proyecto' }
+      if (!canEditSchedule(org, access.projectRole)) {
+        return { success: false, error: 'No tenés permiso para editar esta tarea' }
       }
     } catch (e) {
       return { success: false, error: e instanceof Error ? e.message : 'Acceso denegado' }
@@ -448,7 +457,7 @@ export async function addTaskDependency(data: {
     }
     try {
       const access = await assertProjectAccess(schedule.projectId, org)
-      if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.SCHEDULE)) {
+      if (!canEditSchedule(org, access.projectRole)) {
         return { success: false, error: 'No tenés permiso para editar el cronograma de este proyecto' }
       }
     } catch (e) {
@@ -529,7 +538,7 @@ export async function removeTaskDependency(dependencyId: string) {
     }
     try {
       const access = await assertProjectAccess(dependency.schedule.projectId, org)
-      if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.SCHEDULE)) {
+      if (!canEditSchedule(org, access.projectRole)) {
         return { success: false, error: 'No tenés permiso para editar el cronograma de este proyecto' }
       }
     } catch (e) {
@@ -586,8 +595,8 @@ export async function updateTaskProgress(
     }
     try {
       const access = await assertProjectAccess(task.schedule.projectId, org)
-      if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.SCHEDULE)) {
-        return { success: false, error: 'No tenés permiso para editar el cronograma de este proyecto' }
+      if (!canEditSchedule(org, access.projectRole)) {
+        return { success: false, error: 'No tenés permiso para editar esta tarea' }
       }
     } catch (e) {
       return { success: false, error: e instanceof Error ? e.message : 'Acceso denegado' }
@@ -842,7 +851,7 @@ export async function setScheduleAsBaseline(scheduleId: string) {
     }
     try {
       const access = await assertProjectAccess(schedule.projectId, org)
-      if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.SCHEDULE)) {
+      if (!canEditSchedule(org, access.projectRole)) {
         return { success: false, error: 'No tenés permiso para editar el cronograma de este proyecto' }
       }
     } catch (e) {
@@ -927,7 +936,7 @@ export async function approveSchedule(scheduleId: string) {
     }
     try {
       const access = await assertProjectAccess(schedule.projectId, org)
-      if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.SCHEDULE)) {
+      if (!canEditSchedule(org, access.projectRole)) {
         return { success: false, error: 'No tenés permiso para aprobar el cronograma de este proyecto' }
       }
     } catch (e) {
@@ -1020,7 +1029,9 @@ export async function getScheduleForView(scheduleId: string) {
               },
             },
           },
-          orderBy: [{ wbsNode: { sortOrder: 'asc' } }, { wbsNode: { code: 'asc' } }],
+          // Order by WBS code so hierarchy is correct (1, 1.1, 1.1.1, 2, 2.1, 2.1.1, …).
+          // sortOrder alone can place e.g. 2.1.1 under 1 if it was reordered in a flat list.
+          orderBy: [{ wbsNode: { code: 'asc' } }],
         },
       },
     })

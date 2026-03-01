@@ -8,6 +8,8 @@ import type { Browser } from 'puppeteer-core'
 
 export type RenderPdfOptions = {
   format?: 'A4' | 'Letter'
+  /** Landscape (horizontal) is better for Gantt/schedule tables with many columns. */
+  landscape?: boolean
   margin?: { top?: string; right?: string; bottom?: string; left?: string }
   printBackground?: boolean
   /** If set, used as Puppeteer headerTemplate (e.g. project name on every page). Empty div by default. */
@@ -83,6 +85,7 @@ export async function renderHtmlToPdf(
     }
     const pdfBuffer = await page.pdf({
       format: options.format ?? 'A4',
+      landscape: options.landscape ?? false,
       printBackground: options.printBackground ?? true,
       displayHeaderFooter: true,
       headerTemplate: options.headerTemplate ?? '<div></div>',

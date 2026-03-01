@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FileUploader } from './file-uploader'
+import { FileAndCameraTrigger } from '@/components/ui/file-and-camera-trigger'
 import { createDocument } from '@/app/actions/documents'
 import { toast } from 'sonner'
 
@@ -38,39 +38,46 @@ function fileNameWithoutExtension(fileName: string): string {
 export function DocumentUploadModal({ projectId, projects = [], folderId }: DocumentUploadModalProps) {
   const router = useRouter()
   const t = useTranslations('documents')
+  const tCommon = useTranslations('common')
   const [isOpen, setIsOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [title, setTitle] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const showProjectSelect = projectId === null && projects.length > 0
 
-  function handleFileChange(file: File | null) {
-    if (file) {
-      setTitle(fileNameWithoutExtension(file.name))
-    } else {
-      setTitle('')
-    }
+  function handleFileSelect(file: File) {
+    setSelectedFile(file)
+    setTitle(fileNameWithoutExtension(file.name || ''))
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!selectedFile) {
+      toast.error(t('uploadFailed'))
+      return
+    }
     setIsUploading(true)
-
-    const formData = new FormData(e.currentTarget)
-    const file = formData.get('file') as File | null
-    const finalTitle = title.trim() || (file?.name ? fileNameWithoutExtension(file.name) : '')
-    formData.set('title', finalTitle || 'Documento')
-    if (projectId) {
-      formData.set('projectId', projectId)
+    const form = e.currentTarget
+    const formData = new FormData()
+    formData.set('file', selectedFile)
+    formData.set('title', title.trim() || fileNameWithoutExtension(selectedFile.name) || 'Documento')
+    formData.set('docType', (form.querySelector('[name="docType"]') as HTMLSelectElement)?.value || 'OTHER')
+    const cat = (form.querySelector('[name="category"]') as HTMLInputElement)?.value
+    if (cat) formData.set('category', cat)
+    const desc = (form.querySelector('[name="description"]') as HTMLTextAreaElement)?.value
+    if (desc) formData.set('description', desc)
+    if (projectId) formData.set('projectId', projectId)
+    else {
+      const projIdSelect = (form.querySelector('[name="projectId"]') as HTMLSelectElement)?.value
+      if (projIdSelect) formData.set('projectId', projIdSelect)
     }
-    if (folderId) {
-      formData.set('folderId', folderId)
-    }
-
+    if (folderId) formData.set('folderId', folderId)
     try {
       await createDocument(formData)
       setIsOpen(false)
       setTitle('')
+      setSelectedFile(null)
       router.refresh()
       toast.success(t('uploadDocument'))
     } catch (err) {
@@ -95,7 +102,17 @@ export function DocumentUploadModal({ projectId, projects = [], folderId }: Docu
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="erp-form-group">
-                <FileUploader name="file" required onChange={handleFileChange} />
+                <Label className="erp-form-label">{t('fileLabel')}</Label>
+                <FileAndCameraTrigger
+                  onFileSelect={handleFileSelect}
+                  loading={isUploading}
+                  t={tCommon}
+                />
+                {selectedFile && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
               </div>
 
               <div className="erp-form-group">

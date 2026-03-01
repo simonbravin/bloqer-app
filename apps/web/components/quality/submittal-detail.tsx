@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { submitSubmittal, reviewSubmittal } from '@/app/actions/quality'
+import { QualityEntityAttachments } from '@/components/quality/quality-entity-attachments'
+import { SUBMITTAL_ENTITY } from '@/lib/document-entities'
 import { cn } from '@/lib/utils'
 
 const REVIEW_STATUSES = [
@@ -286,6 +288,8 @@ export function SubmittalDetail({
             </Button>
           </div>
         )}
+
+        <QualityEntityAttachments entityType={SUBMITTAL_ENTITY} entityId={submittal.id} />
       </div>
     </div>
   )

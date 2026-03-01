@@ -102,6 +102,7 @@ export function ProjectSidebar({ projectId, orgName = 'Bloqer', orgLogoUrl, user
       children: [
         { name: t('budgetVersions', { defaultValue: 'Versiones' }), href: `/projects/${projectId}/budget` },
         { name: t('budgetApproved', { defaultValue: 'Aprobado' }), href: `/projects/${projectId}/budget/approved` },
+        { name: t('wbsList', { defaultValue: 'Lista EDT' }), href: `/projects/${projectId}/wbs` },
         { name: t('budgetMaterials', { defaultValue: 'Materiales' }), href: `/projects/${projectId}/budget/materials` },
       ],
     },

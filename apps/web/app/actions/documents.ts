@@ -510,6 +510,146 @@ export async function getProjectRootFolder(projectId: string) {
   return folder
 }
 
+/** Get or create a project subfolder by name (e.g. "RFI", "Submittal"). Used for quality attachments. */
+export async function getOrCreateProjectSubfolder(
+  projectId: string,
+  folderName: string
+): Promise<string> {
+  const { org } = await getAuthContext()
+  await assertProjectAccess(projectId, org)
+  const docFolder = getDocumentFolderModel()
+  const root = await docFolder.findFirst({
+    where: { projectId, parentId: null, orgId: org.orgId },
+    select: { id: true },
+  })
+  if (!root) throw new Error('Project document root not found')
+  const existing = await docFolder.findFirst({
+    where: {
+      projectId,
+      parentId: root.id,
+      orgId: org.orgId,
+      name: folderName,
+    },
+    select: { id: true },
+  })
+  if (existing) return existing.id
+  const created = await docFolder.create({
+    data: {
+      orgId: org.orgId,
+      projectId,
+      parentId: root.id,
+      name: folderName,
+    },
+  })
+  return created.id
+}
+
+const QUALITY_ATTACHMENT_MAX_SIZE = 50 * 1024 * 1024 // 50 MB
+
+/**
+ * Upload a single file as a project document in the given subfolder and link it to an entity (RFI or Submittal).
+ * Uses QUALITY project area permission.
+ */
+export async function uploadProjectAttachmentAndLink(
+  projectId: string,
+  folderName: 'RFI' | 'Submittal',
+  entityType: 'RFI' | 'Submittal',
+  entityId: string,
+  formData: FormData
+) {
+  const { org } = await getAuthContext()
+  requireRole(org.role, 'VIEWER')
+  const file = formData.get('file') as File
+  if (!file || !(file instanceof File) || file.size === 0) {
+    throw new Error('No file provided')
+  }
+  try {
+    const access = await assertProjectAccess(projectId, org)
+    if (!canEditProjectArea(access.projectRole, PROJECT_AREAS.QUALITY)) {
+      throw new Error('No tenés permiso para subir adjuntos de calidad en este proyecto')
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('permiso')) throw e
+    throw new Error(e instanceof Error ? e.message : 'Acceso denegado')
+  }
+  if (file.size > QUALITY_ATTACHMENT_MAX_SIZE) {
+    throw new Error('El archivo es demasiado grande (máximo 50 MB)')
+  }
+  const projectUsed = await getProjectDocumentStorageUsed(projectId)
+  if (projectUsed + file.size > PROJECT_STORAGE_LIMIT_BYTES) {
+    throw new Error(
+      `Se superó el límite de almacenamiento del proyecto (500 MB). En uso: ${(projectUsed / (1024 * 1024)).toFixed(1)} MB.`
+    )
+  }
+  const organization = await prisma.organization.findUnique({
+    where: { id: org.orgId },
+    select: { maxStorageGB: true },
+  })
+  const maxStorageGB = organization?.maxStorageGB ?? 1
+  if (maxStorageGB !== UNLIMITED_STORAGE_GB && maxStorageGB > 0) {
+    const orgUsed = await getOrgDocumentStorageUsed(org.orgId)
+    const limitBytes = maxStorageGB * 1024 * 1024 * 1024
+    if (orgUsed + file.size > limitBytes) {
+      throw new Error(
+        `Se superó el límite de almacenamiento de la organización (${maxStorageGB} GB).`
+      )
+    }
+  }
+  const folderId = await getOrCreateProjectSubfolder(projectId, folderName)
+  const rawName = file.name?.trim() || ''
+  const safeFileName = rawName || `adjunto-${Date.now()}${file.type ? `.${file.type.split('/')[1] || 'bin'}` : '.bin'}`
+  const title = (rawName ? rawName.replace(/\.[^.]+$/, '').trim() || rawName : 'Adjunto') || 'Adjunto'
+  const docType = folderName === 'RFI' ? 'RFI_ATTACHMENT' : 'SUBMITTAL_ATTACHMENT'
+  const checksum = await calculateChecksum(file)
+  const doc = await prisma.$transaction(async (tx) => {
+    const created = await tx.document.create({
+      data: {
+        orgId: org.orgId,
+        projectId,
+        folderId,
+        title,
+        docType,
+        isPublic: false,
+        createdByOrgMemberId: org.memberId,
+      },
+    })
+    const storageKey = `${org.orgId}/${created.id}/1/${safeFileName}`
+    await uploadToR2(file, storageKey)
+    await tx.documentVersion.create({
+      data: {
+        orgId: org.orgId,
+        documentId: created.id,
+        versionNumber: 1,
+        fileName: safeFileName,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        storageKey,
+        checksum,
+        uploadedByOrgMemberId: org.memberId,
+      },
+    })
+    await tx.documentLink.create({
+      data: {
+        orgId: org.orgId,
+        documentId: created.id,
+        entityType,
+        entityId,
+      },
+    })
+    await publishOutboxEvent(tx, {
+      orgId: org.orgId,
+      eventType: 'DOCUMENT.UPLOADED',
+      entityType: 'Document',
+      entityId: created.id,
+      payload: { projectId, title: created.title, linkedEntity: entityType, linkedId: entityId },
+    })
+    return created
+  })
+  revalidatePath(`/projects/${projectId}/quality`)
+  revalidatePath(`/projects/${projectId}/documents`)
+  return { success: true, docId: doc.id }
+}
+
 export async function listFolderContents(folderId: string | null, projectId: string | null) {
   const { org } = await getAuthContext()
   let effectiveFolderId = folderId

@@ -77,6 +77,10 @@ export async function listBudgetVersions(projectId: string) {
       createdAt: true,
       approvedAt: true,
       lockedAt: true,
+      globalOverheadPct: true,
+      globalFinancialPct: true,
+      globalProfitPct: true,
+      globalTaxPct: true,
       createdBy: { select: { user: { select: { fullName: true } } } },
       approvedBy: { select: { user: { select: { fullName: true } } } },
       _count: { select: { budgetLines: true } },
@@ -84,17 +88,30 @@ export async function listBudgetVersions(projectId: string) {
   })
 
   const versionIds = versions.map((v) => v.id)
-  const totals = await prisma.budgetLine.groupBy({
+  const directCostSums = await prisma.budgetLine.groupBy({
     by: ['budgetVersionId'],
     where: { budgetVersionId: { in: versionIds } },
-    _sum: { salePriceTotal: true },
+    _sum: { directCostTotal: true },
   })
-  const totalByVersion = new Map(totals.map((t) => [t.budgetVersionId, Number(t._sum.salePriceTotal ?? 0)]))
+  const totalDirectCostByVersion = new Map(
+    directCostSums.map((t) => [t.budgetVersionId, Number(t._sum.directCostTotal ?? 0)])
+  )
 
-  return versions.map((v) => ({
-    ...v,
-    totalCost: totalByVersion.get(v.id) ?? 0,
-  }))
+  return versions.map((v) => {
+    const totalDirectCost = totalDirectCostByVersion.get(v.id) ?? 0
+    const gg = Number(v.globalOverheadPct)
+    const gf = Number(v.globalFinancialPct)
+    const util = Number(v.globalProfitPct)
+    const tax = Number(v.globalTaxPct)
+    const subtotal1 = totalDirectCost * (1 + gg / 100)
+    const subtotal2 = subtotal1 * (1 + gf / 100 + util / 100)
+    const totalSale = subtotal2 * (1 + tax / 100)
+    const { globalOverheadPct, globalFinancialPct, globalProfitPct, globalTaxPct, ...rest } = v
+    return {
+      ...rest,
+      totalCost: totalSale,
+    }
+  })
 }
 
 export async function getBudgetVersion(versionId: string) {

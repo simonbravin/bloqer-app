@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { answerRfi, closeRfi } from '@/app/actions/quality'
+import { QualityEntityAttachments } from '@/components/quality/quality-entity-attachments'
+import { RFI_ENTITY } from '@/lib/document-entities'
 import { cn } from '@/lib/utils'
 
 type RfiDetailProps = {
@@ -240,6 +242,8 @@ export function RfiDetail({
             </Button>
           </div>
         )}
+
+        <QualityEntityAttachments entityType={RFI_ENTITY} entityId={rfi.id} />
       </div>
     </div>
   )

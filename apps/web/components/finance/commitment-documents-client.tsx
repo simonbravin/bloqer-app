@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import {
   listDocumentsForEntity,
   linkDocumentToEntity,
@@ -10,7 +10,8 @@ import {
   getDocumentDownloadUrl,
 } from '@/app/actions/documents'
 import { COMMITMENT_ENTITY } from '@/lib/document-entities'
-import { Paperclip, FileDown, Loader2 } from 'lucide-react'
+import { FileAndCameraTrigger } from '@/components/ui/file-and-camera-trigger'
+import { FileDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Props {
@@ -19,10 +20,10 @@ interface Props {
 }
 
 export function CommitmentDocumentsClient({ commitmentId, projectId }: Props) {
+  const t = useTranslations('common')
   const [docs, setDocs] = useState<{ id: string; documentId: string; title: string; docType: string; versionId: string; fileName: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     listDocumentsForEntity(COMMITMENT_ENTITY, commitmentId)
@@ -31,15 +32,13 @@ export function CommitmentDocumentsClient({ commitmentId, projectId }: Props) {
       .finally(() => setLoading(false))
   }, [commitmentId])
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !commitmentId || !projectId) return
-    e.target.value = ''
+  async function handleFileSelect(file: File) {
+    if (!commitmentId || !projectId) return
     setUploading(true)
     try {
       const formData = new FormData()
       formData.set('projectId', projectId)
-      formData.set('title', file.name.replace(/\.[^.]+$/, '').trim() || file.name)
+      formData.set('title', (file.name || '').replace(/\.[^.]+$/, '').trim() || file.name || 'Adjunto')
       formData.set('docType', 'OTHER')
       formData.set('file', file)
       const result = await createDocument(formData)
@@ -69,28 +68,12 @@ export function CommitmentDocumentsClient({ commitmentId, projectId }: Props) {
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
         <CardTitle className="text-base">Documentos / Cotizaciones</CardTitle>
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg"
-          onChange={handleUpload}
-          disabled={uploading}
+        <FileAndCameraTrigger
+          onFileSelect={handleFileSelect}
+          disabled={!commitmentId || !projectId}
+          loading={uploading}
+          t={t}
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {uploading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Paperclip className="mr-2 h-4 w-4" />
-          )}
-          Adjuntar
-        </Button>
       </CardHeader>
       <CardContent>
         {loading ? (

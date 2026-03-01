@@ -17,21 +17,54 @@ type TaskRow = {
   progress: string
 }
 
-export default async function PrintSchedulePage({ params }: PageProps) {
+function parseDateParam(value: string | string[] | undefined): Date | null {
+  if (!value || Array.isArray(value)) return null
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+export default async function PrintSchedulePage({ params, searchParams }: PageProps) {
   const { scheduleId } = await params
+  const query = searchParams ? await searchParams : undefined
 
   const schedule = await getScheduleForView(scheduleId)
 
   if (!schedule) return notFound()
 
   const project = schedule.project as { name?: string; projectNumber?: string } | null
-  const tasks = (schedule.tasks ?? []) as Array<{
+  let tasks = (schedule.tasks ?? []) as Array<{
     wbsNode?: { code?: string; name?: string } | null
     plannedStartDate?: string
     plannedEndDate?: string
     plannedDuration?: number
     progressPercent?: number
   }>
+
+  const fromDate = parseDateParam(query?.from)
+  const toDate = parseDateParam(query?.to)
+  const filterByRange = !!(
+    fromDate &&
+    toDate &&
+    fromDate.getTime() <= toDate.getTime()
+  )
+
+  if (filterByRange && fromDate && toDate) {
+    const fromMs = fromDate.getTime()
+    const toMs = toDate.getTime()
+    tasks = tasks.filter((task) => {
+      const startStr = task.plannedStartDate
+      const endStr = task.plannedEndDate
+      if (!startStr || !endStr) return true
+      const start = new Date(startStr).getTime()
+      const end = new Date(endStr).getTime()
+      return end >= fromMs && start <= toMs
+    })
+  }
+
+  const dateRangeSubtitle =
+    filterByRange && fromDate && toDate
+      ? ` (${fromDate.toLocaleDateString('es-AR', { dateStyle: 'short' })} – ${toDate.toLocaleDateString('es-AR', { dateStyle: 'short' })})`
+      : ''
 
   const rows: TaskRow[] = tasks.map((task) => ({
     code: task.wbsNode?.code ?? '—',
@@ -59,7 +92,7 @@ export default async function PrintSchedulePage({ params }: PageProps) {
     <PrintDocumentShell
       templateId="schedule"
       id={scheduleId}
-      query={sp}
+      query={query ?? undefined}
       project={
         project?.name != null
           ? { name: project.name, projectNumber: project.projectNumber }
@@ -70,8 +103,15 @@ export default async function PrintSchedulePage({ params }: PageProps) {
         <h2 className="text-lg font-semibold">
           Cronograma — {project?.name ?? 'Proyecto'}
           {project?.projectNumber ? ` (${project.projectNumber})` : ''}
+          {dateRangeSubtitle}
         </h2>
-        <PrintTable<TaskRow> columns={columns} rows={rows} />
+        {rows.length === 0 && filterByRange ? (
+          <p className="text-sm text-muted-foreground">
+            No hay tareas en el período seleccionado.
+          </p>
+        ) : (
+          <PrintTable<TaskRow> columns={columns} rows={rows} />
+        )}
       </div>
     </PrintDocumentShell>
   )

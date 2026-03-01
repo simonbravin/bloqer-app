@@ -7,6 +7,7 @@ import { getProject } from '@/app/actions/projects'
 import { getDownloadUrl } from '@/lib/r2-client'
 import { buildBudgetPrintHtml } from '@/lib/pdf/build-budget-print-html'
 import { buildPurchaseOrderPrintHtml } from '@/lib/pdf/build-purchase-order-print-html'
+import { buildSchedulePrintHtml } from '@/lib/pdf/build-schedule-print-html'
 import { renderUrlToPdf, renderHtmlToPdf } from '@/lib/pdf/render-pdf'
 import { getDocumentTemplate } from '@/lib/pdf/templates'
 
@@ -111,7 +112,13 @@ export async function GET(request: NextRequest) {
   })
   const cookies = getCookiesFromRequest(request)
   const rawCookieHeader = request.headers.get('cookie')
-  const pdfOptions = { format: 'A4' as const, printBackground: true }
+  const pdfOptions: { format: 'A4'; printBackground: boolean; landscape?: boolean } = {
+    format: 'A4',
+    printBackground: true,
+  }
+  if (template.id === 'schedule') {
+    pdfOptions.landscape = true
+  }
 
   try {
     let pdfBuffer: Buffer
@@ -305,6 +312,108 @@ export async function GET(request: NextRequest) {
           'Content-Disposition': `inline; filename="${filename}"`,
         },
       })
+    } else if (template.id === 'schedule' && id) {
+      const org = await getOrgContext(token.sub)
+      if (!org) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+      const schedule = await prisma.schedule.findFirst({
+        where: { id, orgId: org.orgId },
+        include: {
+          project: { select: { name: true, projectNumber: true } },
+          tasks: {
+            orderBy: [{ wbsNode: { code: 'asc' } }],
+            include: {
+              wbsNode: { select: { code: true, name: true } },
+            },
+          },
+        },
+      })
+      if (!schedule) {
+        return NextResponse.json({ error: 'Cronograma no encontrado' }, { status: 404 })
+      }
+      const fromParam = request.nextUrl.searchParams.get('from')
+      const toParam = request.nextUrl.searchParams.get('to')
+      const fromDate = fromParam ? new Date(fromParam) : null
+      const toDate = toParam ? new Date(toParam) : null
+      const filterByRange =
+        fromParam &&
+        toParam &&
+        fromDate &&
+        toDate &&
+        !Number.isNaN(fromDate.getTime()) &&
+        !Number.isNaN(toDate.getTime()) &&
+        fromDate.getTime() <= toDate.getTime()
+      let tasks = schedule.tasks
+      if (filterByRange && fromDate && toDate) {
+        const fromMs = fromDate.getTime()
+        const toMs = toDate.getTime()
+        tasks = tasks.filter((t) => {
+          const start = t.plannedStartDate.getTime()
+          const end = t.plannedEndDate.getTime()
+          return end >= fromMs && start <= toMs
+        })
+      }
+      const dateRangeSubtitle =
+        filterByRange && fromDate && toDate
+          ? ` (${fromDate.toLocaleDateString('es-AR', { dateStyle: 'short' })} – ${toDate.toLocaleDateString('es-AR', { dateStyle: 'short' })})`
+          : ''
+      const formatShort = (d: Date) => d.toLocaleDateString('es-AR', { dateStyle: 'short' })
+      const rows = tasks.map((t) => ({
+        code: t.wbsNode?.code ?? '—',
+        name: t.wbsNode?.name ?? '—',
+        startDate: formatShort(t.plannedStartDate),
+        endDate: formatShort(t.plannedEndDate),
+        duration: t.plannedDuration,
+        progress: `${Number(t.progressPercent)}%`,
+      }))
+      let orgProfile: { legalName: string | null; logoStorageKey: string | null } | null = null
+      try {
+        const profile = await prisma.orgProfile.findUnique({
+          where: { orgId: org.orgId },
+          select: { legalName: true, logoStorageKey: true },
+        })
+        if (profile) orgProfile = { legalName: profile.legalName, logoStorageKey: profile.logoStorageKey }
+      } catch {
+        // optional
+      }
+      let logoUrl: string | null = null
+      if (orgProfile?.logoStorageKey) {
+        try {
+          const { getDownloadUrl } = await import('@/lib/r2-client')
+          const url = await getDownloadUrl(orgProfile.logoStorageKey)
+          if (url.startsWith('http') || url.startsWith('/')) logoUrl = url
+        } catch {
+          // optional
+        }
+      }
+      const userName = (token as { name?: string }).name ?? (token as { email?: string }).email ?? ''
+      const layout = {
+        orgName: org.orgName ?? 'Organización',
+        orgLegalName: orgProfile?.legalName ?? null,
+        logoUrl,
+        userNameOrEmail: userName || null,
+      }
+      const page = {
+        projectName: schedule.project.name,
+        projectNumber: schedule.project.projectNumber ?? null,
+        dateRangeSubtitle: dateRangeSubtitle || undefined,
+        rows,
+      }
+      const pdfShowEmitidoPor = showEmitidoParam !== '0' && showEmitidoParam !== 'false'
+      const pdfShowFullCompanyData = showFullCompanyParam !== '0' && showFullCompanyParam !== 'false'
+      const html = buildSchedulePrintHtml(layout, page, {
+        showEmitidoPor: pdfShowEmitidoPor,
+        showFullCompanyData: pdfShowFullCompanyData,
+      })
+      const headerTemplate = `<div style="font-size:9px;color:#666;text-align:right;padding:0 20px;">${escapePdfHeader(schedule.project.name)} · Cronograma</div>`
+      const schedulePdfOptions = {
+        ...pdfOptions,
+        landscape: true,
+        margin: { top: '60px', right: '10px', bottom: '58px', left: '10px' },
+        headerTemplate,
+      }
+      pdfBuffer = await renderHtmlToPdf(html, baseUrl + '/', schedulePdfOptions)
     } else {
       pdfBuffer = await renderUrlToPdf(
         printUrl,
@@ -314,7 +423,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const filename = template.getFileName({ id: id ?? undefined })
+    let filename = template.getFileName({ id: id ?? undefined })
+    if (template.id === 'schedule' && id) {
+      const from = request.nextUrl.searchParams.get('from')
+      const to = request.nextUrl.searchParams.get('to')
+      const isoYmd = /^\d{4}-\d{2}-\d{2}$/
+      if (from && to && isoYmd.test(from) && isoYmd.test(to)) {
+        const safeFrom = from.replace(/-/g, '')
+        const safeTo = to.replace(/-/g, '')
+        filename = `cronograma-${id.slice(0, 8)}-${safeFrom}-a-${safeTo}.pdf`
+      }
+    }
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {

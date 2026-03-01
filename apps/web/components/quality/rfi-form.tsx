@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -7,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslations } from 'next-intl'
 import { createRfi } from '@/app/actions/quality'
+import { uploadQualityAttachments } from '@/lib/quality-attachments'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { QualityAttachmentsInput } from '@/components/quality/quality-attachments-input'
 import { cn } from '@/lib/utils'
 
 const createRfiSchema = z.object({
@@ -46,6 +49,7 @@ const textareaClassName =
 export function RfiForm({ projectId, wbsNodes, orgMembers }: RfiFormProps) {
   const t = useTranslations('quality')
   const router = useRouter()
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([])
   const {
     register,
     handleSubmit,
@@ -70,10 +74,20 @@ export function RfiForm({ projectId, wbsNodes, orgMembers }: RfiFormProps) {
         assignedToOrgMemberId: data.assignedToOrgMemberId || null,
         dueDate: data.dueDate || null,
       })
-      if ('rfiId' in result) {
-        router.push(`/projects/${projectId}/quality/rfis/${result.rfiId}`)
-        router.refresh()
+      if (!('rfiId' in result)) return
+      const rfiId = result.rfiId
+      if (attachmentFiles.length > 0) {
+        await uploadQualityAttachments(
+          projectId,
+          'RFI',
+          'RFI',
+          rfiId,
+          attachmentFiles,
+          t
+        )
       }
+      router.push(`/projects/${projectId}/quality/rfis/${rfiId}`)
+      router.refresh()
     } catch (err) {
       setError('root', {
         message: err instanceof Error ? err.message : t('createRfi'),
@@ -179,6 +193,12 @@ export function RfiForm({ projectId, wbsNodes, orgMembers }: RfiFormProps) {
             </SelectContent>
           </Select>
         </div>
+
+        <QualityAttachmentsInput
+          files={attachmentFiles}
+          onChange={setAttachmentFiles}
+          disabled={isSubmitting}
+        />
       </div>
 
       {errors.root && (

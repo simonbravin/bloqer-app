@@ -35,6 +35,7 @@ interface ProjectInfo {
 const COLORS = {
   budget: 'hsl(var(--chart-3))',
   actual: 'hsl(var(--chart-1))',
+  committed: 'hsl(var(--chart-4))',
   variance: 'hsl(var(--chart-2))',
   income: 'hsl(var(--chart-1))',
   expense: 'hsl(var(--chart-2))',
@@ -90,6 +91,7 @@ export function ProjectDashboardClient({ project, data }: Props) {
     name: w.wbsCode,
     Presupuestado: w.budgeted,
     Real: w.actual,
+    Comprometido: w.committed,
     Varianza: w.variance,
   }))
 
@@ -235,6 +237,7 @@ export function ProjectDashboardClient({ project, data }: Props) {
                 <Legend />
                 <Bar dataKey="Presupuestado" fill={COLORS.budget} radius={[0, 4, 4, 0]} />
                 <Bar dataKey="Real" fill={COLORS.actual} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="Comprometido" fill={COLORS.committed} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

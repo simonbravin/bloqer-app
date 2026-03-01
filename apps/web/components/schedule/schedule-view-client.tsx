@@ -226,7 +226,18 @@ export function ScheduleViewClient({
     setExporting(true)
     try {
       const locale = typeof document !== 'undefined' ? document.documentElement.lang || 'es' : 'es'
-      const url = `/api/pdf?template=schedule&id=${encodeURIComponent(schedule.id)}&locale=${encodeURIComponent(locale)}&showEmitidoPor=1&showFullCompanyData=1`
+      const params = new URLSearchParams({
+        template: 'schedule',
+        id: schedule.id,
+        locale,
+        showEmitidoPor: '1',
+        showFullCompanyData: '1',
+      })
+      const toYmd = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      params.set('from', toYmd(visibleStartDate))
+      params.set('to', toYmd(visibleEndDate))
+      const url = `/api/pdf?${params.toString()}`
       const res = await fetch(url, { credentials: 'include' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))

@@ -631,11 +631,12 @@
     @apply w-full min-w-[400px] max-w-4xl;
   }
 
-  /* Page-level forms - standard width (768px max) */
+  /* Page-level forms - wide by default so labels and content are readable (1024px max) */
   .erp-form-page {
-    @apply w-full min-w-[400px] max-w-3xl;
+    @apply w-full min-w-0 max-w-5xl;
   }
 
+  /* Form row: label + content, labels don't wrap awkwardly */
   .erp-form-group {
     @apply space-y-2;
   }
@@ -645,7 +646,7 @@
   }
 
   .erp-form-label {
-    @apply block text-sm font-medium text-foreground;
+    @apply block text-sm font-medium text-foreground leading-snug;
   }
 
   /* Search bar: flex row full width; input wrapper has min width so it never collapses */
@@ -659,9 +660,9 @@
     @apply h-10 w-full;
   }
 
-  /* Settings forms - same as page forms */
+  /* Settings forms - wide like page forms */
   .erp-settings-form {
-    @apply w-full min-w-[400px] max-w-3xl;
+    @apply w-full min-w-0 max-w-5xl;
   }
 
 }

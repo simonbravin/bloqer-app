@@ -22,7 +22,7 @@ export default async function ProjectPurchaseOrdersPage({ params }: PageProps) {
   const parties = filterOptions?.parties?.filter((p) => p.partyType === 'SUPPLIER') ?? []
 
   return (
-    <div className="space-y-6">
+    <div className="erp-view-container space-y-6">
       <PurchaseOrdersListClient
         initialItems={items}
         projectId={projectId}

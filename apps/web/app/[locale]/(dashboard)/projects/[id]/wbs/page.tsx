@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { prisma } from '@repo/database'
+import { getApprovedOrBaselineVersionId, listBudgetVersions } from '@/app/actions/budget'
 import { WbsEditor } from '@/components/wbs/wbs-editor'
 import type { WbsEditorNode } from '@/components/wbs/wbs-editor'
 
@@ -24,10 +25,14 @@ export default async function WbsPage({ params }: PageProps) {
 
   if (!project) notFound()
 
-  const rawNodes = await prisma.wbsNode.findMany({
-    where: { projectId, orgId: org.orgId, active: true },
-    orderBy: { code: 'asc' },
-  })
+  const [rawNodes, versions, defaultVersionId] = await Promise.all([
+    prisma.wbsNode.findMany({
+      where: { projectId, orgId: org.orgId, active: true },
+      orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+    }),
+    listBudgetVersions(projectId),
+    getApprovedOrBaselineVersionId(projectId),
+  ])
 
   const nodes: WbsEditorNode[] = rawNodes.map((n) => ({
     id: n.id,
@@ -41,6 +46,13 @@ export default async function WbsPage({ params }: PageProps) {
     sortOrder: n.sortOrder,
   }))
 
+  const budgetVersions = (versions ?? []).map((v) => ({
+    id: v.id,
+    versionCode: v.versionCode,
+    status: v.status,
+  }))
+  const selectedVersionId = defaultVersionId ?? budgetVersions[0]?.id ?? null
+
   const canEdit = ['EDITOR', 'ADMIN', 'OWNER'].includes(org.role)
 
   return (
@@ -49,6 +61,8 @@ export default async function WbsPage({ params }: PageProps) {
         nodes={nodes}
         projectId={projectId}
         canEdit={canEdit}
+        budgetVersions={budgetVersions}
+        selectedVersionId={selectedVersionId}
       />
     </div>
   )

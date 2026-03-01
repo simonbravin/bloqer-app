@@ -165,6 +165,7 @@ export async function createProjectFromTemplate(data: {
   description?: string
   m2?: number | null
   startDate?: string
+  plannedEndDate?: string
   templateId: string
   constructionSystemIds: string[]
 }) {
@@ -189,6 +190,7 @@ export async function createProjectFromTemplate(data: {
         description: data.description || null,
         m2: m2Val != null ? new Prisma.Decimal(m2Val) : null,
         startDate: data.startDate ? new Date(data.startDate) : null,
+        plannedEndDate: data.plannedEndDate ? new Date(data.plannedEndDate) : null,
         phase: 'PRE_CONSTRUCTION',
         status: 'DRAFT',
         createdByOrgMemberId: org.memberId,

@@ -33,6 +33,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   rfis: 'nav.rfis',
   submittals: 'nav.submittals',
   'daily-reports': 'nav.dailyReports',
+  'purchase-orders': 'nav.purchaseOrders',
   new: 'common.create',
   edit: 'common.edit',
 }

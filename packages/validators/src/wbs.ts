@@ -29,8 +29,15 @@ export const updateWBSItemSchema = z.object({
 
 export type UpdateWBSItemInput = z.infer<typeof updateWBSItemSchema>
 
+/** WBS code: numeric segments separated by dots (e.g. 1, 1.1, 1.1.1), no trailing dot. */
+const wbsCodeSchema = z
+  .string()
+  .min(1, 'El código es requerido')
+  .regex(/^\d+(\.\d+)*$/, 'El código debe ser como 1, 1.1 o 1.1.1 (solo números y puntos)')
+  .refine((c) => !c.endsWith('.'), 'El código no debe terminar en punto')
+
 export const wbsNodeSchema = z.object({
-  code: z.string().min(1, 'El código es requerido'),
+  code: wbsCodeSchema,
   name: z.string().min(1, 'El nombre es requerido'),
   category: z.enum(['PHASE', 'TASK', 'SUBTASK', 'ITEM']),
   unit: z.string().min(1, 'La unidad es requerida'),

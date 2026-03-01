@@ -41,7 +41,9 @@
     "goToNotifications": "Ir a notificaciones",
     "markAllRead": "Marcar todas como leídas",
     "loadMore": "Cargar más",
-    "chooseFile": "Elegir archivo o foto"
+    "chooseFile": "Elegir archivo o foto",
+    "uploadFile": "Subir archivo",
+    "takePhoto": "Tomar foto"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -131,6 +133,7 @@
     "budget": "Presupuesto",
     "budgetVersions": "Versiones",
     "budgetApproved": "Aprobado",
+    "wbsList": "Lista EDT",
     "budgetMaterials": "Materiales",
     "navCash": "Caja",
     "schedule": "Cronograma",
@@ -234,6 +237,7 @@
     "scheduleCreated": "Cronograma creado",
     "scheduleCreatedDesc": "Se crearon {count} tareas automáticamente",
     "createScheduleError": "Error al crear cronograma",
+    "updateProjectEndDateError": "No se pudo actualizar la fecha de fin del proyecto",
     "fillRequiredFields": "Debes completar todos los campos requeridos",
     "save": "Guardar",
     "saving": "Guardando...",
@@ -711,6 +715,11 @@
   "wbs": {
     "title": "EDT",
     "searchPlaceholder": "Buscar por código, nombre o descripción...",
+    "budgetVersion": "Versión de presupuesto",
+    "selectVersion": "Seleccionar",
+    "approved": "Aprobado",
+    "baseline": "Base",
+    "viewInBudget": "Ver desglose en presupuesto",
     "addPhase": "Agregar Fase",
     "addTASK": "Agregar Tarea",
     "addSUBTASK": "Agregar Subtarea",
@@ -753,6 +762,7 @@
     "saving": "Guardando...",
     "error": "Error",
     "deleteError": "No se pudo eliminar el nodo",
+    "reorderSuccess": "Orden actualizado",
     "createError": "No se pudo crear el nodo",
     "updateError": "No se pudo actualizar el nodo",
     "phase": "Fase",
@@ -860,6 +870,7 @@
     "description": "Descripción",
     "documentType": "Tipo de documento",
     "reference": "Referencia",
+    "purchaseOrder": "Orden de compra",
     "budgetVsConsumed": "Presupuesto / Consumido",
     "budgeted": "Presupuesto",
     "consumed": "Consumido",
@@ -951,7 +962,15 @@
       "APPROVED_AS_NOTED": "Aprobado con observaciones",
       "REJECTED": "Rechazado",
       "REVISE_AND_RESUBMIT": "Revisar y reenviar"
-    }
+    },
+    "attachments": "Adjuntos",
+    "attachmentsHint": "Imágenes, PDF o documentos. En el celular podés subir archivos o tomar una foto.",
+    "uploadFile": "Subir archivo",
+    "takePhoto": "Tomar foto",
+    "removeAttachment": "Quitar",
+    "attachmentUploadError": "Error al subir {{name}}",
+    "downloadError": "No se pudo descargar",
+    "downloadAttachment": "Descargar"
   },
   "certifications": {
     "title": "Certificaciones",
@@ -1409,6 +1428,7 @@
     "backToDocuments": "Documentos",
     "backToProject": "Proyecto",
     "createdByOn": "Creado por {name} el {date}",
+    "fileLabel": "Archivo",
     "titleLabel": "Título",
     "typeLabel": "Tipo",
     "projectOptional": "Proyecto (opcional)",

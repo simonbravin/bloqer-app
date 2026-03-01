@@ -331,6 +331,12 @@ export async function createPurchaseOrderCommitment(
 
   const total = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0)
 
+  const orgProfile = await prisma.orgProfile.findUnique({
+    where: { orgId: org.orgId },
+    select: { baseCurrency: true },
+  })
+  const baseCurrency = orgProfile?.baseCurrency ?? 'ARS'
+
   try {
     const commitment = await prisma.commitment.create({
       data: {
@@ -343,7 +349,7 @@ export async function createPurchaseOrderCommitment(
         issueDate: new Date(issueDate),
         description: description ?? undefined,
         total: new Prisma.Decimal(total),
-        currency: 'USD',
+        currency: baseCurrency,
         totalBaseCurrency: new Prisma.Decimal(total),
         createdByOrgMemberId: org.memberId,
         lines: {
@@ -435,13 +441,20 @@ export async function getProjectPurchaseOrders(
     }
   }
 
-  const list = await prisma.commitment.findMany({
-    where,
-    include: {
-      party: { select: { id: true, name: true } },
-    },
-    orderBy: [{ issueDate: 'desc' }, { commitmentNumber: 'desc' }],
-  })
+  const [list, orgProfile] = await Promise.all([
+    prisma.commitment.findMany({
+      where,
+      include: {
+        party: { select: { id: true, name: true } },
+      },
+      orderBy: [{ issueDate: 'desc' }, { commitmentNumber: 'desc' }],
+    }),
+    prisma.orgProfile.findUnique({
+      where: { orgId: org.orgId },
+      select: { baseCurrency: true },
+    }),
+  ])
+  const displayCurrency = orgProfile?.baseCurrency ?? 'ARS'
 
   return list.map((c) => ({
     id: c.id,
@@ -451,7 +464,7 @@ export async function getProjectPurchaseOrders(
     partyId: c.partyId,
     partyName: c.party.name,
     total: Number(c.totalBaseCurrency ?? c.total),
-    currency: c.currency,
+    currency: displayCurrency,
     description: c.description,
   }))
 }
@@ -467,6 +480,8 @@ export type CommitmentDetailWithLines = {
   currency: string
   description: string | null
   projectId: string
+  /** Id of the finance transaction (PURCHASE) created from this PO, if any */
+  linkedTransactionId: string | null
   lines: Array<{
     id: string
     description: string
@@ -487,17 +502,29 @@ export async function getCommitmentById(commitmentId: string): Promise<Commitmen
   const org = await getOrgContext(session.user.id)
   if (!org?.orgId) return null
 
-  const c = await prisma.commitment.findFirst({
-    where: { id: commitmentId, orgId: org.orgId, commitmentType: 'PO', deleted: false },
-    include: {
-      party: { select: { id: true, name: true } },
-      lines: {
-        include: { wbsNode: { select: { id: true, code: true, name: true } } },
-        orderBy: { sortOrder: 'asc' },
+  const [c, orgProfile, linkedTx] = await Promise.all([
+    prisma.commitment.findFirst({
+      where: { id: commitmentId, orgId: org.orgId, commitmentType: 'PO', deleted: false },
+      include: {
+        party: { select: { id: true, name: true } },
+        lines: {
+          include: { wbsNode: { select: { id: true, code: true, name: true } } },
+          orderBy: { sortOrder: 'asc' },
+        },
       },
-    },
-  })
+    }),
+    prisma.orgProfile.findUnique({
+      where: { orgId: org.orgId },
+      select: { baseCurrency: true },
+    }),
+    prisma.financeTransaction.findFirst({
+      where: { commitmentId, orgId: org.orgId, deleted: false },
+      select: { id: true },
+    }),
+  ])
   if (!c) return null
+
+  const displayCurrency = orgProfile?.baseCurrency ?? 'ARS'
 
   return {
     id: c.id,
@@ -507,9 +534,10 @@ export async function getCommitmentById(commitmentId: string): Promise<Commitmen
     partyId: c.partyId,
     partyName: c.party.name,
     total: Number(c.totalBaseCurrency ?? c.total),
-    currency: c.currency,
+    currency: displayCurrency,
     description: c.description,
     projectId: c.projectId,
+    linkedTransactionId: linkedTx?.id ?? null,
     lines: c.lines.map((l) => ({
       id: l.id,
       description: l.description,
@@ -522,4 +550,130 @@ export async function getCommitmentById(commitmentId: string): Promise<Commitmen
       wbsName: l.wbsNode?.name ?? null,
     })),
   }
+}
+
+/**
+ * Approve a purchase order (Commitment type PO). Only DRAFT (or PENDING/SUBMITTED) can be approved.
+ */
+export async function approvePurchaseOrder(commitmentId: string): Promise<
+  | { success: true }
+  | { success: false; error: string }
+> {
+  const session = await getSession()
+  if (!session?.user?.id) return { success: false, error: 'Unauthorized' }
+
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) return { success: false, error: 'No organization' }
+
+  const existing = await prisma.commitment.findFirst({
+    where: { id: commitmentId, orgId: org.orgId, commitmentType: 'PO', deleted: false },
+    select: { id: true, status: true },
+  })
+  if (!existing) return { success: false, error: 'Orden de compra no encontrada' }
+  const allowedStatuses = ['DRAFT', 'PENDING', 'SUBMITTED']
+  if (!allowedStatuses.includes(existing.status)) {
+    return { success: false, error: 'Solo órdenes en borrador o pendientes pueden aprobarse' }
+  }
+
+  await prisma.commitment.update({
+    where: { id: commitmentId },
+    data: {
+      status: 'APPROVED',
+      approvedByOrgMemberId: org.memberId,
+    },
+  })
+  return { success: true }
+}
+
+export type UpdatePurchaseOrderInput = {
+  commitmentId: string
+  partyId: string
+  issueDate: string
+  description?: string | null
+  lines: Array<{
+    id?: string
+    wbsNodeId: string
+    description: string
+    unit: string
+    quantity: number
+    unitPrice: number
+  }>
+}
+
+/**
+ * Update a DRAFT purchase order (commitment and lines). Only DRAFT can be edited.
+ */
+export async function updatePurchaseOrder(
+  input: UpdatePurchaseOrderInput
+): Promise<{ success: true; commitmentId: string } | { success: false; error: string }> {
+  const session = await getSession()
+  if (!session?.user?.id) return { success: false, error: 'Unauthorized' }
+
+  const org = await getOrgContext(session.user.id)
+  if (!org?.orgId) return { success: false, error: 'No organization' }
+
+  const { commitmentId, partyId, issueDate, description, lines } = input
+  if (!lines.length) return { success: false, error: 'Debe incluir al menos una línea' }
+
+  const existing = await prisma.commitment.findFirst({
+    where: { id: commitmentId, orgId: org.orgId, commitmentType: 'PO', deleted: false },
+    select: { id: true, projectId: true, status: true },
+  })
+  if (!existing) return { success: false, error: 'Orden de compra no encontrada' }
+  if (existing.status !== 'DRAFT') {
+    return { success: false, error: 'Solo se pueden editar órdenes en borrador' }
+  }
+
+  const projectId = existing.projectId
+  const party = await prisma.party.findFirst({
+    where: { id: partyId, orgId: org.orgId },
+    select: { id: true },
+  })
+  if (!party) return { success: false, error: 'Proveedor no encontrado' }
+
+  const wbsIds = [...new Set(lines.map((l) => l.wbsNodeId))]
+  const wbsNodes = await prisma.wbsNode.findMany({
+    where: { id: { in: wbsIds }, projectId, orgId: org.orgId },
+    select: { id: true },
+  })
+  const wbsSet = new Set(wbsNodes.map((n) => n.id))
+  for (const l of lines) {
+    if (!wbsSet.has(l.wbsNodeId)) return { success: false, error: `WBS no válido para este proyecto: ${l.wbsNodeId}` }
+  }
+
+  const total = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0)
+  const orgProfile = await prisma.orgProfile.findUnique({
+    where: { orgId: org.orgId },
+    select: { baseCurrency: true },
+  })
+  const baseCurrency = orgProfile?.baseCurrency ?? 'ARS'
+
+  await prisma.$transaction(async (tx) => {
+    await tx.commitmentLine.deleteMany({ where: { commitmentId } })
+    await tx.commitment.update({
+      where: { id: commitmentId },
+      data: {
+        partyId,
+        issueDate: new Date(issueDate),
+        description: description ?? undefined,
+        total: new Prisma.Decimal(total),
+        currency: baseCurrency,
+        totalBaseCurrency: new Prisma.Decimal(total),
+        lines: {
+          create: lines.map((l, i) => ({
+            orgId: org.orgId,
+            wbsNodeId: l.wbsNodeId,
+            description: l.description,
+            unit: l.unit,
+            quantity: new Prisma.Decimal(l.quantity),
+            unitPrice: new Prisma.Decimal(l.unitPrice),
+            lineTotal: new Prisma.Decimal(l.quantity * l.unitPrice),
+            sortOrder: i,
+          })),
+        },
+      },
+    })
+  })
+
+  return { success: true, commitmentId }
 }

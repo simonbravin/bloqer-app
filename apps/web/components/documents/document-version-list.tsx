@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { getDocumentDownloadUrl } from '@/app/actions/documents'
-import { uploadNewVersion } from '@/app/actions/documents'
+import { getDocumentDownloadUrl, uploadNewVersion } from '@/app/actions/documents'
 import { useRouter } from 'next/navigation'
-import { FileUploader } from './file-uploader'
+import { FileAndCameraTrigger } from '@/components/ui/file-and-camera-trigger'
 import { DocumentViewerModal } from './document-viewer-modal'
 import { toast } from 'sonner'
 
@@ -45,8 +44,10 @@ export function DocumentVersionList({
   canUpload,
 }: DocumentVersionListProps) {
   const router = useRouter()
+  const tCommon = useTranslations('common')
   const [showUpload, setShowUpload] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [viewingVersion, setViewingVersion] = useState<{
     id: string
     mimeType: string
@@ -75,11 +76,20 @@ export function DocumentVersionList({
 
   async function handleUploadNewVersion(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!selectedFile) {
+      toast.error(t('uploadFailed'))
+      return
+    }
     setUploading(true)
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData()
+    formData.set('file', selectedFile)
+    const notes = (form.querySelector('[name="notes"]') as HTMLInputElement)?.value
+    if (notes) formData.set('notes', notes)
     try {
       await uploadNewVersion(documentId, formData)
       setShowUpload(false)
+      setSelectedFile(null)
       router.refresh()
       toast.success(t('uploadDocument'))
     } catch (err) {
@@ -114,7 +124,16 @@ export function DocumentVersionList({
         >
           <h3 className="mb-3 text-sm font-medium">{t('newVersion')}</h3>
           <div className="space-y-3">
-            <FileUploader name="file" required />
+            <FileAndCameraTrigger
+              onFileSelect={(file) => setSelectedFile(file)}
+              loading={uploading}
+              t={tCommon}
+            />
+            {selectedFile && (
+              <p className="text-xs text-muted-foreground">
+                {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+              </p>
+            )}
             <div>
               <label className="block text-sm font-medium">{t('notesOptional')}</label>
               <input

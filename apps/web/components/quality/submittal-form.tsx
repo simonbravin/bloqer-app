@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -7,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslations } from 'next-intl'
 import { createSubmittal } from '@/app/actions/quality'
+import { uploadQualityAttachments } from '@/lib/quality-attachments'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { QualityAttachmentsInput } from '@/components/quality/quality-attachments-input'
 import { cn } from '@/lib/utils'
 
 const SUBMITTAL_TYPES = [
@@ -56,6 +59,7 @@ export function SubmittalForm({
 }: SubmittalFormProps) {
   const t = useTranslations('quality')
   const router = useRouter()
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([])
   const {
     register,
     handleSubmit,
@@ -80,12 +84,22 @@ export function SubmittalForm({
         submittedByPartyId: data.submittedByPartyId || null,
         specSection: data.specSection || null,
       })
-      if ('submittalId' in result) {
-        router.push(
-          `/projects/${projectId}/quality/submittals/${result.submittalId}`
+      if (!('submittalId' in result)) return
+      const submittalId = result.submittalId
+      if (attachmentFiles.length > 0) {
+        await uploadQualityAttachments(
+          projectId,
+          'Submittal',
+          'Submittal',
+          submittalId,
+          attachmentFiles,
+          t
         )
-        router.refresh()
       }
+      router.push(
+        `/projects/${projectId}/quality/submittals/${submittalId}`
+      )
+      router.refresh()
     } catch (err) {
       setError('root', {
         message: err instanceof Error ? err.message : t('createSubmittal'),
@@ -180,6 +194,12 @@ export function SubmittalForm({
             </SelectContent>
           </Select>
         </div>
+
+        <QualityAttachmentsInput
+          files={attachmentFiles}
+          onChange={setAttachmentFiles}
+          disabled={isSubmitting}
+        />
       </div>
 
       {errors.root && (

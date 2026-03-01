@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -37,6 +38,7 @@ import {
   getDocumentDownloadUrl,
 } from '@/app/actions/documents'
 import { FINANCE_TRANSACTION_ENTITY } from '@/lib/document-entities'
+import { FileAndCameraTrigger } from '@/components/ui/file-and-camera-trigger'
 import { DOCUMENT_TYPE_LABELS, getStatusLabel } from '@/lib/finance-labels'
 import { PartyCombobox } from './party-combobox'
 import { toast } from 'sonner'
@@ -46,7 +48,7 @@ import {
   DOCUMENT_TYPE,
   type ProjectTransactionCreateInput,
 } from '@repo/validators'
-import { Paperclip, FileDown, Loader2 } from 'lucide-react'
+import { Paperclip, FileDown } from 'lucide-react'
 
 const formSchema = z.object({
   type: z.enum(PROJECT_TRANSACTION_TYPE),
@@ -116,6 +118,7 @@ export function TransactionFormDialog({
   const [attachmentDocs, setAttachmentDocs] = useState<{ id: string; documentId: string; title: string; docType: string; versionId: string; fileName: string }[]>([])
   const [attachmentLoading, setAttachmentLoading] = useState(false)
   const [attachUploading, setAttachUploading] = useState(false)
+  const t = useTranslations('common')
   const isEditing = !!transaction
   const isCompanyLevel = projectId == null
   const canAttach = isEditing && transaction?.id && projectId != null
@@ -228,15 +231,13 @@ export function TransactionFormDialog({
       .finally(() => setAttachmentLoading(false))
   }, [open, canAttach, transaction?.id])
 
-  async function handleAttachFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !transaction?.id || !projectId) return
-    e.target.value = ''
+  async function handleAttachFile(file: File) {
+    if (!transaction?.id || !projectId) return
     setAttachUploading(true)
     try {
       const formData = new FormData()
       formData.set('projectId', projectId)
-      formData.set('title', file.name.replace(/\.[^.]+$/, '').trim() || file.name)
+      formData.set('title', (file.name || '').replace(/\.[^.]+$/, '').trim() || file.name || 'Adjunto')
       formData.set('docType', 'INVOICE')
       formData.set('file', file)
       const result = await createDocument(formData)
@@ -627,24 +628,17 @@ export function TransactionFormDialog({
 
           {canAttach && (
             <div className="space-y-2 rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label className="flex items-center gap-2">
                   <Paperclip className="h-4 w-4" />
                   Adjuntos
                 </Label>
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    className="sr-only"
-                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                    disabled={attachUploading}
-                    onChange={handleAttachFile}
-                  />
-                  <span className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent">
-                    {attachUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    {attachUploading ? 'Subiendo...' : 'Adjuntar documento'}
-                  </span>
-                </label>
+                <FileAndCameraTrigger
+                  onFileSelect={handleAttachFile}
+                  disabled={!transaction?.id || !projectId}
+                  loading={attachUploading}
+                  t={t}
+                />
               </div>
               {attachmentLoading ? (
                 <p className="text-sm text-muted-foreground">Cargando adjuntos...</p>

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createWbsNode, updateWbsNode } from '@/app/actions/wbs'
+import { createWbsNode, updateWbsNode, getNextWbsCode } from '@/app/actions/wbs'
 import { wbsNodeSchema } from '@repo/validators'
 import type { WbsNodeInput } from '@repo/validators'
 import {
@@ -91,8 +91,11 @@ export function WbsNodeFormDialog({
         quantity: '0',
         description: '',
       })
+      getNextWbsCode(projectId, parentId).then((result) => {
+        if ('code' in result) form.setValue('code', result.code)
+      })
     }
-  }, [nodeToEdit, defaultCategory, form])
+  }, [nodeToEdit, defaultCategory, form, projectId, parentId])
 
   async function onSubmit(data: WbsNodeInput & { quantity: string }) {
     setIsSubmitting(true)

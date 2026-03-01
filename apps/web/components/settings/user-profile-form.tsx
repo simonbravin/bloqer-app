@@ -12,10 +12,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Upload } from 'lucide-react'
+import { FileAndCameraTrigger } from '@/components/ui/file-and-camera-trigger'
 
 interface UserProfileFormProps {
   user: {
@@ -29,10 +29,10 @@ interface UserProfileFormProps {
 
 export function UserProfileForm({ user }: UserProfileFormProps) {
   const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -62,9 +62,7 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
     }
   }
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  async function handleAvatarSelect(file: File) {
     setIsUploadingAvatar(true)
     try {
       const formData = new FormData()
@@ -80,7 +78,6 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
       toast.error(t('errorUpdating'))
     } finally {
       setIsUploadingAvatar(false)
-      e.target.value = ''
     }
   }
 
@@ -95,24 +92,14 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
           </AvatarFallback>
         </Avatar>
         <div>
-          <input
-            ref={avatarInputRef}
-            type="file"
-            name="avatar"
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            className="hidden"
-            onChange={handleAvatarChange}
+          <FileAndCameraTrigger
+            imagesOnly
+            onFileSelect={handleAvatarSelect}
+            loading={isUploadingAvatar}
+            uploadLabel={isUploadingAvatar ? t('saving') : t('uploadAvatar')}
+            cameraLabel={tCommon('takePhoto')}
+            t={tCommon}
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isUploadingAvatar}
-            onClick={() => avatarInputRef.current?.click()}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            {isUploadingAvatar ? t('saving') : t('uploadAvatar')}
-          </Button>
           <p className="mt-2 text-xs text-slate-500">{t('avatarHelp')}</p>
         </div>
       </div>

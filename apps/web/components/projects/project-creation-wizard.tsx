@@ -67,6 +67,7 @@ export function ProjectCreationWizard({
       description: '',
       m2: '',
       startDate: '',
+      plannedEndDate: '',
     },
   })
 
@@ -85,6 +86,7 @@ export function ProjectCreationWizard({
         description: (data.description as string) || undefined,
         m2: data.m2 ? parseFloat(String(data.m2)) : null,
         startDate: (data.startDate as string) || undefined,
+        plannedEndDate: (data.plannedEndDate as string) || undefined,
         templateId: selectedTemplate,
         constructionSystemIds: selectedSystems,
       })
@@ -345,6 +347,16 @@ export function ProjectCreationWizard({
                   id="startDate"
                   type="date"
                   {...form.register('startDate')}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="plannedEndDate">{t('plannedEndDate')}</Label>
+                <Input
+                  id="plannedEndDate"
+                  type="date"
+                  {...form.register('plannedEndDate')}
                   className="mt-1"
                 />
               </div>

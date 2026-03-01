@@ -109,6 +109,7 @@ export async function getFinanceTransaction(id: string) {
     include: {
       project: { select: { id: true, name: true } },
       party: { select: { id: true, name: true } },
+      commitment: { select: { id: true, commitmentNumber: true, projectId: true } },
       createdBy: { select: { user: { select: { fullName: true, email: true } } } },
       lines: {
         orderBy: { sortOrder: 'asc' },
@@ -125,6 +126,13 @@ export async function getFinanceTransaction(id: string) {
     taxTotal: Number(tx.taxTotal),
     retentionAmount: Number(tx.retentionAmount ?? 0),
     adjustmentAmount: Number(tx.adjustmentAmount ?? 0),
+    commitment: tx.commitment
+      ? {
+          id: tx.commitment.id,
+          commitmentNumber: tx.commitment.commitmentNumber,
+          projectId: tx.commitment.projectId,
+        }
+      : undefined,
     lines: tx.lines.map((l) => ({
       ...l,
       lineTotal: Number(l.lineTotal),
@@ -359,6 +367,101 @@ export async function createFinanceTransactionWithLines(
 
   revalidatePath('/finance/transactions')
   return { success: true, id: tx.id }
+}
+
+/**
+ * Create a PURCHASE finance transaction from an approved purchase order (Commitment PO).
+ * Idempotent: if a transaction already exists for this commitment, returns that transaction id.
+ */
+export async function createPurchaseFromCommitment(commitmentId: string): Promise<
+  | { success: true; transactionId: string; alreadyExists?: boolean }
+  | { success: false; error: string }
+> {
+  const { org } = await requireOrgFinanceAccess()
+  requireRole(org.role, 'ACCOUNTANT')
+
+  const commitment = await prisma.commitment.findFirst({
+    where: {
+      id: commitmentId,
+      orgId: org.orgId,
+      commitmentType: 'PO',
+      status: 'APPROVED',
+      deleted: false,
+    },
+    include: {
+      lines: { orderBy: { sortOrder: 'asc' } },
+    },
+  })
+  if (!commitment) return { success: false, error: 'Orden de compra no encontrada o no aprobada' }
+
+  const existingTx = await prisma.financeTransaction.findFirst({
+    where: { commitmentId, orgId: org.orgId, deleted: false },
+    select: { id: true },
+  })
+  if (existingTx) {
+    revalidatePath('/finance/transactions')
+    return { success: true, transactionId: existingTx.id, alreadyExists: true }
+  }
+
+  const orgProfile = await prisma.orgProfile.findUnique({
+    where: { orgId: org.orgId },
+    select: { baseCurrency: true },
+  })
+  const baseCurrency = orgProfile?.baseCurrency ?? 'ARS'
+  const total = Number(commitment.totalBaseCurrency ?? commitment.total)
+  const year = new Date(commitment.issueDate).getFullYear()
+  const transactionNumber = await getNextTransactionNumber(org.orgId, 'PURCHASE', year)
+
+  const tx = await prisma.$transaction(async (db) => {
+    const created = await db.financeTransaction.create({
+      data: {
+        orgId: org.orgId,
+        type: 'PURCHASE',
+        documentType: 'INVOICE',
+        status: 'DRAFT',
+        transactionNumber,
+        issueDate: commitment.issueDate,
+        currency: baseCurrency,
+        subtotal: new Prisma.Decimal(total),
+        taxTotal: new Prisma.Decimal(0),
+        total: new Prisma.Decimal(total),
+        amountBaseCurrency: new Prisma.Decimal(total),
+        retentionAmount: new Prisma.Decimal(0),
+        adjustmentAmount: new Prisma.Decimal(0),
+        exchangeRateSnapshot: { rate: 1, baseCurrency } as object,
+        description: `Compra desde ${commitment.commitmentNumber}`,
+        reference: commitment.commitmentNumber,
+        projectId: commitment.projectId,
+        partyId: commitment.partyId,
+        commitmentId: commitment.id,
+        createdByOrgMemberId: org.memberId,
+        lines: {
+          create: commitment.lines.map((l, i) => ({
+            orgId: org.orgId,
+            description: l.description,
+            unit: l.unit ?? 'und',
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            lineTotal: l.lineTotal,
+            sortOrder: i,
+            wbsNodeId: l.wbsNodeId,
+          })),
+        },
+      },
+      select: { id: true },
+    })
+    await publishOutboxEvent(db, {
+      orgId: org.orgId,
+      eventType: 'FINANCE_TRANSACTION.CREATED',
+      entityType: 'FinanceTransaction',
+      entityId: created.id,
+      payload: { type: 'PURCHASE', transactionNumber },
+    })
+    return created
+  })
+
+  revalidatePath('/finance/transactions')
+  return { success: true, transactionId: tx.id }
 }
 
 export async function updateFinanceTransaction(id: string, data: UpdateFinanceTransactionInput) {

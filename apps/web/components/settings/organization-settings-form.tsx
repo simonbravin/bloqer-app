@@ -20,9 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
+import { FileAndCameraTrigger } from '@/components/ui/file-and-camera-trigger'
 
 interface OrganizationSettingsFormProps {
   organization: {
@@ -56,11 +57,11 @@ export function OrganizationSettingsForm({
   logoUrl,
 }: OrganizationSettingsFormProps) {
   const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [isRemovingLogo, setIsRemovingLogo] = useState(false)
-  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -148,15 +149,9 @@ export function OrganizationSettingsForm({
             <p className="text-sm text-slate-500">{t('noLogo', { defaultValue: 'No hay logo cargado' })}</p>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={logoInputRef}
-              type="file"
-              name="logo"
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0]
-                if (!file) return
+            <FileAndCameraTrigger
+              imagesOnly
+              onFileSelect={async (file) => {
                 setIsUploadingLogo(true)
                 try {
                   const formData = new FormData()
@@ -172,20 +167,13 @@ export function OrganizationSettingsForm({
                   toast.error(t('errorUpdating'))
                 } finally {
                   setIsUploadingLogo(false)
-                  e.target.value = ''
                 }
               }}
+              loading={isUploadingLogo}
+              uploadLabel={isUploadingLogo ? t('saving') : t('uploadLogo', { defaultValue: 'Subir logo' })}
+              cameraLabel={tCommon('takePhoto')}
+              t={tCommon}
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isUploadingLogo}
-              onClick={() => logoInputRef.current?.click()}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              {isUploadingLogo ? t('saving') : t('uploadLogo', { defaultValue: 'Subir logo' })}
-            </Button>
           </div>
         </div>
         <p className="text-xs text-slate-500">

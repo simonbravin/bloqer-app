@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { formatDateDDMMYYYY } from '@/lib/format-utils'
 import { uploadDailyReportFiles } from '@/app/actions/daily-reports'
+import { ACCEPT_ATTACHMENTS } from '@/lib/file-accept'
 import { DocumentThumbnail } from '@/components/documents/document-thumbnail'
 
 type Report = Awaited<ReturnType<typeof import('@/app/actions/daily-reports').getDailyReport>>
@@ -351,7 +352,7 @@ export function DailyReportDetailClient({
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/*,.pdf,.doc,.docx"
+                accept={ACCEPT_ATTACHMENTS}
                 onChange={handleFileUpload}
                 disabled={uploading}
                 className="hidden"

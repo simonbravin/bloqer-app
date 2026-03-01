@@ -5,6 +5,7 @@ import { useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { uploadDailyReportFiles } from '@/app/actions/daily-reports'
+import { ACCEPT_ATTACHMENTS } from '@/lib/file-accept'
 
 const MAX_FILES = 10
 
@@ -63,7 +64,7 @@ export function DailyReportUploadSection({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,.pdf,.doc,.docx"
+          accept={ACCEPT_ATTACHMENTS}
           onChange={handleFileUpload}
           disabled={uploading}
           className="hidden"

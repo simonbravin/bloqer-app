@@ -41,7 +41,9 @@
     "goToNotifications": "Go to notifications",
     "markAllRead": "Mark all as read",
     "loadMore": "Load more",
-    "chooseFile": "Choose file or photo"
+    "chooseFile": "Choose file or photo",
+    "uploadFile": "Upload file",
+    "takePhoto": "Take photo"
   },
   "auth": {
     "login": "Log in",
@@ -131,6 +133,7 @@
     "budget": "Budget",
     "budgetVersions": "Versions",
     "budgetApproved": "Approved",
+    "wbsList": "EDT List",
     "budgetMaterials": "Materials",
     "navCash": "Cash",
     "schedule": "Schedule",
@@ -234,6 +237,7 @@
     "scheduleCreated": "Schedule created",
     "scheduleCreatedDesc": "{count} tasks created automatically",
     "createScheduleError": "Error creating schedule",
+    "updateProjectEndDateError": "Could not update project planned end date",
     "fillRequiredFields": "Please complete all required fields",
     "save": "Save",
     "saving": "Saving...",
@@ -701,6 +705,11 @@
   "wbs": {
     "title": "WBS",
     "searchPlaceholder": "Search by code, name or description...",
+    "budgetVersion": "Budget version",
+    "selectVersion": "Select",
+    "approved": "Approved",
+    "baseline": "Baseline",
+    "viewInBudget": "View breakdown in budget",
     "addPhase": "Add Phase",
     "addTASK": "Add Task",
     "addSUBTASK": "Add Subtask",
@@ -743,6 +752,7 @@
     "saving": "Saving...",
     "error": "Error",
     "deleteError": "Could not delete the node",
+    "reorderSuccess": "Order updated",
     "createError": "Could not create the node",
     "updateError": "Could not update the node",
     "phase": "Phase",
@@ -850,6 +860,7 @@
     "description": "Description",
     "documentType": "Document type",
     "reference": "Reference",
+    "purchaseOrder": "Purchase order",
     "budgetVsConsumed": "Budget / Consumed",
     "budgeted": "Budget",
     "consumed": "Consumed",
@@ -941,7 +952,15 @@
       "APPROVED_AS_NOTED": "Approved as Noted",
       "REJECTED": "Rejected",
       "REVISE_AND_RESUBMIT": "Revise and Resubmit"
-    }
+    },
+    "attachments": "Attachments",
+    "attachmentsHint": "Images, PDF, or documents. On mobile you can upload files or take a photo.",
+    "uploadFile": "Upload file",
+    "takePhoto": "Take photo",
+    "removeAttachment": "Remove",
+    "attachmentUploadError": "Error uploading {{name}}",
+    "downloadError": "Could not download",
+    "downloadAttachment": "Download"
   },
   "changeOrders": {
     "title": "Change Orders",
@@ -1397,6 +1416,7 @@
     "backToDocuments": "Documents",
     "backToProject": "Project",
     "createdByOn": "Created by {name} on {date}",
+    "fileLabel": "File",
     "titleLabel": "Title",
     "typeLabel": "Type",
     "projectOptional": "Project (optional)",

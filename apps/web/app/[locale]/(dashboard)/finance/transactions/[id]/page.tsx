@@ -52,6 +52,7 @@ export default async function FinanceTransactionDetailPage({ params }: PageProps
     exchangeRateSnapshot: tx.exchangeRateSnapshot,
     project: tx.project,
     party: tx.party,
+    commitment: tx.commitment,
     createdBy: tx.createdBy,
     lines: tx.lines,
   }

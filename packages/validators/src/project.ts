@@ -25,6 +25,7 @@ export const createProjectSchema = z.object({
     z.coerce.number().positive().optional().nullable()
   ),
   startDate: z.preprocess(parseDateOnly, z.date().optional().nullable()),
+  plannedEndDate: z.preprocess(parseDateOnly, z.date().optional().nullable()),
 })
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>

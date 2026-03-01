@@ -31,6 +31,8 @@ export type TransactionDetailData = {
   exchangeRateSnapshot: unknown
   project: { id: string; name: string } | null
   party: { id: string; name: string } | null
+  /** When this transaction was created from a purchase order */
+  commitment?: { id: string; commitmentNumber: string; projectId: string }
   createdBy: { user: { fullName: string } }
   lines: Array<{
     id: string
@@ -161,6 +163,19 @@ export function TransactionDetail({
             <div>
               <dt className="text-xs font-medium uppercase text-muted-foreground">{t('reference')}</dt>
               <dd className="mt-0.5 text-sm text-foreground">{transaction.reference}</dd>
+            </div>
+          )}
+          {transaction.commitment && (
+            <div>
+              <dt className="text-xs font-medium uppercase text-muted-foreground">{t('purchaseOrder', { defaultValue: 'Orden de compra' })}</dt>
+              <dd className="mt-0.5 text-sm text-foreground">
+                <Link
+                  href={`/projects/${transaction.commitment.projectId}/finance/purchase-orders/${transaction.commitment.id}`}
+                  className="text-primary hover:underline font-mono"
+                >
+                  {transaction.commitment.commitmentNumber}
+                </Link>
+              </dd>
             </div>
           )}
           {transaction.project && (

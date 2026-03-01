@@ -32,6 +32,7 @@ export type ProjectDashboardData = {
     wbsName: string
     budgeted: number
     actual: number
+    committed: number
     variance: number
   }>
   expensesBySupplier: Array<{
@@ -55,7 +56,7 @@ export async function getProjectDashboardData(projectId: string): Promise<Projec
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
-  const [budgetVersion, actualExpenses, committedExpenses, certifications, wbsNodes, supplierParties, transactionsForCashflow, financeLinesForWbs] = await Promise.all([
+  const [budgetVersion, actualExpenses, committedExpenses, certifications, wbsNodes, supplierParties, transactionsForCashflow, financeLinesForWbs, commitmentLinesByWbs] = await Promise.all([
     (async () => {
       let version = await prisma.budgetVersion.findFirst({
         where: { projectId, orgId: org.orgId, status: { in: ['APPROVED', 'BASELINE'] } },
@@ -131,6 +132,19 @@ export async function getProjectDashboardData(projectId: string): Promise<Projec
       },
       select: { wbsNodeId: true, lineTotal: true },
     }),
+    prisma.commitmentLine.findMany({
+      where: {
+        commitment: {
+          projectId,
+          orgId: org.orgId,
+          commitmentType: 'PO',
+          status: 'APPROVED',
+          deleted: false,
+        },
+        wbsNodeId: { not: null },
+      },
+      select: { wbsNodeId: true, lineTotal: true },
+    }),
   ])
 
   const totalBudget = (() => {
@@ -168,6 +182,15 @@ export async function getProjectDashboardData(projectId: string): Promise<Projec
       actualByWbs.set(fl.wbsNodeId, (actualByWbs.get(fl.wbsNodeId) ?? 0) + Number(fl.lineTotal))
     }
   }
+  const committedByWbs = new Map<string, number>()
+  for (const cl of commitmentLinesByWbs) {
+    if (cl.wbsNodeId) {
+      committedByWbs.set(
+        cl.wbsNodeId,
+        (committedByWbs.get(cl.wbsNodeId) ?? 0) + Number(cl.lineTotal)
+      )
+    }
+  }
   const budgetedByWbs = new Map<string, { code: string; name: string; total: number }>()
   if (budgetVersion?.budgetLines?.length) {
     const gg = Number(budgetVersion.globalOverheadPct)
@@ -194,6 +217,7 @@ export async function getProjectDashboardData(projectId: string): Promise<Projec
       wbsName: b.name,
       budgeted: b.total,
       actual: actualByWbs.get(wbsId) ?? 0,
+      committed: committedByWbs.get(wbsId) ?? 0,
       variance: b.total - (actualByWbs.get(wbsId) ?? 0),
     }))
     .sort((a, b) => b.actual - a.actual)

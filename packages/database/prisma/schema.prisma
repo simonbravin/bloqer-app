@@ -1295,12 +1295,14 @@ model FinanceTransaction {
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
   dailyReportId         String?  @map("daily_report_id")
+  commitmentId          String?  @map("commitment_id")
 
   // Relations
   organization         Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
   project              Project?             @relation(fields: [projectId], references: [id])
   party                Party?                @relation(fields: [partyId], references: [id])
   certification        Certification?        @relation(fields: [certificationId], references: [id])
+  commitment           Commitment?          @relation(fields: [commitmentId], references: [id])
   currencyRel          Currency             @relation(fields: [currency], references: [code])
   createdBy            OrgMember            @relation("FinanceTransactionCreatedBy", fields: [createdByOrgMemberId], references: [id])
   deletedBy            OrgMember?          @relation("FinanceTransactionDeletedBy", fields: [deletedByOrgMemberId], references: [id])
@@ -1317,6 +1319,7 @@ model FinanceTransaction {
   @@index([dueDate])
   @@index([dailyReportId])
   @@index([certificationId])
+  @@index([commitmentId])
   @@map("finance_transactions")
   @@schema("finance")
 }
@@ -1435,13 +1438,14 @@ model Commitment {
   updatedAt             DateTime @updatedAt @map("updated_at")
 
   // Relations
-  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  project      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  party        Party              @relation(fields: [partyId], references: [id])
-  currencyRel  Currency           @relation(fields: [currency], references: [code])
-  createdBy    OrgMember          @relation("CommitmentCreatedBy", fields: [createdByOrgMemberId], references: [id])
-  approvedBy   OrgMember?         @relation("CommitmentApprovedBy", fields: [approvedByOrgMemberId], references: [id])
-  lines        CommitmentLine[]
+  organization         Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  party                Party                 @relation(fields: [partyId], references: [id])
+  currencyRel          Currency              @relation(fields: [currency], references: [code])
+  createdBy            OrgMember             @relation("CommitmentCreatedBy", fields: [createdByOrgMemberId], references: [id])
+  approvedBy           OrgMember?            @relation("CommitmentApprovedBy", fields: [approvedByOrgMemberId], references: [id])
+  lines                CommitmentLine[]
+  financeTransactions  FinanceTransaction[]
 
   @@unique([orgId, projectId, commitmentNumber])
   @@index([projectId, status])

@@ -1,8 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -39,11 +48,94 @@ interface WbsTreeNode {
   children: WbsTreeNode[]
 }
 
+function getParentId(nodes: WbsTreeNode[], nodeId: string, parentId: string | null = null): string | null | undefined {
+  for (const n of nodes) {
+    if (n.id === nodeId) return parentId
+    const found = getParentId(n.children, nodeId, n.id)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
+function getSiblingIds(nodes: WbsTreeNode[], parentId: string | null): string[] {
+  if (parentId === null) return nodes.map((n) => n.id)
+  for (const n of nodes) {
+    if (n.id === parentId) return n.children.map((c) => c.id)
+    const ids = getSiblingIds(n.children, parentId)
+    if (ids.length > 0) return ids
+  }
+  return []
+}
+
+/** Static row (no DnD) to avoid hydration mismatch before client mount. */
+function StaticRow({
+  level,
+  canEdit,
+  children,
+}: {
+  level: number
+  canEdit: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      style={{ marginLeft: `${level * 24}px` }}
+      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+    >
+      {canEdit && (
+        <span className="cursor-default shrink-0 rounded p-1 text-slate-400">
+          <GripVertical className="h-4 w-4" />
+        </span>
+      )}
+      {children}
+    </div>
+  )
+}
+
+/** Wraps row content with sortable ref/transform and drag handle. */
+function SortableRow({
+  id,
+  level,
+  canReorder,
+  canEdit,
+  children,
+}: {
+  id: string
+  level: number
+  canReorder: boolean
+  canEdit: boolean
+  children: React.ReactNode
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={canReorder ? setNodeRef : undefined}
+      style={{
+        marginLeft: `${level * 24}px`,
+        ...(canReorder ? { transform: CSS.Transform.toString(transform), transition } : {}),
+        ...(isDragging ? { opacity: 0.5 } : {}),
+      }}
+      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+    >
+      {canEdit && (
+        <span
+          className="cursor-grab touch-none shrink-0 rounded p-1 text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+          {...(canReorder ? { ...listeners, ...attributes } : {})}
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
+      )}
+      {children}
+    </div>
+  )
+}
+
 interface WbsTreeInteractiveProps {
   data: WbsTreeNode[]
   projectId: string
   canEdit: boolean
   onAddChild: (parentId: string | null) => void
+  onReorder?: (parentId: string | null, orderedNodeIds: string[]) => Promise<void>
 }
 
 export function WbsTreeInteractive({
@@ -51,11 +143,33 @@ export function WbsTreeInteractive({
   projectId,
   canEdit,
   onAddChild,
+  onReorder,
 }: WbsTreeInteractiveProps) {
   const t = useTranslations('wbs')
   const router = useRouter()
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [editingNode, setEditingNode] = useState<WbsTreeNode | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!onReorder || !over || active.id === over.id) return
+    const parentIdResult = getParentId(data, String(active.id))
+    if (parentIdResult === undefined) return
+    const parentId = parentIdResult ?? null
+    const siblingIds = getSiblingIds(data, parentId)
+    const oldIndex = siblingIds.indexOf(String(active.id))
+    const newIndex = siblingIds.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+    const newOrder = arrayMove(siblingIds, oldIndex, newIndex)
+    await onReorder(parentId, newOrder)
+  }
 
   function toggleNode(nodeId: string) {
     const newExpanded = new Set(expandedNodes)
@@ -107,18 +221,9 @@ export function WbsTreeInteractive({
       BUDGET_ITEM: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
     }
 
-    return (
-      <div key={node.id}>
-        <div
-          className={`flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900`}
-          style={{ marginLeft: `${level * 24}px` }}
-        >
-          {canEdit && (
-            <button type="button" className="cursor-grab text-slate-400 hover:text-slate-600">
-              <GripVertical className="h-4 w-4" />
-            </button>
-          )}
-
+    const canReorder = Boolean(canEdit && onReorder)
+    const rowContent = (
+      <>
           <button
             type="button"
             onClick={() => toggleNode(node.id)}
@@ -202,7 +307,25 @@ export function WbsTreeInteractive({
               </DropdownMenu>
             )}
           </div>
-        </div>
+      </>
+    )
+
+    return (
+      <div key={node.id}>
+        {!mounted ? (
+          <StaticRow level={level} canEdit={canEdit}>
+            {rowContent}
+          </StaticRow>
+        ) : (
+          <SortableRow
+            id={node.id}
+            level={level}
+            canReorder={canReorder}
+            canEdit={canEdit}
+          >
+            {rowContent}
+          </SortableRow>
+        )}
 
         {node.description && (
           <div
@@ -215,16 +338,47 @@ export function WbsTreeInteractive({
 
         {isExpanded && node.children.length > 0 && (
           <div className="mt-2 space-y-2">
-            {node.children.map((child) => renderNode(child, level + 1))}
+            {!mounted ? (
+              node.children.map((child) => renderNode(child, level + 1))
+            ) : (
+              <SortableContext
+                items={node.children.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {node.children.map((child) => renderNode(child, level + 1))}
+              </SortableContext>
+            )}
           </div>
         )}
       </div>
     )
   }
 
+  if (!mounted) {
+    return (
+      <div className="space-y-2">
+        {data.map((node) => renderNode(node))}
+        {editingNode && (
+          <WbsNodeFormDialog
+            projectId={projectId}
+            parentId={editingNode.parentId}
+            nodeToEdit={editingNode}
+            onClose={() => setEditingNode(null)}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-2">
-      {data.map((node) => renderNode(node))}
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="space-y-2">
+        <SortableContext
+          items={data.map((n) => n.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {data.map((node) => renderNode(node))}
+        </SortableContext>
 
       {editingNode && (
         <WbsNodeFormDialog
@@ -234,6 +388,7 @@ export function WbsTreeInteractive({
           onClose={() => setEditingNode(null)}
         />
       )}
-    </div>
+      </div>
+    </DndContext>
   )
 }
