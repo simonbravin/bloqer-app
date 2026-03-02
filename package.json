@@ -22,7 +22,9 @@
     "db:generate": "turbo run db:generate",
     "db:push": "turbo run db:push",
     "db:studio": "turbo run db:studio",
-    "db:migrate": "turbo run db:migrate"
+    "db:migrate": "turbo run db:migrate",
+    "db:migrate:deploy": "pnpm --filter @repo/database db:migrate:deploy",
+    "db:create-superadmin": "pnpm --filter @repo/database set-superadmin-password"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

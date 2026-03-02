@@ -34,7 +34,11 @@ export function LoginForm() {
 
   async function onSubmit(data: LoginFormInput) {
     const result = await login(data)
-    if (result?.error) {
+    if (result == null || typeof result !== 'object') {
+      setError('root', { message: t('errorConnection', { defaultValue: 'Error de conexión. Intentá de nuevo.' }) })
+      return
+    }
+    if (result.error) {
       const err = result.error as {
         _form?: string[]
         emailOrUsername?: string[]

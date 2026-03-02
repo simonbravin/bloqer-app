@@ -74,7 +74,10 @@ export function RfiForm({ projectId, wbsNodes, orgMembers }: RfiFormProps) {
         assignedToOrgMemberId: data.assignedToOrgMemberId || null,
         dueDate: data.dueDate || null,
       })
-      if (!('rfiId' in result)) return
+      if (!result || typeof result !== 'object' || !('rfiId' in result)) {
+        setError('root', { message: result && typeof result === 'object' && 'error' in result ? (result as { error?: string }).error : t('createRfi') })
+        return
+      }
       const rfiId = result.rfiId
       if (attachmentFiles.length > 0) {
         await uploadQualityAttachments(

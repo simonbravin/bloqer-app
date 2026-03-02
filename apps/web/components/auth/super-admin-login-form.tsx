@@ -28,7 +28,11 @@ export function SuperAdminLoginForm() {
 
   async function onSubmit(data: FormData) {
     const result = await superAdminLogin(data.username, data.password)
-    if (result?.error) {
+    if (result == null || typeof result !== 'object') {
+      setError('root', { message: 'Error de conexión. Intentá de nuevo.' })
+      return
+    }
+    if (result.error) {
       const err = result.error as { _form?: string[] }
       if (err._form) setError('root', { message: err._form[0] })
       return

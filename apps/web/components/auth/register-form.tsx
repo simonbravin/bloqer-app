@@ -51,7 +51,11 @@ export function RegisterForm({ onSwitchToLogin, embedded }: RegisterFormProps) {
 
   async function onSubmit(data: RegisterInput) {
     const result = await registerAction(data)
-    if (result?.error) {
+    if (result == null || typeof result !== 'object') {
+      setError('root', { message: t('errorConnection', { defaultValue: 'Error de conexión. Intentá de nuevo.' }) })
+      return
+    }
+    if (result.error) {
       const err = result.error as {
         _form?: string[]
         username?: string[]

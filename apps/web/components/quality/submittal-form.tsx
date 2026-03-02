@@ -84,7 +84,10 @@ export function SubmittalForm({
         submittedByPartyId: data.submittedByPartyId || null,
         specSection: data.specSection || null,
       })
-      if (!('submittalId' in result)) return
+      if (!result || typeof result !== 'object' || !('submittalId' in result)) {
+        setError('root', { message: result && typeof result === 'object' && 'error' in result ? (result as { error?: string }).error : t('createSubmittal') })
+        return
+      }
       const submittalId = result.submittalId
       if (attachmentFiles.length > 0) {
         await uploadQualityAttachments(

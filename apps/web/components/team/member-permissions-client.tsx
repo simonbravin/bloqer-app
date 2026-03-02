@@ -169,6 +169,11 @@ export function MemberPermissionsClient({
       next && Object.keys(next).length > 0 ? (next as Record<string, string[]>) : null
     try {
       const result = await updateMemberPermissions(member.id, payload)
+      if (!result || typeof result !== 'object') {
+        toast.error('Error de conexión. Intentá de nuevo.')
+        setCustomPermissions(prev)
+        return
+      }
       if (!result.success && 'error' in result) {
         toast.error(result.error)
         setCustomPermissions(prev)
@@ -191,6 +196,10 @@ export function MemberPermissionsClient({
     setRoleUpdating(true)
     try {
       const result = await updateMemberRole(member.id, newRole)
+      if (!result || typeof result !== 'object') {
+        toast.error('Error de conexión. Intentá de nuevo.')
+        return
+      }
       if (!result.success && 'error' in result) {
         toast.error(result.error)
         return
@@ -208,6 +217,10 @@ export function MemberPermissionsClient({
     setIsSubmitting(true)
     try {
       const result = await resetMemberPermissions(member.id)
+      if (!result || typeof result !== 'object') {
+        toast.error('Error de conexión. Intentá de nuevo.')
+        return
+      }
       if (!result.success && 'error' in result) {
         toast.error(result.error)
         return
@@ -227,6 +240,10 @@ export function MemberPermissionsClient({
     setRestrictedUpdating(true)
     try {
       const result = await setMemberRestrictedToProjects(member.id, checked)
+      if (!result || typeof result !== 'object') {
+        toast.error('Error de conexión. Intentá de nuevo.')
+        return
+      }
       if (!result.success && 'error' in result) {
         toast.error(result.error)
         return

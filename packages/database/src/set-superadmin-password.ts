@@ -1,17 +1,20 @@
 /**
  * Asegura que el usuario superadmin exista y pueda entrar al portal superadmin.
  * Usuario: superadmin
- * Contraseña: Livestrong=15
+ * Contraseña: SUPER_ADMIN_PASSWORD en .env, o por defecto Livestrong=15 (solo dev).
  *
- * Ejecutar desde repo root: pnpm --filter @repo/database set-superadmin-password
- * O desde packages/database: pnpm set-superadmin-password
+ * Producción: definir SUPER_ADMIN_PASSWORD en packages/database/.env (Neon) y ejecutar:
+ *   pnpm db:create-superadmin
+ *
+ * Desde packages/database: pnpm set-superadmin-password
  */
 import bcrypt from 'bcryptjs'
 import { prisma } from './client'
 
 const USERNAME = 'superadmin'
 const PLACEHOLDER_EMAIL = 'superadmin@system.internal'
-const PASSWORD = 'Livestrong=15'
+const DEFAULT_PASSWORD = 'Livestrong=15'
+const PASSWORD = process.env.SUPER_ADMIN_PASSWORD ?? DEFAULT_PASSWORD
 
 async function main() {
   const passwordHash = await bcrypt.hash(PASSWORD, 10)
@@ -53,8 +56,8 @@ async function main() {
   console.log('')
   console.log('Portal Super Admin:')
   console.log('  Usuario:    superadmin')
-  console.log('  Contraseña: Livestrong=15')
-  console.log('  URL:        /super-admin/login (o la ruta de login superadmin de tu app)')
+  console.log('  Contraseña: (la definida en SUPER_ADMIN_PASSWORD o Livestrong=15 por defecto)')
+  console.log('  URL:        https://portal.bloqer.app/es/super-admin/login (producción)')
 }
 
 main()

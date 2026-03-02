@@ -92,7 +92,7 @@ export function WbsNodeFormDialog({
         description: '',
       })
       getNextWbsCode(projectId, parentId).then((result) => {
-        if ('code' in result) form.setValue('code', result.code)
+        if (result && typeof result === 'object' && 'code' in result) form.setValue('code', result.code)
       })
     }
   }, [nodeToEdit, defaultCategory, form, projectId, parentId])

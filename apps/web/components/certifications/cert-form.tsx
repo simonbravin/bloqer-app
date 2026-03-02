@@ -84,7 +84,7 @@ export function CertForm({
         notes: notes || undefined,
         issuedDate: issuedDate || undefined,
       })
-      if ('certId' in result) {
+      if (result && typeof result === 'object' && 'certId' in result) {
         setCertId(result.certId)
         const lines = await getBudgetLinesForCert(budgetVersionId)
         setBudgetLines(lines as BudgetLineForCert[])
