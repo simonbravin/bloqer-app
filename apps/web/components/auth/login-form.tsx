@@ -52,7 +52,7 @@ export function LoginForm() {
     if ('ok' in result && result.ok && result.email) {
       const signInResult = await signIn('credentials', {
         email: result.email,
-        password: data.password,
+        password: data.password.trim(),
         redirect: false,
       })
       if (signInResult?.ok) {
@@ -60,6 +60,14 @@ export function LoginForm() {
         window.location.href = `/${locale}${path}`
         return
       }
+      // Credenciales válidas pero NextAuth rechazó (ej. usuario sin organización)
+      const accessDenied = signInResult?.error === 'AccessDenied' || signInResult?.error === 'Callback'
+      setError('root', {
+        message: accessDenied
+          ? t('noOrganization', { defaultValue: 'Tu cuenta no tiene una organización asignada. Contactá al administrador.' })
+          : t('invalidCredentials', { defaultValue: 'Usuario o contraseña incorrectos' }),
+      })
+      return
     }
     setError('root', { message: t('invalidCredentials', { defaultValue: 'Usuario o contraseña incorrectos' }) })
   }

@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  trustHost: true, // required on Vercel so session cookie is set for the request host
   session: {
     strategy: 'jwt',
   },
@@ -64,7 +65,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const orgMember = await prisma.orgMember.findFirst({
         where: { userId: user.id, active: true },
       })
-      return !!orgMember
+      if (!orgMember) {
+        console.warn('[auth] signIn callback: user has no active orgMember', { userId: user.id, email: user.email })
+        return false
+      }
+      return true
     },
     async jwt({ token, user }) {
       if (user) {
