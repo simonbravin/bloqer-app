@@ -93,10 +93,12 @@ export default async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname
   const pathWithoutLocale = pathname.replace(/^\/(es|en)/, '') || '/'
 
+  // Same secret as NextAuth (auth.ts uses NEXTAUTH_SECRET / AUTH_SECRET). Edge must decode the same JWT.
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET
   try {
     const token = await getToken({
       req,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret: secret || undefined,
     })
 
     if (isSuperAdminLoginPath(pathname)) {

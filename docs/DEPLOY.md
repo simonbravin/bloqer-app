@@ -50,15 +50,17 @@ No hace falta crear tablas a mano: las migraciones de Prisma las crearán en el 
 
 ## 2. Variables de entorno en Vercel
 
+**Si ya tenés las variables cargadas (como en la captura):** revisá solo que los **valores** sean correctos (ver tabla y párrafo "Valores que tenés que revisar" más abajo). No hace falta agregar `AUTH_SECRET` ni `AUTH_URL`; el código ya usa `NEXTAUTH_*` como fallback.
+
 1. Abre tu proyecto en [Vercel](https://vercel.com) (o crea uno vinculado a este repo).
 2. Ve a **Settings → Environment Variables**.
 3. Añade las siguientes variables para **Production** (y, si quieres, Preview):
 
 | Variable | Descripción | Ejemplo / Cómo obtenerla |
 |----------|-------------|---------------------------|
-| `NEXTAUTH_URL` | URL pública de la app | `https://tu-dominio.vercel.app` (ajusta tras el primer deploy) |
+| `NEXTAUTH_URL` | URL pública de la app (exacta, sin barra final) | Producción: `https://portal.bloqer.app` |
 | `NEXTAUTH_SECRET` | Secreto para sesiones | `openssl rand -base64 32` |
-| `AUTH_SECRET` | Usado por Auth.js | Mismo valor que NEXTAUTH_SECRET o otro generado igual |
+| ~~`AUTH_SECRET`~~ | No hace falta en Vercel | La app usa `NEXTAUTH_SECRET` si no está definido |
 | `DATABASE_URL` | PostgreSQL (Neon **pooled**) | Pegar desde Neon |
 | `DIRECT_URL` | PostgreSQL (Neon **direct**) | Pegar desde Neon |
 | `NEXT_PUBLIC_APP_URL` | URL pública (para links en emails, etc.) | Misma que NEXTAUTH_URL |
@@ -68,6 +70,14 @@ No hace falta crear tablas a mano: las migraciones de Prisma las crearán en el 
 | `INNGEST_SIGNING_KEY` | (Opcional) Si usas Inngest Cloud | Dashboard de Inngest |
 
 **Importante:** El valor de `DATABASE_URL` y `DIRECT_URL` debe ser solo la URL (ej. `postgresql://user:pass@host/db?sslmode=require`). No incluyas el prefijo `psql '` ni comillas al final. En Neon, al copiar "connection string" quita ese prefijo. Para pooled (DATABASE_URL) añade `&pgbouncer=true` si no viene. Asegura que las variables estén asignadas al entorno **Production** y haz redeploy después de cambiarlas.
+
+**Valores que tenés que revisar en Vercel (definitivos):**
+
+- **NEXTAUTH_URL**: tiene que ser exactamente la URL con la que entran los usuarios, sin barra final. Si el dominio es `portal.bloqer.app`, debe ser `https://portal.bloqer.app` (no `http://`, no `https://portal.bloqer.app/`, no un dominio `.vercel.app` distinto).
+- **NEXT_PUBLIC_APP_URL**: mismo valor que `NEXTAUTH_URL`.
+- **DATABASE_URL** y **DIRECT_URL**: solo la URL de Neon (sin `psql '` delante ni comillas). En la URL pooled (DATABASE_URL) debe figurar `pgbouncer=true` en la query string.
+
+No hace falta agregar `AUTH_SECRET` ni `AUTH_URL` en Vercel: el código usa `NEXTAUTH_SECRET` y `NEXTAUTH_URL` como fallback.
 
 Puedes dejar R2 en blanco si no usas almacenamiento en Cloudflare aún.
 
@@ -166,6 +176,26 @@ Solo hace falta ejecutarlo una vez por entorno (o cuando quieras resetear la con
 Si todo eso pasa, la app está activa y podés registrar clientes y comercializar.
 
 **Debug en producción:** El widget de estado del sistema (flotante) solo se muestra si en Vercel definís `NEXT_PUBLIC_SHOW_DEBUG_WIDGET=true`. No lo definas en producción si no lo necesitás; el dashboard de Super Admin ya incluye un bloque de estado embebido para ops.
+
+### Diagnóstico: "vuelve al login" sin mensaje de error
+
+**Paso único (sin DevTools):**
+
+1. Intentá iniciar sesión en `https://portal.bloqer.app`.
+2. En la **misma pestaña**, abrí esta URL: **https://portal.bloqer.app/api/auth/session**
+3. Mirá qué muestra la página:
+   - Si ves **`{}`** o **"null"** → la sesión no se está guardando. Revisá en Vercel que `NEXTAUTH_URL` sea exactamente `https://portal.bloqer.app` (sin barra final) y que `NEXTAUTH_SECRET` esté definido. Redeploy y probá de nuevo.
+   - Si ves un **objeto JSON con `user`** (ej. `{"user":{"name":"...","email":"..."}}`) → la sesión sí existe; el problema sería la redirección después del login (avisanos y lo revisamos).
+
+Con eso ya sabés si el fallo es de cookie/sesión (NEXTAUTH_URL o secret) o de la lógica de la app.
+
+**Ver logs en Vercel (para punto 3 del checklist):**
+
+1. Entrá a [vercel.com](https://vercel.com) e iniciá sesión.
+2. Abrí tu **proyecto** (el que tiene el repo de Bloqer).
+3. En el menú del proyecto: **Logs** (o "Runtime Logs" / "Functions" según la versión).
+4. Dejá correr los logs y en otra pestaña intentá **iniciar sesión** en la app.
+5. En la lista de logs buscá líneas que mencionen `auth`, `callback` o el mensaje que agregamos cuando falta org: `user has no active orgMember`. Eso confirma si el login llegó al servidor y por qué se rechazó (ej. usuario sin organización).
 
 ---
 

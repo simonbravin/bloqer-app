@@ -4,6 +4,14 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@repo/database'
 import bcrypt from 'bcryptjs'
 
+// NextAuth v5 / Auth.js can read AUTH_SECRET and AUTH_URL; we also use NEXTAUTH_* in middleware. Unify so both work.
+if (!process.env.AUTH_SECRET?.trim() && process.env.NEXTAUTH_SECRET?.trim()) {
+  process.env.AUTH_SECRET = process.env.NEXTAUTH_SECRET
+}
+if (!process.env.AUTH_URL?.trim() && process.env.NEXTAUTH_URL?.trim()) {
+  process.env.AUTH_URL = process.env.NEXTAUTH_URL
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   trustHost: true, // required on Vercel so session cookie is set for the request host
