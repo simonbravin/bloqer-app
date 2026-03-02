@@ -40,6 +40,8 @@ No hace falta crear tablas a mano: las migraciones de Prisma las crearán en el 
 | `INNGEST_EVENT_KEY` | (Opcional) Si usas Inngest Cloud | Dashboard de Inngest |
 | `INNGEST_SIGNING_KEY` | (Opcional) Si usas Inngest Cloud | Dashboard de Inngest |
 
+**Importante:** El valor de `DATABASE_URL` y `DIRECT_URL` debe ser solo la URL (ej. `postgresql://user:pass@host/db?sslmode=require`). No incluyas el prefijo `psql '` ni comillas al final. En Neon, al copiar "connection string" quita ese prefijo. Para pooled (DATABASE_URL) añade `&pgbouncer=true` si no viene. Asegura que las variables estén asignadas al entorno **Production** y haz redeploy después de cambiarlas.
+
 Puedes dejar R2 en blanco si no usas almacenamiento en Cloudflare aún.
 
 ---

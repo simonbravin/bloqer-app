@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { PrismaPlugin } = require('@prisma/nextjs-monorepo-workaround-plugin')
 
 process.env.SKIP_TYPE_CHECK = 'true'
 
@@ -30,7 +32,10 @@ const nextConfig: NextConfig = {
     return [{ source: '/favicon.ico', destination: '/icon' }]
   },
 
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.plugins = [...(config.plugins ?? []), new PrismaPlugin()]
+    }
     config.watchOptions = {
       ...(config.watchOptions ?? {}),
       ignored: [

@@ -40,13 +40,15 @@ export function SuperAdminLoginForm() {
     if ('ok' in result && result.ok && result.email) {
       const signInResult = await signIn('credentials', {
         email: result.email,
-        password: data.password,
+        password: data.password.trim(),
         redirect: false,
       })
       if (signInResult?.ok) {
         window.location.href = `/${locale}/super-admin`
         return
       }
+      setError('root', { message: 'No se pudo iniciar sesión. Reintentá.' })
+      return
     }
     setError('root', { message: 'Usuario o contraseña incorrectos' })
   }

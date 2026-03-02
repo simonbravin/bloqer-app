@@ -84,10 +84,12 @@ export async function superAdminLogin(username: string, password: string) {
       select: { id: true, email: true, passwordHash: true, isSuperAdmin: true },
     })
     if (!user?.passwordHash) {
+      console.warn('[auth] superAdminLogin: no user or no passwordHash')
       return { error: CREDENTIALS_ERROR }
     }
     const valid = await bcrypt.compare(trimmedPassword, user.passwordHash)
     if (!valid) {
+      console.warn('[auth] superAdminLogin: invalid password')
       return { error: CREDENTIALS_ERROR }
     }
     if (!user.isSuperAdmin) {
@@ -142,20 +144,21 @@ export async function register(data: RegisterInput) {
   }
   const { email, password, fullName, orgName, username, country, city, phone } =
     parsed.data
-  const existingByEmail = await prisma.user.findUnique({ where: { email } })
-  if (existingByEmail) {
-    return { error: { email: ['Ya existe una cuenta con este email'] } }
-  }
-  const existingByUsername = await prisma.user.findUnique({
-    where: { username: username.trim() },
-  })
-  if (existingByUsername) {
-    return { error: { username: ['Este nombre de usuario ya está en uso'] } }
-  }
-  const baseSlug = generateSlug(orgName)
-  const slug = await findUniqueSlug(baseSlug)
-  const passwordHash = await bcrypt.hash(password, 10)
-  await prisma.$transaction(async (tx) => {
+  try {
+    const existingByEmail = await prisma.user.findUnique({ where: { email } })
+    if (existingByEmail) {
+      return { error: { email: ['Ya existe una cuenta con este email'] } }
+    }
+    const existingByUsername = await prisma.user.findUnique({
+      where: { username: username.trim() },
+    })
+    if (existingByUsername) {
+      return { error: { username: ['Este nombre de usuario ya está en uso'] } }
+    }
+    const baseSlug = generateSlug(orgName)
+    const slug = await findUniqueSlug(baseSlug)
+    const passwordHash = await bcrypt.hash(password, 10)
+    await prisma.$transaction(async (tx) => {
     await tx.currency.upsert({
       where: { code: 'ARS' },
       create: {
@@ -216,11 +219,21 @@ export async function register(data: RegisterInput) {
         active: true,
       },
     })
-  })
-  await signIn('credentials', {
-    email,
-    password,
-    redirect: false,
-  })
+    })
+    await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    })
+  } catch (err) {
+    console.error('[auth] register error:', err)
+    return {
+      error: {
+        _form: [
+          'Error al crear la cuenta. Revisá los datos o intentá más tarde.',
+        ],
+      },
+    }
+  }
   return redirectTo('/dashboard')
 }

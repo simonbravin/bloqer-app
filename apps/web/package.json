@@ -53,6 +53,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@prisma/nextjs-monorepo-workaround-plugin": "^7.4.2",
     "cross-env": "^7.0.3",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/bcryptjs": "^2.4.6",
