@@ -8,6 +8,8 @@ import { prisma } from '@repo/database'
 import { DashboardLayout } from '@/components/layouts/dashboard-layout'
 import { SignOutConfirmButton } from '@/components/auth/sign-out-confirm-button'
 
+export const dynamic = 'force-dynamic'
+
 function DashboardError({ message }: { message: string }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
