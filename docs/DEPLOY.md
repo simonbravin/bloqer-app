@@ -119,7 +119,7 @@ La configuración de build y deploy está en el **`vercel.json` de la raíz del 
 
 1. Conecta el repo si no está conectado (Vercel detecta el monorepo).
 2. **Root Directory**: deja la raíz del repo (no `apps/web`).
-3. **Build Command**: `pnpm build --filter=web` (definido en `vercel.json` de la raíz).
+3. **Build Command**: `pnpm exec turbo run build --filter=web` (definido en `vercel.json` de la raíz; el filtro lo aplica Turbo, no se pasa a Next.js).
 4. **Install Command**: `pnpm install` (definido en `vercel.json` de la raíz).
 5. **Output Directory**: `apps/web/.next`.
 6. Guarda y haz **Deploy**. Tras el primer deploy, copia la URL (ej. `https://bloqer-xxx.vercel.app`) y actualiza en Vercel:
