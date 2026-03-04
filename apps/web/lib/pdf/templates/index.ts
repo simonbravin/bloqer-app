@@ -10,6 +10,11 @@ import { financeDashboardTemplate } from './finance-dashboard.template'
 import { projectDashboardTemplate } from './project-dashboard.template'
 import { purchasesBySupplierTemplate } from './purchases-by-supplier.template'
 import { purchaseOrderTemplate } from './purchase-order.template'
+import { gastosPorProveedorTemplate } from './gastos-por-proveedor.template'
+import { budgetVsActualTemplate } from './budget-vs-actual.template'
+import { progressVsCostTemplate } from './progress-vs-cost.template'
+import { topMaterialsTemplate } from './top-materials.template'
+import { certificationsReportTemplate } from './certifications-report.template'
 
 export const documentTemplates = {
   computo: computoTemplate,
@@ -23,6 +28,11 @@ export const documentTemplates = {
   'project-dashboard': projectDashboardTemplate,
   'purchases-by-supplier': purchasesBySupplierTemplate,
   'purchase-order': purchaseOrderTemplate,
+  'gastos-por-proveedor': gastosPorProveedorTemplate,
+  'budget-vs-actual': budgetVsActualTemplate,
+  'progress-vs-cost': progressVsCostTemplate,
+  'top-materials': topMaterialsTemplate,
+  'certifications-report': certificationsReportTemplate,
 } as const
 
 export type DocumentTemplateId = keyof typeof documentTemplates

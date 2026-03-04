@@ -14,10 +14,13 @@ import {
 } from 'recharts'
 import { Download } from 'lucide-react'
 import { formatCurrency } from '@/lib/format-utils'
+import { ReportExportPdfButton } from '@/components/reports/report-export-pdf-button'
 import type { ExpensesBySupplierRow } from '@/app/actions/predefined-reports'
 
 interface Props {
   data: ExpensesBySupplierRow[]
+  /** Optional query params for PDF export (e.g. projectIds from URL). */
+  pdfQueryParams?: Record<string, string>
 }
 
 function downloadCsv(data: ExpensesBySupplierRow[]) {
@@ -42,7 +45,7 @@ function downloadCsv(data: ExpensesBySupplierRow[]) {
   URL.revokeObjectURL(url)
 }
 
-export function ExpensesBySupplierReportClient({ data }: Props) {
+export function ExpensesBySupplierReportClient({ data, pdfQueryParams }: Props) {
   const chartData = data.slice(0, 10).map((s) => ({
     name: s.supplierName.length > 20 ? s.supplierName.substring(0, 20) + '…' : s.supplierName,
     Total: s.total,
@@ -57,6 +60,10 @@ export function ExpensesBySupplierReportClient({ data }: Props) {
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
+        <ReportExportPdfButton
+          templateId="gastos-por-proveedor"
+          queryParams={pdfQueryParams}
+        />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>

@@ -2,6 +2,7 @@
 
 import { ChartCard } from '@/components/charts/chart-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import {
   BarChart,
   Bar,
@@ -12,11 +13,32 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { Download } from 'lucide-react'
 import { formatCurrency } from '@/lib/format-utils'
+import { ReportExportPdfButton } from '@/components/reports/report-export-pdf-button'
 import type { ProgressVsCostRow } from '@/app/actions/predefined-reports'
 
 interface Props {
   data: ProgressVsCostRow[]
+}
+
+function downloadCsv(data: ProgressVsCostRow[]) {
+  const headers = ['Nº Proyecto', 'Proyecto', 'Presupuestado', 'Consumido', '% Consumido', '% Avance']
+  const rows = data.map((r) => [
+    r.projectNumber.replace(/"/g, '""'),
+    r.projectName.replace(/"/g, '""'),
+    r.budgeted.toFixed(2),
+    r.consumed.toFixed(2),
+    r.consumedPct.toFixed(1),
+    r.progressPct != null ? r.progressPct.toFixed(1) : '',
+  ])
+  const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `avance-vs-costo-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 export function ProgressVsCostReportClient({ data }: Props) {
@@ -28,6 +50,13 @@ export function ProgressVsCostReportClient({ data }: Props) {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => downloadCsv(data)}>
+          <Download className="mr-2 h-4 w-4" />
+          Exportar CSV
+        </Button>
+        <ReportExportPdfButton templateId="progress-vs-cost" />
+      </div>
       <ChartCard
         title="Consumido vs Avance de obra por proyecto"
         description="Porcentaje de costo consumido vs porcentaje de avance físico (última fecha de avance)"

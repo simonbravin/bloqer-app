@@ -24,6 +24,8 @@ export default async function GastosPorProveedorPage({ params, searchParams }: P
     : undefined
 
   const data = await getExpensesBySupplierReport(undefined, projectIds)
+  const pdfQueryParams: Record<string, string> = {}
+  if (projectIds?.length) pdfQueryParams.projectIds = projectIds.join(',')
 
   return (
     <div className="h-full">
@@ -38,7 +40,7 @@ export default async function GastosPorProveedorPage({ params, searchParams }: P
       />
 
       <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
-        <ExpensesBySupplierReportClient data={data} />
+        <ExpensesBySupplierReportClient data={data} pdfQueryParams={pdfQueryParams} />
       </div>
     </div>
   )

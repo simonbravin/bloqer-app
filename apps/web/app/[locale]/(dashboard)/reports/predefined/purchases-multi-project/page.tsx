@@ -3,6 +3,7 @@ import { getOrgContext } from '@/lib/org-context'
 import { redirect } from 'next/navigation'
 import { PurchasesBySupplierReport } from '@/components/reports/purchases-by-supplier-report'
 import { getTranslations } from 'next-intl/server'
+import { PageHeader } from '@/components/layout/page-header'
 
 type PageProps = {
   params: Promise<{ locale: string }>
@@ -19,17 +20,19 @@ export default async function PurchasesMultiProjectPage({ params }: PageProps) {
   const t = await getTranslations('reports')
 
   return (
-    <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {t('purchasesMultiProject')}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t('purchasesMultiProjectDesc')}
-        </p>
+    <div className="h-full">
+      <PageHeader
+        title={t('purchasesMultiProject')}
+        subtitle={t('purchasesMultiProjectDesc')}
+        breadcrumbs={[
+          { label: 'Reportes', href: '/reports' },
+          { label: 'Predefinidos', href: '/reports/predefined' },
+          { label: t('purchasesMultiProject') },
+        ]}
+      />
+      <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
+        <PurchasesBySupplierReport orgId={org.orgId} />
       </div>
-
-      <PurchasesBySupplierReport orgId={org.orgId} />
     </div>
   )
 }

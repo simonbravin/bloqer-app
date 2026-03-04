@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { getProgressVsCostReport } from '@/app/actions/predefined-reports'
 import { ProgressVsCostReportClient } from '@/components/reports/progress-vs-cost-report-client'
+import { PageHeader } from '@/components/layout/page-header'
 
 type PageProps = {
   params: Promise<{ locale: string }>
@@ -19,17 +20,19 @@ export default async function ProgressVsCostPage({ params }: PageProps) {
   const data = await getProgressVsCostReport()
 
   return (
-    <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          Avance vs Costo
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Consumido vs avance de obra por proyecto
-        </p>
+    <div className="h-full">
+      <PageHeader
+        title="Avance vs Costo"
+        subtitle="Consumido vs avance de obra por proyecto"
+        breadcrumbs={[
+          { label: 'Reportes', href: '/reports' },
+          { label: 'Predefinidos', href: '/reports/predefined' },
+          { label: 'Avance vs Costo' },
+        ]}
+      />
+      <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
+        <ProgressVsCostReportClient data={data} />
       </div>
-
-      <ProgressVsCostReportClient data={data} />
     </div>
   )
 }

@@ -80,6 +80,12 @@ export function getHeaderMeta(
         : {}
     case 'purchase-order':
       return id ? { folioLabel: 'OC', folioValue: id } : {}
+    case 'gastos-por-proveedor':
+    case 'budget-vs-actual':
+    case 'progress-vs-cost':
+    case 'top-materials':
+    case 'certifications-report':
+      return {}
     default:
       return {}
   }

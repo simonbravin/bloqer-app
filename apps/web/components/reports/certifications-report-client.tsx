@@ -2,6 +2,7 @@
 
 import { ChartCard } from '@/components/charts/chart-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import {
   BarChart,
   Bar,
@@ -12,11 +13,34 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { Download } from 'lucide-react'
 import { formatCurrency } from '@/lib/format-utils'
+import { ReportExportPdfButton } from '@/components/reports/report-export-pdf-button'
 import type { CertificationsByProjectRow } from '@/app/actions/predefined-reports'
 
 interface Props {
   data: CertificationsByProjectRow[]
+}
+
+function downloadCsv(data: CertificationsByProjectRow[]) {
+  const headers = ['Nº Proyecto', 'Proyecto', 'Total certificado', 'Borrador', 'Emitida', 'Aprobada', 'Rechazada', 'Certificados']
+  const rows = data.map((r) => [
+    r.projectNumber.replace(/"/g, '""'),
+    r.projectName.replace(/"/g, '""'),
+    r.totalCertified.toFixed(2),
+    r.draft.toFixed(2),
+    r.issued.toFixed(2),
+    r.approved.toFixed(2),
+    r.rejected.toFixed(2),
+    String(r.count),
+  ])
+  const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `certificaciones-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 export function CertificationsReportClient({ data }: Props) {
@@ -30,6 +54,13 @@ export function CertificationsReportClient({ data }: Props) {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => downloadCsv(data)}>
+          <Download className="mr-2 h-4 w-4" />
+          Exportar CSV
+        </Button>
+        <ReportExportPdfButton templateId="certifications-report" />
+      </div>
       <ChartCard
         title="Certificaciones por proyecto (apilado)"
         description="Montos por estado: Borrador, Emitida, Aprobada, Rechazada"

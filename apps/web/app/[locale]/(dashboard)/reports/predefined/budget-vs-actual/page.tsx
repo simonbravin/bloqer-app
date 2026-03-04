@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session'
 import { getOrgContext } from '@/lib/org-context'
 import { getBudgetVsActualReport } from '@/app/actions/predefined-reports'
 import { BudgetVsActualReportClient } from '@/components/reports/budget-vs-actual-report-client'
+import { PageHeader } from '@/components/layout/page-header'
 
 type PageProps = {
   params: Promise<{ locale: string }>
@@ -19,17 +20,19 @@ export default async function BudgetVsActualPage({ params }: PageProps) {
   const data = await getBudgetVsActualReport()
 
   return (
-    <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          Presupuesto vs Real
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Control de costos por proyecto
-        </p>
+    <div className="h-full">
+      <PageHeader
+        title="Presupuesto vs Real"
+        subtitle="Control de costos por proyecto"
+        breadcrumbs={[
+          { label: 'Reportes', href: '/reports' },
+          { label: 'Predefinidos', href: '/reports/predefined' },
+          { label: 'Presupuesto vs Real' },
+        ]}
+      />
+      <div className="mx-auto max-w-6xl w-full space-y-6 p-6">
+        <BudgetVsActualReportClient data={data} />
       </div>
-
-      <BudgetVsActualReportClient data={data} />
     </div>
   )
 }

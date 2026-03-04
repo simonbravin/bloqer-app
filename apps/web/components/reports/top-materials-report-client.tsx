@@ -2,6 +2,7 @@
 
 import { ChartCard } from '@/components/charts/chart-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import {
   BarChart,
   Bar,
@@ -11,11 +12,32 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { Download } from 'lucide-react'
 import { formatCurrency } from '@/lib/format-utils'
+import { ReportExportPdfButton } from '@/components/reports/report-export-pdf-button'
 import type { TopMaterialsRow } from '@/app/actions/predefined-reports'
 
 interface Props {
   data: TopMaterialsRow[]
+}
+
+function downloadCsv(data: TopMaterialsRow[]) {
+  const headers = ['Material', 'Unidad', 'Cantidad total', 'Costo unit. prom.', 'Costo total', 'Proyectos']
+  const rows = data.map((r) => [
+    r.materialName.replace(/"/g, '""'),
+    r.unit.replace(/"/g, '""'),
+    r.totalQuantity.toFixed(2),
+    r.avgUnitCost.toFixed(2),
+    r.totalCost.toFixed(2),
+    String(r.projectCount),
+  ])
+  const csv = [headers.join(','), ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `top-10-materiales-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 export function TopMaterialsReportClient({ data }: Props) {
@@ -29,6 +51,13 @@ export function TopMaterialsReportClient({ data }: Props) {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => downloadCsv(data)}>
+          <Download className="mr-2 h-4 w-4" />
+          Exportar CSV
+        </Button>
+        <ReportExportPdfButton templateId="top-materials" />
+      </div>
       <ChartCard
         title="Top 10 materiales por costo total"
         description="Presupuestos aprobados, agrupado por descripción y unidad"
